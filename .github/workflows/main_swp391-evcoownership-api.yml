@@ -24,7 +24,7 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build --configuration Development
+        run: dotnet build --configuration Debug
 
       - name: dotnet publish
         run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
@@ -60,6 +60,6 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'swp391-evcoownership-api'
-          slot-name: 'Development'
+          slot-name: 'Production'
           package: .
           
