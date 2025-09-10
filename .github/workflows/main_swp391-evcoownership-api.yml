@@ -60,6 +60,6 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'swp391-evcoownership-api'
-          slot-name: 'Production'
+          slot-name: 'Development'
           package: .
           
