@@ -1,0 +1,14 @@
+using EvCoOwnership.Repositories.Context;
+using EvCoOwnership.Repositories.Interfaces;
+using EvCoOwnership.Repositories.Models;
+using EvCoOwnership.Repositories.Repositories.Base;
+
+namespace EvCoOwnership.Repositories.Repositories
+{
+    public class UserRefreshTokenRepository : GenericRepository<UserRefreshToken>, IUserRefreshTokenRepository
+    {
+        public UserRefreshTokenRepository(EvCoOwnershipDbContext context) : base(context)
+        {
+        }
+    }
+}

@@ -1,0 +1,26 @@
+using EvCoOwnership.Helpers.BaseClasses;
+
+namespace EvCoOwnership.Repositories.Repositories.Base
+{
+    public interface IGenericRepository<T> where T : class
+    {
+        void Create(T entity);
+        void CreateRange(List<T> entities);
+        List<T> GetAll();
+        Task<List<T>> GetAllAsync();
+        Task<List<T>> GetAllAsync(params string[] includeProperties);
+        T GetById(Guid code);
+        T GetById(int id);
+        T GetById(string code);
+        Task<T> GetByIdAsync(Guid code);
+        Task<T> GetByIdAsync(int id);
+        Task<T> GetByIdAsync(int id, params string[] includes);
+        Task<T> GetByIdAsync(string code);
+        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1);
+        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, params string[] includeProperties);
+        bool Remove(T entity);
+        void RemoveRange(List<T> entities);
+        void Update(T entity);
+        void UpdateRange(List<T> entities);
+    }
+}

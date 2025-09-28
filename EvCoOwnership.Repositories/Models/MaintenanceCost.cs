@@ -1,0 +1,38 @@
+﻿using System;
+using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class MaintenanceCost
+{
+    public int Id { get; set; }
+
+    public int? VehicleId { get; set; }
+
+    public int? BookingId { get; set; }
+
+    public EMaintenanceType? MaintenanceTypeEnum { get; set; }
+
+    public string Description { get; set; } = null!;
+
+    public decimal Cost { get; set; }
+
+    public bool? IsPaid { get; set; }
+
+    public string? ServiceProvider { get; set; }
+
+    public DateOnly ServiceDate { get; set; }
+
+    public int? OdometerReading { get; set; }
+
+    public string? ImageUrl { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public virtual Booking? Booking { get; set; }
+
+    public virtual ICollection<FundUsage> FundUsages { get; set; } = new List<FundUsage>();
+
+    public virtual Vehicle? Vehicle { get; set; }
+}

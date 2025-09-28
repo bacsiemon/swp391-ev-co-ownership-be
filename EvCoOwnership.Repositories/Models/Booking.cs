@@ -1,0 +1,42 @@
+﻿using System;
+using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class Booking
+{
+    public int Id { get; set; }
+
+    public int? CoOwnerId { get; set; }
+
+    public int? VehicleId { get; set; }
+
+    public DateTime StartTime { get; set; }
+
+    public DateTime EndTime { get; set; }
+
+    public string? Purpose { get; set; }
+
+    public EBookingStatus? StatusEnum { get; set; }
+
+    public int? ApprovedBy { get; set; }
+
+    public decimal? TotalCost { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public virtual User? ApprovedByNavigation { get; set; }
+
+    public virtual ICollection<CheckIn> CheckIns { get; set; } = new List<CheckIn>();
+
+    public virtual ICollection<CheckOut> CheckOuts { get; set; } = new List<CheckOut>();
+
+    public virtual CoOwner? CoOwner { get; set; }
+
+    public virtual ICollection<MaintenanceCost> MaintenanceCosts { get; set; } = new List<MaintenanceCost>();
+
+    public virtual Vehicle? Vehicle { get; set; }
+}

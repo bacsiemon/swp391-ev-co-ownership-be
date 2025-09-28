@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class Vehicle
+{
+    public int Id { get; set; }
+
+    public int? GroupId { get; set; }
+
+    public string Brand { get; set; } = null!;
+
+    public string Model { get; set; } = null!;
+
+    public int Year { get; set; }
+
+    public string Vin { get; set; } = null!;
+
+    public string LicensePlate { get; set; } = null!;
+
+    public string? Color { get; set; }
+
+    public decimal? BatteryCapacity { get; set; }
+
+    public int? RangeKm { get; set; }
+
+    public DateOnly PurchaseDate { get; set; }
+
+    public decimal PurchasePrice { get; set; }
+
+    public DateOnly? WarrantyUntil { get; set; }
+
+    public int? DistanceTravelled { get; set; }
+
+    public EVehicleStatus? StatusEnum { get; set; }
+
+    public decimal? LocationLatitude { get; set; }
+
+    public decimal? LocationLongitude { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+    public virtual Group? Group { get; set; }
+
+    public virtual ICollection<MaintenanceCost> MaintenanceCosts { get; set; } = new List<MaintenanceCost>();
+
+    public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
+}

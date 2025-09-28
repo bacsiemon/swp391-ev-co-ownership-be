@@ -1,0 +1,32 @@
+﻿using System;
+using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class FundAddition
+{
+    public int Id { get; set; }
+
+    public int? FundId { get; set; }
+
+    public int? CoOwnerId { get; set; }
+
+    public decimal Amount { get; set; }
+
+    public EPaymentMethod? PaymentMethodEnum { get; set; }
+
+    public string? TransactionId { get; set; }
+
+    public string? Description { get; set; }
+
+    public EFundAdditionStatus? StatusEnum { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public virtual CoOwner? CoOwner { get; set; }
+
+    public virtual Fund? Fund { get; set; }
+
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+}

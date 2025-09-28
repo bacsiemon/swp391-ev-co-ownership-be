@@ -1,0 +1,31 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class CheckIn
+{
+    public int Id { get; set; }
+
+    public int? BookingId { get; set; }
+
+    public int? StaffId { get; set; }
+
+    public int? VehicleStationId { get; set; }
+
+    public int? VehicleConditionId { get; set; }
+
+    public DateTime CheckTime { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public virtual Booking? Booking { get; set; }
+
+    public virtual User? Staff { get; set; }
+
+    public virtual VehicleCondition? VehicleCondition { get; set; }
+
+    public virtual VehicleStation? VehicleStation { get; set; }
+}

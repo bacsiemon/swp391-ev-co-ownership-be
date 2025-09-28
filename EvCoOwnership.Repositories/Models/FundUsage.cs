@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class FundUsage
+{
+    public int Id { get; set; }
+
+    public int? FundId { get; set; }
+
+    public EUsageType? UsageTypeEnum { get; set; }
+
+    public decimal Amount { get; set; }
+
+    public string Description { get; set; } = null!;
+
+    public string? ImageUrl { get; set; }
+
+    public int? MaintenanceCostId { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public virtual Fund? Fund { get; set; }
+
+    public virtual MaintenanceCost? MaintenanceCost { get; set; }
+}

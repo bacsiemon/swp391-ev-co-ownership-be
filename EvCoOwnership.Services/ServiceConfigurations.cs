@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using EvCoOwnership.Services.Interfaces;
+using EvCoOwnership.Services.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -12,7 +14,13 @@ namespace EvCoOwnership.Services
     {
         public static IServiceCollection AddServiceConfigurations(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddDependencies(configuration);
             return services;
+        }
+
+        public static void AddDependencies(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddScoped<IUserService, UserService>();
         }
     }
 }

@@ -1,0 +1,30 @@
+﻿using System;
+using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class Payment
+{
+    public int Id { get; set; }
+
+    public int? UserId { get; set; }
+
+    public decimal Amount { get; set; }
+
+    public string? TransactionId { get; set; }
+
+    public string? PaymentGateway { get; set; }
+
+    public EPaymentStatus? StatusEnum { get; set; }
+
+    public DateTime? PaidAt { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public int? FundAdditionId { get; set; }
+
+    public virtual FundAddition? FundAddition { get; set; }
+
+    public virtual User? User { get; set; }
+}

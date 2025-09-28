@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace EvCoOwnership.Repositories.Models;
+
+public partial class FundUsageVote
+{
+    public int FundUsageId { get; set; }
+
+    public int UserId { get; set; }
+
+    public bool IsAgree { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public virtual FundUsage FundUsage { get; set; } = null!;
+
+    public virtual User User { get; set; } = null!;
+}
