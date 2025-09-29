@@ -22,33 +22,14 @@ namespace EvCoOwnership.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUsers(int pageIndex = 1, int pageSize = 10)
         {
-            try
+            var users = await _userService.GetUsersAsync(pageIndex, pageSize);         
+            return Ok(new BaseResponse()
             {
-                _logger.LogInformation("Getting users with pageIndex: {PageIndex}, pageSize: {PageSize}", pageIndex, pageSize);
-                
-                var users = await _userService.GetUsersAsync(pageIndex, pageSize);
-                
-                _logger.LogInformation("Successfully retrieved {UserCount} users", users.Items?.Count() ?? 0);
-                
-                return Ok(new BaseResponse()
-                {
-                    StatusCode = "OK",
-                    Message = "Success",
-                    Data = users.Items,
-                    AdditionalData = users.AdditionalData
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred while getting users with pageIndex: {PageIndex}, pageSize: {PageSize}", pageIndex, pageSize);
-                
-                return StatusCode(500, new BaseResponse()
-                {
-                    StatusCode = "Error",
-                    Message = "An error occurred while retrieving users",
-                    Data = null
-                });
-            }
+                StatusCode = "OK",
+                Message = "Success",
+                Data = users.Items,
+                AdditionalData = users.AdditionalData
+            });
         }
     }
 }

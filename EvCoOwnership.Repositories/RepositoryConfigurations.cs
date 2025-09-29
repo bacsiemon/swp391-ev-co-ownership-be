@@ -15,17 +15,19 @@ namespace EvCoOwnership.Repositories
     {
         public static IServiceCollection AddRepositoryConfigurations(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDependencies(configuration);
+            services.AddDbContext(configuration);
             return services;
         }
 
-        public static void AddDependencies(this IServiceCollection services, IConfiguration configuration)
+        public static void AddDbContext(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-            var connectionString = configuration.GetConnectionString("LocalConnection");
+            string connectionString = configuration.GetConnectionString("AzureDBConnection");
+#if DEBUG
+            connectionString = configuration.GetConnectionString("LocalConnection");
+#endif
             services.AddDbContext<EvCoOwnershipDbContext>(options =>
-                options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString));
         }
     }
 }
