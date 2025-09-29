@@ -11,17 +11,23 @@ namespace EvCoOwnership.API.Controllers
         /// <summary>
         /// Get API status
         /// </summary>
-        /// <param name="number">An optional integer parameter</param>
-        /// <param name="randomCharacters">An optional string parameter</param>
-        /// <param name="trueOrFalse">An optional boolean parameter</param>
+        /// <param name="optionalInteger">An optional integer parameter</param>
+        /// <param name="optionalString">An optional string parameter</param>
+        /// <param name="optionalBoolean">An optional boolean parameter</param>
         /// <response code="200">API is working</response>
         /// <remarks>
         ///     Sample remarks
         /// </remarks>
-        [HttpGet]
-        public IActionResult Get(string? randomCharacters, int? number, bool? trueOrFalse)
+        [HttpGet("test-api")]
+        public IActionResult Get(string? optionalString, int? optionalInteger, bool? optionalBoolean)
         {
             return Ok("API is working!");
+        }
+
+        [HttpGet("test-exception-middleware")]
+        public IActionResult TestExceptionMiddleware()
+        {
+            throw new Exception("This is a test exception.");
         }
     }
 }

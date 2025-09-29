@@ -1,4 +1,6 @@
 using EvCoOwnership.Helpers.BaseClasses;
+using System;
+using System.Linq;
 
 namespace EvCoOwnership.Repositories.Repositories.Base
 {
@@ -16,8 +18,7 @@ namespace EvCoOwnership.Repositories.Repositories.Base
         Task<T> GetByIdAsync(int id);
         Task<T> GetByIdAsync(int id, params string[] includes);
         Task<T> GetByIdAsync(string code);
-        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1);
-        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, params string[] includeProperties);
+        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, params string[] includeProperties);
         bool Remove(T entity);
         void RemoveRange(List<T> entities);
         void Update(T entity);

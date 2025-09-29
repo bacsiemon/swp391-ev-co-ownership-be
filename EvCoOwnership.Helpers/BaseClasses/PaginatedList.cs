@@ -13,6 +13,13 @@ namespace EvCoOwnership.Helpers.BaseClasses
         public int Total { get; set; }
         public int TotalPages { get; set; }
         public IList<T> Items { get; set; }
+        public object AdditionalData => new
+        {
+            Size,
+            Page,
+            Total,
+            TotalPages
+        };
 
         public PaginatedList(IEnumerable<T> source, int page, int size, int firstPage)
         {
@@ -44,5 +51,7 @@ namespace EvCoOwnership.Helpers.BaseClasses
         {
             Items = Array.Empty<T>();
         }
+
+
     }
 }

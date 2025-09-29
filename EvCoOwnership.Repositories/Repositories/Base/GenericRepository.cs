@@ -41,27 +41,7 @@ namespace EvCoOwnership.Repositories.Repositories.Base
             return await query.ToListAsync();
         }
 
-        public async Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1)
-        {
-            if (firstPage > page)
-                throw new ArgumentException($"Page ({page}) must be greater or equal than firstPage ({firstPage})");
-
-            IQueryable<T> query = _context.Set<T>();
-            var total = await query.CountAsync();
-            var items = await query.Skip((page - firstPage) * size).Take(size).ToListAsync();
-            var totalPages = (int)Math.Ceiling(total / (double)size);
-
-            return new PaginatedList<T>
-            {
-                Page = page,
-                Size = size,
-                Total = total,
-                Items = items,
-                TotalPages = totalPages
-            };
-        }
-
-        public async Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, params string[] includeProperties)
+        public async Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, params string[] includeProperties)
         {
             if (firstPage > page)
                 throw new ArgumentException($"Page ({page}) must be greater or equal than firstPage ({firstPage})");
@@ -69,9 +49,18 @@ namespace EvCoOwnership.Repositories.Repositories.Base
             IQueryable<T> query = _context.Set<T>();
 
             // Eagerly load the related entities specified in includeProperties
-            foreach (var includeProperty in includeProperties)
+            if (includeProperties != null && includeProperties.Length > 0)
             {
-                query = query.Include(includeProperty);
+                foreach (var includeProperty in includeProperties)
+                {
+                    query = query.Include(includeProperty);
+                }
+            }
+
+            // Apply ordering if provided
+            if (orderBy != null)
+            {
+                query = orderBy(query);
             }
 
             var total = await query.CountAsync();

@@ -21,7 +21,7 @@ namespace EvCoOwnership.Services.Services
 
         public async Task<PaginatedList<User>> GetUsersAsync(int pageIndex, int pageSize)
         {
-            return await _unitOfWork.UserRepository.GetPaginatedAsync(pageIndex, pageSize);
+            return await _unitOfWork.UserRepository.GetPaginatedAsync(pageIndex, pageSize, 1, e => e.OrderBy(e => e.Id));
         }
     }
 }

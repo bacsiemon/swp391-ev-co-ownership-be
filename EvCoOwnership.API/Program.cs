@@ -3,42 +3,84 @@ using System.Reflection;
 using EvCoOwnership.API;
 using EvCoOwnership.Services;
 using EvCoOwnership.Repositories;
+using EvCoOwnership.Helpers;
+using EvCoOwnership.API.Middlewares;
+using Serilog;
+using Serilog.Events;
 
-var builder = WebApplication.CreateBuilder(args);
+// Create initial bootstrap logger
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+try
 {
-    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
-});
+    Log.Information("Starting EvCoOwnership API application");
 
-builder.Services.AddApiConfigurations(builder.Configuration);
-builder.Services.AddServiceConfigurations(builder.Configuration);
-builder.Services.AddRepositoryConfigurations(builder.Configuration);
+    var builder = WebApplication.CreateBuilder(args);
 
+    // Configure Serilog
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.Console());
 
+    // Add services to the container.
+    builder.Services.AddControllers();
+    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+    builder.Services.AddEndpointsApiExplorer();
 
-var app = builder.Build();
+    builder.Services.AddApiConfigurations(builder.Configuration);
+    builder.Services.AddServiceConfigurations(builder.Configuration);
+    builder.Services.AddRepositoryConfigurations(builder.Configuration);
+    builder.Services.AddHelperConfigurations(builder.Configuration);
 
-// Configure the HTTP request pipeline.
-if (true)
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    var app = builder.Build();
+
+    // Configure Serilog request logging
+    app.UseSerilogRequestLogging(options =>
     {
+        // Customize the message template
+        options.MessageTemplate = "Handled {RequestPath} in {Elapsed:0.0000} ms";
 
+        // Emit debug-level events instead of the defaults
+        options.GetLevel = (httpContext, elapsed, ex) => LogEventLevel.Debug;
+
+        // Attach additional properties to the request completion event
+        options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+        {
+            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+            diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+        };
     });
+
+    app.UseMiddleware<ExceptionMiddleware>();
+
+    // Configure the HTTP request pipeline.
+    if (true)
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+
+        });
+    }
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    Log.Information("EvCoOwnership API application started successfully");
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "EvCoOwnership API application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

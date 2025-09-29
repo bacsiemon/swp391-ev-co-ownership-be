@@ -25,12 +25,13 @@ namespace EvCoOwnership.API.Middlewares
                 _logger.LogError($"Exception: {ex}");
                 httpContext.Response.StatusCode = 500;
                 httpContext.Response.ContentType = "application/json";
-                await httpContext.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse
+                await httpContext.Response.WriteAsJsonAsync(new BaseResponse
                 {
-                    StatusCode = 500,
-                    Message = ex.Message,
-                    Data = ex.ToString()
-                }));
+                    StatusCode = "INTERNAL_SERVER_ERROR",
+                    Message = "A Server Error has occured.",
+                    Data = ex.Message,
+                    AdditionalData = ex.ToString()
+                });
             }
         }
     }
