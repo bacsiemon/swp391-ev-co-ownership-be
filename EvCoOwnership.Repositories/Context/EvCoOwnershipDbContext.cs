@@ -24,6 +24,7 @@ public partial class EvCoOwnershipDbContext : DbContext
     public virtual DbSet<CheckOut> CheckOuts { get; set; }
 
     public virtual DbSet<CoOwner> CoOwners { get; set; }
+    public virtual DbSet<Configuration> Configurations { get; set; }
 
     public virtual DbSet<CoOwnerGroup> CoOwnerGroups { get; set; }
 
@@ -218,6 +219,23 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasOne(d => d.VehicleStation).WithMany(p => p.CheckOuts)
                 .HasForeignKey(d => d.VehicleStationId)
                 .HasConstraintName("check_outs_vehicle_station_id_fkey");
+        });
+
+        modelBuilder.Entity<Configuration>(entity =>
+        {
+            entity.HasKey(e => e.Key).HasName("configurations_pkey");
+
+            entity.ToTable("configurations");
+
+            entity.Property(e => e.Key)
+                .HasMaxLength(100)
+                .HasColumnName("key");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Value).HasColumnName("value");
         });
 
         modelBuilder.Entity<CoOwner>(entity =>
@@ -638,9 +656,15 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.Property(e => e.LastName)
                 .HasMaxLength(100)
                 .HasColumnName("last_name");
+            entity.Property(e => e.NormalizedEmail)
+                .HasMaxLength(255)
+                .HasColumnName("normalized_email");
             entity.Property(e => e.PasswordHash)
                 .HasMaxLength(255)
                 .HasColumnName("password_hash");
+            entity.Property(e => e.PasswordSalt)
+                .HasMaxLength(255)
+                .HasColumnName("password_salt");
             entity.Property(e => e.Phone)
                 .HasMaxLength(20)
                 .HasColumnName("phone");

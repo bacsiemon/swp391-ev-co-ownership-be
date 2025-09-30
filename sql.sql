@@ -31,7 +31,9 @@ CREATE TABLE configurations (
 CREATE TABLE users (
 	id SERIAL PRIMARY KEY,
 	email VARCHAR(255) UNIQUE NOT NULL,
+	normalized_email VARCHAR(255) UNIQUE NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
+	password_salt VARCHAR(255) NOT NULL,
 	first_name VARCHAR(100) NOT NULL,
 	last_name VARCHAR(100) NOT NULL,
 	phone VARCHAR(20),
@@ -338,9 +340,12 @@ CREATE INDEX idx_fund_usage_fund_amount ON fund_usage(fund_id, amount, created_a
 CREATE INDEX idx_maintenance_costs_cost_date ON maintenance_costs(cost, service_date);
 CREATE INDEX idx_payments_amount_date ON payments(amount, paid_at);
 
--- Unique Constraint Indexes (already created by UNIQUE, but listed for completeness)
--- CREATE UNIQUE INDEX idx_users_email_unique ON users(email); -- Already exists
--- CREATE UNIQUE INDEX idx_vehicles_vin_unique ON vehicles(vin); -- Already exists  
--- CREATE UNIQUE INDEX idx_vehicles_license_plate_unique ON vehicles(license_plate); -- Already exists
--- CREATE UNIQUE INDEX idx_driving_licenses_number_unique ON driving_licenses(license_number); -- Already exists
--- CREATE UNIQUE INDEX idx_payments_transaction_id_unique ON payments(transaction_id); -- Already exists
+
+
+-- ================================================
+-- ALTER STATEMENTS FOR FUTURE CHANGES
+-- ================================================
+
+-- 2025-09-15: Add normalized_email column & password_salt column to users table
+ALTER TABLE users ADD COLUMN normalized_email VARCHAR(255) UNIQUE NOT NULL;
+ALTER TABLE users ADD COLUMN password_salt VARCHAR(255) NOT NULL;

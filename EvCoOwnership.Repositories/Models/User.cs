@@ -30,6 +30,10 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string NormalizedEmail { get; set; } = null!;
+
+    public string PasswordSalt { get; set; } = null!;
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<CheckIn> CheckIns { get; set; } = new List<CheckIn>();
