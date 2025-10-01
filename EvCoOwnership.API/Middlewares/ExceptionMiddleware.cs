@@ -27,8 +27,8 @@ namespace EvCoOwnership.API.Middlewares
                 httpContext.Response.ContentType = "application/json";
                 await httpContext.Response.WriteAsJsonAsync(new BaseResponse
                 {
-                    StatusCode = "INTERNAL_SERVER_ERROR",
-                    Message = "A Server Error has occured.",
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
                     Data = ex.Message,
                     AdditionalData = ex.ToString()
                 });

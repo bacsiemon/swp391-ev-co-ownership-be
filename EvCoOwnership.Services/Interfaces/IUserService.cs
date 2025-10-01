@@ -5,6 +5,6 @@ namespace EvCoOwnership.Services.Interfaces
 {
     public interface IUserService
     {
-        Task<PaginatedList<User>> GetUsersAsync(int pageIndex, int pageSize);
+        Task<BaseResponse> GetPagingAsync(int pageIndex, int pageSize);
     }
 }

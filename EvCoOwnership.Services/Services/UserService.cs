@@ -19,9 +19,17 @@ namespace EvCoOwnership.Services.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<PaginatedList<User>> GetUsersAsync(int pageIndex, int pageSize)
+        public async Task<BaseResponse> GetPagingAsync(int pageIndex, int pageSize)
         {
-            return await _unitOfWork.UserRepository.GetPaginatedAsync(pageIndex, pageSize, 1, e => e.OrderBy(e => e.Id));
+            var users = await _unitOfWork.UserRepository.GetPaginatedAsync(pageIndex, pageSize, 1, e => e.OrderBy(e => e.Id));
+
+            return new BaseResponse
+            {
+                StatusCode = 200,
+                Message = "SUCCESS",
+                Data = users.Items,
+                AdditionalData = users.AdditionalData
+            };
         }
     }
 }

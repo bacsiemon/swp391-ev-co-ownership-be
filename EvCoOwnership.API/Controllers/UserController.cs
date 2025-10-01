@@ -22,14 +22,7 @@ namespace EvCoOwnership.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUsers(int pageIndex = 1, int pageSize = 10)
         {
-            var users = await _userService.GetUsersAsync(pageIndex, pageSize);         
-            return Ok(new BaseResponse()
-            {
-                StatusCode = "OK",
-                Message = "Success",
-                Data = users.Items,
-                AdditionalData = users.AdditionalData
-            });
+            return Ok(await _userService.GetPagingAsync(pageIndex, pageSize));
         }
     }
 }
