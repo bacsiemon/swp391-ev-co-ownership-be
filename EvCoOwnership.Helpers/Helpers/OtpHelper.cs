@@ -90,6 +90,14 @@ public static class OtpHelper
         return isValid;
     }
 
+    public static OtpData? GetOtpData(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return null;
+        _otpStorage.TryGetValue(key, out var otpData);
+        return otpData;
+    }
+
     /// <summary>
     /// Removes an OTP from storage
     /// </summary>
@@ -162,7 +170,7 @@ public static class OtpHelper
     /// <summary>
     /// Represents OTP data with metadata
     /// </summary>
-    private class OtpData
+    public class OtpData
     {
         public string Code { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }

@@ -5,6 +5,7 @@ using EvCoOwnership.Services;
 using EvCoOwnership.Repositories;
 using EvCoOwnership.Helpers;
 using EvCoOwnership.API.Middlewares;
+using EvCoOwnership.API.Extensions;
 using Serilog;
 using Serilog.Events;
 
@@ -30,6 +31,9 @@ try
     builder.Services.AddControllers();
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
+
+    // Add FluentValidation services
+    builder.Services.AddFluentValidationServices();
 
     builder.Services.AddApiConfigurations(builder.Configuration);
     builder.Services.AddServiceConfigurations(builder.Configuration);

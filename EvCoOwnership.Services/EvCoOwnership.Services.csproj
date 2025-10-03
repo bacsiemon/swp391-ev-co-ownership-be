@@ -10,4 +10,8 @@
     <ProjectReference Include="..\EvCoOwnership.Repositories\EvCoOwnership.Repositories.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Mapping\" />
+  </ItemGroup>
+
 </Project>

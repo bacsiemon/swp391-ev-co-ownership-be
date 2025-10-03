@@ -2,7 +2,7 @@
 
 
 ## Extension Methods
-Có thể dùng Extension Methods để Map DTO sang entity, đỡ phải dài dòng ở tầng service hoặc xài Automapper.
+Có thể tạo Extension Methods ở folder "Mapping" tầng Service để Map DTO sang entity, đỡ phải dài dòng ở mấy class service hoặc xài Automapper.
 
 Ví dụ:
 ```csharp

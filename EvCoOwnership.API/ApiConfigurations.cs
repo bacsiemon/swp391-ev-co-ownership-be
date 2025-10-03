@@ -50,7 +50,7 @@ namespace EvCoOwnership.API
 
         public static void AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
-           
+            
         }
     }
 }
