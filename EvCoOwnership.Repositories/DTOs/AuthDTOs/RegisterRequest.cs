@@ -27,6 +27,7 @@ namespace EvCoOwnership.DTOs.AuthDTOs
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("EMAIL_REQUIRED")
                 .EmailAddress().WithMessage("INVALID_EMAIL_FORMAT")
+                .Matches(@"^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").WithMessage("EMAIL_MUST_START_WITH_LETTER")
                 .MaximumLength(255).WithMessage("EMAIL_MAX_255_CHARACTERS");
 
             RuleFor(x => x.Password)
@@ -51,7 +52,7 @@ namespace EvCoOwnership.DTOs.AuthDTOs
                 .Matches(@"^[a-zA-ZÀ-ỹ\s]+$").WithMessage("LAST_NAME_ONLY_LETTERS_AND_SPACES");
 
             RuleFor(x => x.Phone)
-                .Matches(@"^\+?[1-9]\d{1,14}$").WithMessage("INVALID_PHONE_FORMAT")
+                .Matches(@"^(\+84|84|0)[0-9]{9,10}$").WithMessage("INVALID_PHONE_FORMAT")
                 .When(x => !string.IsNullOrEmpty(x.Phone));
 
             RuleFor(x => x.DateOfBirth)
