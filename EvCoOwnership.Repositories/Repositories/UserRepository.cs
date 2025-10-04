@@ -22,5 +22,31 @@ namespace EvCoOwnership.Repositories.Repositories
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        public async Task<User?> GetByNormalizedEmailAsync(string normalizedEmail)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+        }
+
+        public async Task<bool> EmailExistsAsync(string email)
+        {
+            var normalizedEmail = email.ToUpperInvariant();
+            return await _context.Users.AnyAsync(u => u.NormalizedEmail == normalizedEmail);
+        }
+
+        public async Task<User?> GetUserWithRolesAsync(int userId)
+        {
+            return await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+        }
+
+        public async Task<User?> GetUserWithRolesByEmailAsync(string email)
+        {
+            var normalizedEmail = email.ToUpperInvariant();
+            return await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+        }
     }
 }

@@ -11,5 +11,9 @@ namespace EvCoOwnership.Repositories.Interfaces
     public interface IUserRepository : IGenericRepository<User>
     {
         Task<User?> GetByEmailAsync(string email);
+        Task<User?> GetByNormalizedEmailAsync(string normalizedEmail);
+        Task<bool> EmailExistsAsync(string email);
+        Task<User?> GetUserWithRolesAsync(int userId);
+        Task<User?> GetUserWithRolesByEmailAsync(string email);
     }
 }
