@@ -69,15 +69,18 @@ namespace EvCoOwnership.API.Controllers
 
         #region Development only
         /// <summary>
-        /// Gets the OTP for the given email. This endpoint is for testing purposes only and should not be used in production.
+        /// Gets the generated OTP for the given email
         /// </summary>
+        /// <remarks>
+        /// This endpoint is for testing purposes only.
+        /// </remarks>
         /// <param name="email"></param>
         /// <response code="200">Success</response>
         /// <response code="404">OTP not found</response>
-        [HttpGet("test/get-otp")]
-        public IActionResult TestGetOtp([FromQuery] string email)
+        [HttpGet("test/get-forgot-password-otp")]
+        public IActionResult TestGetForgotPasswordOtp([FromQuery] string email)
         {
-            var response  = _authService.GetOtpAsync(email);
+            var response  = _authService.GetForgotPasswordOtpAsync(email);
             return response switch
             {
                 { StatusCode: 200 } => Ok(response),

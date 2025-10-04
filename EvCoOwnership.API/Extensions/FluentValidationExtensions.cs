@@ -16,9 +16,9 @@ namespace EvCoOwnership.API.Extensions
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddFluentValidationServices(this IServiceCollection services)
         {
-            // Register all validators from DTOs assembly
-            var dtosAssembly = Assembly.Load("EvCoOwnership.DTOs");
-            services.AddValidatorsFromAssembly(dtosAssembly);
+            // Register all validators from Repositories assembly
+            var repositoriesAssembly = Assembly.Load("EvCoOwnership.Repositories");
+            services.AddValidatorsFromAssembly(repositoriesAssembly);
 
             // Register the custom validation action filter
             services.AddScoped<ValidationActionFilter>();

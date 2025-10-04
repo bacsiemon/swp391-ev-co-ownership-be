@@ -76,7 +76,7 @@ namespace EvCoOwnership.Services.Services
         }
 
         #region Development Only
-        public BaseResponse GetOtpAsync(string email)
+        public BaseResponse GetForgotPasswordOtpAsync(string email)
         {
             var otp = OtpHelper.GetOtpData(email + RESET_PASSWORD_SUFFIX);
             return new BaseResponse

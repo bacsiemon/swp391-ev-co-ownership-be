@@ -6,7 +6,7 @@ namespace EvCoOwnership.Services.Interfaces
     public interface IAuthService
     {
         Task<BaseResponse> ForgotPasswordAsync(string email);
-        BaseResponse GetOtpAsync(string email);
+        BaseResponse GetForgotPasswordOtpAsync(string email);
         Task<BaseResponse> ResetPasswordAsync(ResetPasswordRequest request);
     }
 }
