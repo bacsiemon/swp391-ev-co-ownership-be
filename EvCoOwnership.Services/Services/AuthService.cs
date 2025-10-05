@@ -5,6 +5,8 @@ using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
+using EvCoOwnership.Services.Mapping;
+using EvCoOwnership.Services.Helpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -105,27 +107,8 @@ namespace EvCoOwnership.Services.Services
 
             await _unitOfWork.SaveChangesAsync();
 
-            // Create response
-            var loginResponse = new LoginResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                AccessTokenExpiresAt = accessTokenExpires,
-                RefreshTokenExpiresAt = refreshTokenExpires,
-                User = new UserInfo
-                {
-                    Id = user.Id,
-                    Email = user.Email,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Phone = user.Phone,
-                    DateOfBirth = user.DateOfBirth,
-                    Address = user.Address,
-                    ProfileImageUrl = user.ProfileImageUrl,
-                    Status = user.StatusEnum?.ToString() ?? "Unknown",
-                    Roles = roles
-                }
-            };
+            // Create response using mapper extension method
+            var loginResponse = user.ToLoginResponse(accessToken, refreshToken, accessTokenExpires, refreshTokenExpires);
 
             return new BaseResponse
             {
@@ -156,22 +139,8 @@ namespace EvCoOwnership.Services.Services
             var salt = StringHasher.GenerateSalt();
             var passwordHash = StringHasher.HashWithSalt(request.Password, salt);
 
-            // Create new user
-            var user = new User
-            {
-                Email = request.Email,
-                NormalizedEmail = request.Email.ToUpperInvariant(),
-                PasswordHash = passwordHash,
-                PasswordSalt = salt,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Phone = request.Phone,
-                DateOfBirth = request.DateOfBirth,
-                Address = request.Address,
-                StatusEnum = EUserStatus.Active,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            // Create new user using mapper extension method
+            var user = request.ToEntity(passwordHash, salt);
 
             _unitOfWork.UserRepository.Create(user);
             await _unitOfWork.SaveChangesAsync();
@@ -201,13 +170,7 @@ namespace EvCoOwnership.Services.Services
             {
                 StatusCode = 201,
                 Message = "REGISTRATION_SUCCESS",
-                Data = new
-                {
-                    UserId = user.Id,
-                    Email = user.Email,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName
-                }
+                Data = user.ToRegistrationResponse()
             };
         }
 
@@ -276,27 +239,8 @@ namespace EvCoOwnership.Services.Services
 
             await _unitOfWork.SaveChangesAsync();
 
-            // Create response
-            var loginResponse = new LoginResponse
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken,
-                AccessTokenExpiresAt = accessTokenExpires,
-                RefreshTokenExpiresAt = refreshTokenExpires,
-                User = new UserInfo
-                {
-                    Id = user.Id,
-                    Email = user.Email,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Phone = user.Phone,
-                    DateOfBirth = user.DateOfBirth,
-                    Address = user.Address,
-                    ProfileImageUrl = user.ProfileImageUrl,
-                    Status = user.StatusEnum?.ToString() ?? "Unknown",
-                    Roles = roles
-                }
-            };
+            // Create response using mapper extension method
+            var loginResponse = user.ToLoginResponse(newAccessToken, newRefreshToken, accessTokenExpires, refreshTokenExpires);
 
             return new BaseResponse
             {

@@ -1,7 +1,7 @@
 using EvCoOwnership.Helpers.Helpers;
 using EvCoOwnership.Repositories.Models;
 
-namespace EvCoOwnership.Services.Services
+namespace EvCoOwnership.Services.Helpers
 {
     /// <summary>
     /// Wrapper class to implement IJwtUserData for User entity

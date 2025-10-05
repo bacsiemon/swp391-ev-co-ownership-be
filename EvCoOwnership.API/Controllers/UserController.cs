@@ -19,6 +19,12 @@ namespace EvCoOwnership.API.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Gets paginated list of users
+        /// </summary>
+        /// <param name="pageIndex">Page number (default: 1)</param>
+        /// <param name="pageSize">Number of items per page (default: 10)</param>
+        /// <response code="200">Users retrieved successfully</response>
         [HttpGet]
         public async Task<IActionResult> GetUsers(int pageIndex = 1, int pageSize = 10)
         {

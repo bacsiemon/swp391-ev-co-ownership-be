@@ -24,20 +24,20 @@ namespace EvCoOwnership.API.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Authenticates user with email and password
-        /// </summary>
         /// <param name="request">Login credentials</param>
+        /// <response code="200">Login successful. Possible messages:  
+        /// - LOGIN_SUCCESS
+        /// </response>
+        /// <response code="400">Invalid credentials or validation error. Possible messages:  
+        /// - INVALID_EMAIL_OR_PASSWORD
+        /// </response>
+        /// <response code="403">Account suspended or inactive. Possible messages:  
+        /// - ACCOUNT_SUSPENDED  
+        /// - ACCOUNT_INACTIVE
+        /// </response>
         /// <remarks>
-        /// Possible messages:  
-        /// >LOGIN_SUCCESS  
-        /// >INVALID_EMAIL_OR_PASSWORD  
-        /// >ACCOUNT_SUSPENDED  
-        /// >ACCOUNT_INACTIVE
+        /// Authenticates user with email and password
         /// </remarks>
-        /// <response code="200">Login successful</response>
-        /// <response code="400">Invalid credentials or validation error</response>
-        /// <response code="403">Account suspended or inactive</response>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
@@ -51,26 +51,26 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <summary>
-        /// Registers a new user account
-        /// </summary>
         /// <param name="request">Registration details</param>
+        /// <response code="201">Registration successful. Possible messages:  
+        /// - REGISTRATION_SUCCESS
+        /// </response>
+        /// <response code="400">Validation error. Possible messages:  
+        /// - EMAIL_REQUIRED  
+        /// - INVALID_EMAIL_FORMAT  
+        /// - PASSWORD_REQUIRED  
+        /// - PASSWORD_MIN_8_CHARACTERS  
+        /// - PASSWORD_MUST_CONTAIN_UPPERCASE_LOWERCASE_NUMBER_SPECIAL  
+        /// - CONFIRM_PASSWORD_MUST_MATCH  
+        /// - FIRST_NAME_REQUIRED  
+        /// - LAST_NAME_REQUIRED
+        /// </response>
+        /// <response code="409">Email already exists. Possible messages:  
+        /// - EMAIL_ALREADY_EXISTS
+        /// </response>
         /// <remarks>
-        /// Possible messages:  
-        /// >REGISTRATION_SUCCESS  
-        /// >EMAIL_ALREADY_EXISTS  
-        /// >EMAIL_REQUIRED  
-        /// >INVALID_EMAIL_FORMAT  
-        /// >PASSWORD_REQUIRED  
-        /// >PASSWORD_MIN_8_CHARACTERS  
-        /// >PASSWORD_MUST_CONTAIN_UPPERCASE_LOWERCASE_NUMBER_SPECIAL  
-        /// >CONFIRM_PASSWORD_MUST_MATCH  
-        /// >FIRST_NAME_REQUIRED  
-        /// >LAST_NAME_REQUIRED
+        /// Registers a new user account
         /// </remarks>
-        /// <response code="201">Registration successful</response>
-        /// <response code="400">Validation error</response>
-        /// <response code="409">Email already exists</response>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
@@ -84,23 +84,24 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <summary>
-        /// Refreshes the access token using a valid refresh token
-        /// </summary>
         /// <param name="request">Refresh token request</param>
-        /// <remarks>
-        /// Possible messages:  
-        /// >TOKEN_REFRESH_SUCCESS  
-        /// >INVALID_OR_EXPIRED_REFRESH_TOKEN  
-        /// >USER_NOT_FOUND  
-        /// >ACCOUNT_SUSPENDED  
-        /// >ACCOUNT_INACTIVE
-        /// </remarks>
-        /// <response code="200">Token refresh successful</response>
+        /// <response code="200">Token refresh successful. Possible messages:  
+        /// - TOKEN_REFRESH_SUCCESS
+        /// </response>
         /// <response code="400">Validation error</response>
-        /// <response code="401">Invalid or expired refresh token</response>
-        /// <response code="403">Account suspended or inactive</response>
-        /// <response code="404">User not found</response>
+        /// <response code="401">Invalid or expired refresh token. Possible messages:  
+        /// - INVALID_OR_EXPIRED_REFRESH_TOKEN
+        /// </response>
+        /// <response code="403">Account suspended or inactive. Possible messages:  
+        /// - ACCOUNT_SUSPENDED  
+        /// - ACCOUNT_INACTIVE
+        /// </response>
+        /// <response code="404">User not found. Possible messages:  
+        /// - USER_NOT_FOUND
+        /// </response>
+        /// <remarks>
+        /// Refreshes the access token using a valid refresh token
+        /// </remarks>
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
         {
@@ -116,16 +117,15 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <summary>
-        /// Generates an OTP and sends it to the user's email for password reset.
-        /// </summary>
+        /// <response code="200">Success. Possible messages:  
+        /// - SUCCESS
+        /// </response>
+        /// <response code="404">Email not found. Possible messages:  
+        /// - USER_NOT_FOUND
+        /// </response>
         /// <remarks>
-        /// Possible messages:  
-        /// >SUCCESS  
-        /// >USER_NOT_FOUND
+        /// Generates an OTP and sends it to the user's email for password reset.
         /// </remarks>
-        /// <response code="200">Success</response>
-        /// <response code="404">Email not found</response>
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
@@ -138,21 +138,21 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <summary>
-        /// Resets the user's password using the provided OTP.
-        /// </summary>
+        /// <response code="200">Success. Possible messages:  
+        /// - SUCCESS
+        /// </response>
+        /// <response code="400">Validation Error. Possible messages:  
+        /// - EMAIL_REQUIRED  
+        /// - INVALID_EMAIL_FORMAT  
+        /// - OTP_MIN_6_CHARACTERS  
+        /// - NEW_PASSWORD_MIN_8_CHARACTERS
+        /// </response>
+        /// <response code="404">Email not found. Possible messages:  
+        /// - USER_NOT_FOUND
+        /// </response>
         /// <remarks>
-        /// Possible messages:  
-        /// >SUCCESS  
-        /// >EMAIL_REQUIRED  
-        /// >INVALID_EMAIL_FORMAT  
-        /// >OTP_MIN_6_CHARACTERS  
-        /// >NEW_PASSWORD_MIN_8_CHARACTERS  
-        /// >USER_NOT_FOUND  
+        /// Resets the user's password using the provided OTP.
         /// </remarks>
-        /// <response code="200">Success</response>
-        /// <response code="400">Validation Error</response>
-        /// <response code="404">Email not found</response>
         [HttpPatch("reset-password")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
         {
