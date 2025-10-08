@@ -56,8 +56,8 @@ namespace EvCoOwnership.DTOs.AuthDTOs
                 .When(x => !string.IsNullOrEmpty(x.Phone));
 
             RuleFor(x => x.DateOfBirth)
-                .LessThan(DateOnly.FromDateTime(DateTime.Now.AddYears(-16)))
-                .WithMessage("MUST_BE_AT_LEAST_16_YEARS_OLD")
+                .LessThan(DateOnly.FromDateTime(DateTime.Now.AddYears(-18)))
+                .WithMessage("MUST_BE_AT_LEAST_18_YEARS_OLD")
                 .When(x => x.DateOfBirth.HasValue);
 
             RuleFor(x => x.Address)

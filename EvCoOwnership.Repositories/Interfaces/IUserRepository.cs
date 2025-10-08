@@ -14,6 +14,7 @@ namespace EvCoOwnership.Repositories.Interfaces
         Task<User?> GetByNormalizedEmailAsync(string normalizedEmail);
         Task<bool> EmailExistsAsync(string email);
         Task<User?> GetUserWithRolesAsync(int userId);
+        Task<User?> GetUserWithRolesByIdAsync(int userId);
         Task<User?> GetUserWithRolesByEmailAsync(string email);
     }
 }
