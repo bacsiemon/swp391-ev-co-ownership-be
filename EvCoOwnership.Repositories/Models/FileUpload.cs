@@ -2,15 +2,18 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
-using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Models;
 
-public partial class Role
+public partial class FileUpload
 {
     public int Id { get; set; }
 
-    public EUserRole RoleNameEnum { get; set; }
+    public byte[] Data { get; set; }
 
-    public virtual ICollection<User> Users { get; set; } = new List<User>();
+    public string FileName { get; set; }
+
+    public string MimeType { get; set; }
+
+    public DateTime? UploadedAt { get; set; }
 }

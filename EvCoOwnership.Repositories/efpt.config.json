@@ -1,6 +1,6 @@
 ﻿{
    "CodeGenerationMode": 4,
-   "ContextClassName": "ev_co_ownership_dbContext",
+   "ContextClassName": "EvCoOwnershipDbContext",
    "ContextNamespace": null,
    "FilterSchemas": false,
    "IncludeConnectionString": false,
@@ -15,7 +15,91 @@
    "T4TemplatePath": null,
    "Tables": [
       {
+         "Name": "public.bookings",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.check_ins",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.check_outs",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.co_owner_groups",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.co_owners",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.configurations",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.driving_licenses",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.file_uploads",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.fund_additions",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.fund_usage",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.fund_usage_votes",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.funds",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.groups",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.maintenance_costs",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.payments",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.roles",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.user_refresh_tokens",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.user_roles",
+         "ObjectType": 0
+      },
+      {
          "Name": "public.users",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.vehicle_conditions",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.vehicle_stations",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.vehicles",
          "ObjectType": 0
       }
    ],
@@ -28,7 +112,7 @@
    "UseDateOnlyTimeOnly": true,
    "UseDbContextSplitting": false,
    "UseDecimalDataAnnotationForSprocResult": true,
-   "UseFluentApiOnly": false,
+   "UseFluentApiOnly": true,
    "UseHandleBars": false,
    "UseHierarchyId": false,
    "UseInflector": true,

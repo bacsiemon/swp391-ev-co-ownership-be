@@ -51,7 +51,6 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <param name="request">Registration details</param>
         /// <response code="201">Registration successful. Possible messages:  
         /// - REGISTRATION_SUCCESS
         /// </response>
@@ -84,7 +83,6 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <param name="request">Refresh token request</param>
         /// <response code="200">Token refresh successful. Possible messages:  
         /// - TOKEN_REFRESH_SUCCESS
         /// </response>
