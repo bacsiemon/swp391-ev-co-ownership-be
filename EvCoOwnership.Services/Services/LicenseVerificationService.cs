@@ -410,5 +410,179 @@ namespace EvCoOwnership.Services.Services
                 Restrictions = status == "ACTIVE" ? null : new List<string> { "LICENSE_EXPIRED" }
             };
         }
+
+        /// <summary>
+        /// Gets license information for a specific user
+        /// </summary>
+        public async Task<BaseResponse> GetUserLicenseAsync(int userId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting license for user ID: {UserId}", userId);
+
+                // Get user's driving license
+                var licenses = await _unitOfWork.DrivingLicenseRepository.GetByCoOwnerIdAsync(userId);
+                var license = licenses?.FirstOrDefault();
+                if (license == null)
+                {
+                    _logger.LogWarning("No license found for user ID: {UserId}", userId);
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "LICENSE_NOT_FOUND"
+                    };
+                }
+
+                var licenseDetails = license.ToLicenseDetails();
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "SUCCESS",
+                    Data = licenseDetails
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting license for user ID: {UserId}", userId);
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Updates license information
+        /// </summary>
+        public async Task<BaseResponse> UpdateLicenseAsync(int licenseId, VerifyLicenseRequest request, int currentUserId)
+        {
+            try
+            {
+                _logger.LogInformation("Updating license ID: {LicenseId} by user: {UserId}", licenseId, currentUserId);
+
+                // Get existing license
+                var existingLicense = await _unitOfWork.DrivingLicenseRepository.GetByIdAsync(licenseId);
+                if (existingLicense == null)
+                {
+                    _logger.LogWarning("License not found: {LicenseId}", licenseId);
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "LICENSE_NOT_FOUND"
+                    };
+                }
+
+                // Check permissions - user can only update their own license or admin/staff can update any
+                var currentUser = await _unitOfWork.UserRepository.GetUserWithRolesByIdAsync(currentUserId);
+                var isAdminOrStaff = currentUser?.Roles?.Any(r => r.RoleNameEnum == Repositories.Enums.EUserRole.Admin || 
+                                                                 r.RoleNameEnum == Repositories.Enums.EUserRole.Staff) == true;
+
+                if (!isAdminOrStaff && existingLicense.CoOwnerId != currentUserId)
+                {
+                    _logger.LogWarning("User {UserId} attempted to update license {LicenseId} they don't own", currentUserId, licenseId);
+                    return new BaseResponse
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED"
+                    };
+                }
+
+                // Update license fields
+                existingLicense.LicenseNumber = request.LicenseNumber;
+                existingLicense.IssueDate = request.IssueDate;
+                existingLicense.IssuedBy = request.IssuedBy;
+                existingLicense.ExpiryDate = request.IssueDate.AddYears(10); // Standard 10-year expiry
+
+                // Handle image update if provided
+                if (request.LicenseImage != null)
+                {
+                    // In a real implementation, you would save the image to storage
+                    // For now, just update the URL placeholder
+                    existingLicense.LicenseImageUrl = $"https://storage.example.com/licenses/{licenseId}_{DateTime.UtcNow:yyyyMMdd}.jpg";
+                }
+
+                _unitOfWork.DrivingLicenseRepository.Update(existingLicense);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("License updated successfully: {LicenseId}", licenseId);
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "LICENSE_UPDATED_SUCCESSFULLY",
+                    Data = existingLicense.ToLicenseDetails()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating license ID: {LicenseId}", licenseId);
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Deletes a license
+        /// </summary>
+        public async Task<BaseResponse> DeleteLicenseAsync(int licenseId, int currentUserId)
+        {
+            try
+            {
+                _logger.LogInformation("Deleting license ID: {LicenseId} by user: {UserId}", licenseId, currentUserId);
+
+                // Get existing license
+                var existingLicense = await _unitOfWork.DrivingLicenseRepository.GetByIdAsync(licenseId);
+                if (existingLicense == null)
+                {
+                    _logger.LogWarning("License not found: {LicenseId}", licenseId);
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "LICENSE_NOT_FOUND"
+                    };
+                }
+
+                // Check permissions - user can only delete their own license or admin/staff can delete any
+                var currentUser = await _unitOfWork.UserRepository.GetUserWithRolesByIdAsync(currentUserId);
+                var isAdminOrStaff = currentUser?.Roles?.Any(r => r.RoleNameEnum == Repositories.Enums.EUserRole.Admin || 
+                                                                 r.RoleNameEnum == Repositories.Enums.EUserRole.Staff) == true;
+
+                if (!isAdminOrStaff && existingLicense.CoOwnerId != currentUserId)
+                {
+                    _logger.LogWarning("User {UserId} attempted to delete license {LicenseId} they don't own", currentUserId, licenseId);
+                    return new BaseResponse
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED"
+                    };
+                }
+
+                // Delete the license
+                _unitOfWork.DrivingLicenseRepository.Remove(existingLicense);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("License deleted successfully: {LicenseId}", licenseId);
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "LICENSE_DELETED_SUCCESSFULLY"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting license ID: {LicenseId}", licenseId);
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
     }
 }

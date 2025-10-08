@@ -38,5 +38,29 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="adminUserId">ID of the admin user</param>
         /// <returns>BaseResponse with update result</returns>
         Task<BaseResponse> UpdateLicenseStatusAsync(string licenseNumber, string status, int adminUserId);
+
+        /// <summary>
+        /// Gets license information for a specific user
+        /// </summary>
+        /// <param name="userId">User ID to get license for</param>
+        /// <returns>BaseResponse with user's license information</returns>
+        Task<BaseResponse> GetUserLicenseAsync(int userId);
+
+        /// <summary>
+        /// Updates license information
+        /// </summary>
+        /// <param name="licenseId">License ID to update</param>
+        /// <param name="request">Updated license information</param>
+        /// <param name="currentUserId">ID of the user making the request</param>
+        /// <returns>BaseResponse with update result</returns>
+        Task<BaseResponse> UpdateLicenseAsync(int licenseId, VerifyLicenseRequest request, int currentUserId);
+
+        /// <summary>
+        /// Deletes a license
+        /// </summary>
+        /// <param name="licenseId">License ID to delete</param>
+        /// <param name="currentUserId">ID of the user making the request</param>
+        /// <returns>BaseResponse with deletion result</returns>
+        Task<BaseResponse> DeleteLicenseAsync(int licenseId, int currentUserId);
     }
 }

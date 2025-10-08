@@ -212,88 +212,153 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        #region Development/Testing Endpoints
-
         /// <summary>
-        /// Test license verification with mock data (Development only)
+        /// Gets license information for a specific user (requires authentication)
         /// </summary>
-        /// <response code="200">Test successful</response>
+        /// <param name="userId">User ID to get license for</param>
+        /// <response code="200">License information retrieved successfully. Possible messages:
+        /// - SUCCESS
+        /// </response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied. Possible messages:
+        /// - ACCESS_DENIED
+        /// </response>
+        /// <response code="404">Not found. Possible messages:
+        /// - USER_NOT_FOUND
+        /// - LICENSE_NOT_FOUND
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:
+        /// - INTERNAL_SERVER_ERROR
+        /// </response>
         /// <remarks>
-        /// This endpoint is for testing purposes only and provides mock verification scenarios.
+        /// Retrieves license information for a specific user. Users can only view their own licenses,
+        /// while administrators can view any user's license.
         /// </remarks>
-        [HttpGet("test/mock-verification")]
-        public IActionResult TestMockVerification()
+        [HttpGet("user/{userId:int}")]
+        [Authorize]
+        public async Task<IActionResult> GetUserLicense(int userId)
         {
-            var mockResults = new
+            // Get current user ID from JWT token
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
             {
-                ValidLicense = new
-                {
-                    LicenseNumber = "123456789",
-                    Status = "VERIFIED",
-                    Message = "Mock verification successful"
-                },
-                InvalidLicense = new
-                {
-                    LicenseNumber = "INVALID123",
-                    Status = "INVALID_FORMAT",
-                    Message = "Mock verification failed - invalid format"
-                },
-                ExpiredLicense = new
-                {
-                    LicenseNumber = "987654321",
-                    Status = "EXPIRED",
-                    Message = "Mock verification failed - license expired"
-                }
-            };
-
-            return Ok(new
-            {
-                StatusCode = 200,
-                Message = "MOCK_DATA_GENERATED",
-                Data = mockResults
-            });
-        }
-
-        /// <summary>
-        /// Test endpoint for license format validation (Development only)
-        /// </summary>
-        /// <param name="licenseNumber">License number to test</param>
-        /// <response code="200">Test completed</response>
-        /// <remarks>
-        /// Tests various license number formats for validation rules.
-        /// </remarks>
-        [HttpGet("test/validate-format")]
-        public IActionResult TestValidateFormat([FromQuery] string licenseNumber)
-        {
-            if (string.IsNullOrEmpty(licenseNumber))
-            {
-                return BadRequest(new { Message = "LICENSE_NUMBER_REQUIRED" });
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
             }
 
-            var validationResults = new
+            // Check if user is trying to access their own data or is admin/staff
+            var isAdmin = User.IsInRole("Admin") || User.IsInRole("Staff");
+            if (!isAdmin && currentUserId != userId)
             {
-                LicenseNumber = licenseNumber,
-                IsValidVietnameseFormat = Services.Mapping.LicenseMapper.IsValidVietnameseLicenseFormat(licenseNumber),
-                Length = licenseNumber.Length,
-                HasLetters = licenseNumber.Any(char.IsLetter),
-                HasNumbers = licenseNumber.Any(char.IsDigit),
-                FirstCharacter = licenseNumber.FirstOrDefault(),
-                TestPatterns = new
-                {
-                    NineDigits = System.Text.RegularExpressions.Regex.IsMatch(licenseNumber, @"^[0-9]{9}$"),
-                    LetterPlusEightDigits = System.Text.RegularExpressions.Regex.IsMatch(licenseNumber, @"^[A-Z][0-9]{8}$"),
-                    TwelveDigits = System.Text.RegularExpressions.Regex.IsMatch(licenseNumber, @"^[0-9]{12}$")
-                }
-            };
+                return Forbid("ACCESS_DENIED");
+            }
 
-            return Ok(new
+            var response = await _licenseVerificationService.GetUserLicenseAsync(userId);
+            return response.StatusCode switch
             {
-                StatusCode = 200,
-                Message = "VALIDATION_TEST_COMPLETED",
-                Data = validationResults
-            });
+                200 => Ok(response),
+                404 => NotFound(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
         }
 
-        #endregion
+        /// <summary>
+        /// Updates license information (user can update their own, admin/staff can update any)
+        /// </summary>
+        /// <param name="licenseId">License ID to update</param>
+        /// <param name="request">Updated license information</param>
+        /// <response code="200">License updated successfully. Possible messages:
+        /// - LICENSE_UPDATED_SUCCESSFULLY
+        /// </response>
+        /// <response code="400">Bad request. Possible validation messages:
+        /// - LICENSE_NUMBER_REQUIRED
+        /// - LICENSE_NUMBER_INVALID_FORMAT
+        /// - ISSUE_DATE_REQUIRED
+        /// - ISSUED_BY_REQUIRED
+        /// - FIRST_NAME_REQUIRED
+        /// - LAST_NAME_REQUIRED
+        /// - DATE_OF_BIRTH_REQUIRED
+        /// - MUST_BE_AT_LEAST_18_YEARS_OLD
+        /// </response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied. Possible messages:
+        /// - ACCESS_DENIED
+        /// </response>
+        /// <response code="404">Not found. Possible messages:
+        /// - LICENSE_NOT_FOUND
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:
+        /// - INTERNAL_SERVER_ERROR
+        /// </response>
+        /// <remarks>
+        /// Updates existing license information. Users can only update their own licenses,
+        /// while administrators and staff can update any license.
+        /// </remarks>
+        [HttpPut("{licenseId:int}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateLicense(int licenseId, [FromForm] VerifyLicenseRequest request)
+        {
+            // Get current user ID from JWT token
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _licenseVerificationService.UpdateLicenseAsync(licenseId, request, currentUserId);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => Forbid(response.Message),
+                404 => NotFound(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Deletes a license (admin/staff only or user can delete their own)
+        /// </summary>
+        /// <param name="licenseId">License ID to delete</param>
+        /// <response code="200">License deleted successfully. Possible messages:
+        /// - LICENSE_DELETED_SUCCESSFULLY
+        /// </response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied. Possible messages:
+        /// - ACCESS_DENIED
+        /// </response>
+        /// <response code="404">Not found. Possible messages:
+        /// - LICENSE_NOT_FOUND
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:
+        /// - INTERNAL_SERVER_ERROR
+        /// </response>
+        /// <remarks>
+        /// Deletes a license from the system. Users can only delete their own licenses,
+        /// while administrators and staff can delete any license.
+        /// </remarks>
+        [HttpDelete("{licenseId:int}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteLicense(int licenseId)
+        {
+            // Get current user ID from JWT token
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _licenseVerificationService.DeleteLicenseAsync(licenseId, currentUserId);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => Forbid(response.Message),
+                404 => NotFound(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
     }
 }
