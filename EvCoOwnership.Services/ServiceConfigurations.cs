@@ -21,7 +21,8 @@ namespace EvCoOwnership.Services
         public static void AddDependencies(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddScoped<IUserService, UserService>();
-            services.AddScoped<IAuthService, AuthService>();    
+            services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IFileUploadService, FileUploadService>();
         }
     }
 }

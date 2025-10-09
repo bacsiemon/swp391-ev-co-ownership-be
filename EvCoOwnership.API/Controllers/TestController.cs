@@ -1,7 +1,9 @@
 ﻿using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.DTOs.TestDTOs;
 using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.DTOs.FileUploadDTOs;
 using EvCoOwnership.API.Attributes;
+using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +14,13 @@ namespace EvCoOwnership.API.Controllers
     [ApiController]
     public class TestController : ControllerBase
     {
+        private readonly IFileUploadService _fileUploadService;
+
+        public TestController(IFileUploadService fileUploadService)
+        {
+            _fileUploadService = fileUploadService;
+        }
+
         /// <summary>
         /// Get API status
         /// </summary>
@@ -134,6 +143,59 @@ namespace EvCoOwnership.API.Controllers
             };
 
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Test file upload functionality
+        /// </summary>
+        /// <param name="file">File to upload for testing</param>
+        /// <response code="201">File upload test successful</response>
+        /// <response code="400">Validation failed</response>
+        /// <response code="500">Upload failed</response>
+        /// <remarks>
+        /// This endpoint tests the file upload functionality.
+        /// Upload any supported file type to test the complete upload flow.
+        /// 
+        /// Supported file types:
+        /// - Images: JPEG, JPG, PNG, GIF, WEBP
+        /// - Documents: PDF, DOC, DOCX, XLS, XLSX, TXT
+        /// 
+        /// Maximum file size: 10MB
+        /// </remarks>
+        [HttpPost("test-file-upload")]
+        public async Task<IActionResult> TestFileUpload(IFormFile file)
+        {
+            if (file == null)
+            {
+                return BadRequest(new BaseResponse
+                {
+                    StatusCode = 400,
+                    Message = "FILE_REQUIRED",
+                    Data = "Please select a file to upload for testing"
+                });
+            }
+
+            var request = new FileUploadRequest { File = file };
+            
+            var response = await _fileUploadService.UploadFileAsync(request);
+            
+            if (response.StatusCode == 201)
+            {
+                response.Message = "FILE_UPLOAD_TEST_SUCCESS";
+                response.Data = new
+                {
+                    UploadResult = response.Data,
+                    TestMessage = "File upload test completed successfully! You can now download the file using the provided URL."
+                };
+            }
+            
+            return response.StatusCode switch
+            {
+                201 => StatusCode(201, response),
+                400 => BadRequest(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
         }
     }
 }

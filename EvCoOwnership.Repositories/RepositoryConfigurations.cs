@@ -22,12 +22,8 @@ namespace EvCoOwnership.Repositories
         public static void AddDbContext(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            string connectionString = configuration.GetConnectionString("AzureDBConnection");
-#if DEBUG
-            connectionString = configuration.GetConnectionString("LocalConnection");
-#endif
             services.AddDbContext<EvCoOwnershipDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         }
     }
 }

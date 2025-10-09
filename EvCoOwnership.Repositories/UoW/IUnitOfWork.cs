@@ -12,6 +12,7 @@ namespace EvCoOwnership.Repositories.UoW
         ICoOwnerRepository CoOwnerRepository { get; }
         ICoOwnerGroupRepository CoOwnerGroupRepository { get; }
         IDrivingLicenseRepository DrivingLicenseRepository { get; }
+        IFileUploadRepository FileUploadRepository { get; }
         IFundRepository FundRepository { get; }
         IFundAdditionRepository FundAdditionRepository { get; }
         IFundUsageRepository FundUsageRepository { get; }

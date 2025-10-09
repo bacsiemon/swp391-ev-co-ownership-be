@@ -7,6 +7,8 @@
 
 ## Api Commenting
 - `summary` only includes roles
+    - If the enpoint doesn't require authentication, leave it blank.
+    - If the endpoint only requires authentication, use `User`.
 - `param` section is used to describe parameters' & their constraints.
 	- For parameters in request body, put parameter descriptions in the `remarks` section.
 - `response` section is used for all possible responses. Each response code should include all possible messages
@@ -105,4 +107,8 @@ public class LoginRequest
     }
 
 ```
+
+## Exception handling
+Do not catch generic exceptions (e.g `Exception`). Catch specific exceptions only when necessary.
+`ExceptionMiddleware` handles all unhandled exceptions and logs them.`
 

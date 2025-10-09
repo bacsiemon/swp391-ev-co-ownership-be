@@ -33,6 +33,7 @@ namespace EvCoOwnership.Repositories.UoW
         private CoOwnerRepository _coOwnerRepository;
         private CoOwnerGroupRepository _coOwnerGroupRepository;
         private DrivingLicenseRepository _drivingLicenseRepository;
+        private FileUploadRepository _fileUploadRepository;
         private FundRepository _fundRepository;
         private FundAdditionRepository _fundAdditionRepository;
         private FundUsageRepository _fundUsageRepository;
@@ -54,6 +55,7 @@ namespace EvCoOwnership.Repositories.UoW
         public ICoOwnerRepository CoOwnerRepository { get { return _coOwnerRepository ??= new CoOwnerRepository(_context); } }
         public ICoOwnerGroupRepository CoOwnerGroupRepository { get { return _coOwnerGroupRepository ??= new CoOwnerGroupRepository(_context); } }
         public IDrivingLicenseRepository DrivingLicenseRepository { get { return _drivingLicenseRepository ??= new DrivingLicenseRepository(_context); } }
+        public IFileUploadRepository FileUploadRepository { get { return _fileUploadRepository ??= new FileUploadRepository(_context); } }
         public IFundRepository FundRepository { get { return _fundRepository ??= new FundRepository(_context); } }
         public IFundAdditionRepository FundAdditionRepository { get { return _fundAdditionRepository ??= new FundAdditionRepository(_context); } }
         public IFundUsageRepository FundUsageRepository { get { return _fundUsageRepository ??= new FundUsageRepository(_context); } }
