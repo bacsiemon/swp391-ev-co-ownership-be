@@ -41,7 +41,7 @@ namespace EvCoOwnership.Services.Mapping
                 MimeType = entity.MimeType,
                 FileSize = entity.Data?.Length ?? 0,
                 UploadedAt = entity.UploadedAt,
-                DownloadUrl = $"{baseUrl}/api/fileupload/{entity.Id}"
+                Url = $"{baseUrl}/api/fileupload/{entity.Id}"
             };
         }
 

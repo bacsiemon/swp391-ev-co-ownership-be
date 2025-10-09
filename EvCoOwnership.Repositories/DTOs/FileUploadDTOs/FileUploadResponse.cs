@@ -7,6 +7,6 @@ namespace EvCoOwnership.DTOs.FileUploadDTOs
         public string MimeType { get; set; } = null!;
         public long FileSize { get; set; }
         public DateTime? UploadedAt { get; set; }
-        public string DownloadUrl { get; set; } = null!;
+        public string Url { get; set; } = null!;
     }
 }
