@@ -41,6 +41,13 @@ namespace EvCoOwnership.Repositories.Repositories
                 .FirstOrDefaultAsync(u => u.Id == userId);
         }
 
+        public async Task<User?> GetUserWithRolesByIdAsync(int userId)
+        {
+            return await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+        }
+
         public async Task<User?> GetUserWithRolesByEmailAsync(string email)
         {
             var normalizedEmail = email.ToUpperInvariant();

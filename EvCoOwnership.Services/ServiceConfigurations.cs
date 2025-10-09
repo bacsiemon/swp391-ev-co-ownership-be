@@ -22,6 +22,8 @@ namespace EvCoOwnership.Services
         {
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<ILicenseVerificationService, LicenseVerificationService>();
+            services.AddScoped<ICoOwnerEligibilityService, CoOwnerEligibilityService>();
             services.AddScoped<IFileUploadService, FileUploadService>();
         }
     }

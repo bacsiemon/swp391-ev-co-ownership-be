@@ -11,5 +11,6 @@ namespace EvCoOwnership.Services.Interfaces
         Task<BaseResponse> ForgotPasswordAsync(string email);
         BaseResponse GetForgotPasswordOtpAsync(string email);
         Task<BaseResponse> ResetPasswordAsync(ResetPasswordRequest request);
+        Task<BaseResponse> VerifyLicenseAsync(VerifyLicenseRequest request);
     }
 }
