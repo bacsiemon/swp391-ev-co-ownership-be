@@ -6,21 +6,23 @@ using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Models;
 
-public partial class CoOwnerGroup
+public partial class VehicleContract
 {
     public int CoOwnerId { get; set; }
 
-    public int GroupId { get; set; }
+    public int VehicleId { get; set; }
 
     public decimal OwnershipPercentage { get; set; }
 
-    public DateOnly JoinDate { get; set; }
-
     public decimal InvestmentAmount { get; set; }
 
-    public ECoOwnerStatus? StatusEnum { get; set; }
+    public EContractStatus? StatusEnum { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 
     public virtual CoOwner CoOwner { get; set; }
 
-    public virtual Group Group { get; set; }
+    public virtual Vehicle Vehicle { get; set; }
 }

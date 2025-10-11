@@ -10,14 +10,12 @@ namespace EvCoOwnership.Repositories.UoW
         ICheckInRepository CheckInRepository { get; }
         ICheckOutRepository CheckOutRepository { get; }
         ICoOwnerRepository CoOwnerRepository { get; }
-        ICoOwnerGroupRepository CoOwnerGroupRepository { get; }
         IDrivingLicenseRepository DrivingLicenseRepository { get; }
         IFileUploadRepository FileUploadRepository { get; }
         IFundRepository FundRepository { get; }
         IFundAdditionRepository FundAdditionRepository { get; }
         IFundUsageRepository FundUsageRepository { get; }
         IFundUsageVoteRepository FundUsageVoteRepository { get; }
-        IGroupRepository GroupRepository { get; }
         IMaintenanceCostRepository MaintenanceCostRepository { get; }
         IPaymentRepository PaymentRepository { get; }
         IRoleRepository RoleRepository { get; }

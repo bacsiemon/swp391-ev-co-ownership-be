@@ -31,14 +31,12 @@ namespace EvCoOwnership.Repositories.UoW
         private CheckInRepository _checkInRepository;
         private CheckOutRepository _checkOutRepository;
         private CoOwnerRepository _coOwnerRepository;
-        private CoOwnerGroupRepository _coOwnerGroupRepository;
         private DrivingLicenseRepository _drivingLicenseRepository;
         private FileUploadRepository _fileUploadRepository;
         private FundRepository _fundRepository;
         private FundAdditionRepository _fundAdditionRepository;
         private FundUsageRepository _fundUsageRepository;
         private FundUsageVoteRepository _fundUsageVoteRepository;
-        private GroupRepository _groupRepository;
         private MaintenanceCostRepository _maintenanceCostRepository;
         private PaymentRepository _paymentRepository;
         private RoleRepository _roleRepository;
@@ -53,14 +51,12 @@ namespace EvCoOwnership.Repositories.UoW
         public ICheckInRepository CheckInRepository { get { return _checkInRepository ??= new CheckInRepository(_context); } }
         public ICheckOutRepository CheckOutRepository { get { return _checkOutRepository ??= new CheckOutRepository(_context); } }
         public ICoOwnerRepository CoOwnerRepository { get { return _coOwnerRepository ??= new CoOwnerRepository(_context); } }
-        public ICoOwnerGroupRepository CoOwnerGroupRepository { get { return _coOwnerGroupRepository ??= new CoOwnerGroupRepository(_context); } }
         public IDrivingLicenseRepository DrivingLicenseRepository { get { return _drivingLicenseRepository ??= new DrivingLicenseRepository(_context); } }
         public IFileUploadRepository FileUploadRepository { get { return _fileUploadRepository ??= new FileUploadRepository(_context); } }
         public IFundRepository FundRepository { get { return _fundRepository ??= new FundRepository(_context); } }
         public IFundAdditionRepository FundAdditionRepository { get { return _fundAdditionRepository ??= new FundAdditionRepository(_context); } }
         public IFundUsageRepository FundUsageRepository { get { return _fundUsageRepository ??= new FundUsageRepository(_context); } }
         public IFundUsageVoteRepository FundUsageVoteRepository { get { return _fundUsageVoteRepository ??= new FundUsageVoteRepository(_context); } }
-        public IGroupRepository GroupRepository { get { return _groupRepository ??= new GroupRepository(_context); } }
         public IMaintenanceCostRepository MaintenanceCostRepository { get { return _maintenanceCostRepository ??= new MaintenanceCostRepository(_context); } }
         public IPaymentRepository PaymentRepository { get { return _paymentRepository ??= new PaymentRepository(_context); } }
         public IRoleRepository RoleRepository { get { return _roleRepository ??= new RoleRepository(_context); } }

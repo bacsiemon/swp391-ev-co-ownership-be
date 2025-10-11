@@ -27,10 +27,6 @@
          "ObjectType": 0
       },
       {
-         "Name": "public.co_owner_groups",
-         "ObjectType": 0
-      },
-      {
          "Name": "public.co_owners",
          "ObjectType": 0
       },
@@ -63,10 +59,6 @@
          "ObjectType": 0
       },
       {
-         "Name": "public.groups",
-         "ObjectType": 0
-      },
-      {
          "Name": "public.maintenance_costs",
          "ObjectType": 0
       },
@@ -95,7 +87,15 @@
          "ObjectType": 0
       },
       {
+         "Name": "public.vehicle_contracts",
+         "ObjectType": 0
+      },
+      {
          "Name": "public.vehicle_stations",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.vehicle_verification_history",
          "ObjectType": 0
       },
       {

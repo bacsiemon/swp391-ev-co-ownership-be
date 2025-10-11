@@ -3,21 +3,31 @@ DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 
 -- Enum mappings converted to integer values with comments
--- user_role_enum: 1=co_owner, 2=staff, 3=admin
--- user_status_enum: 1=active, 2=inactive, 3=suspended
--- co_owner_status_enum: 1=active, 2=pending, 3=left
--- vehicle_status_enum: 1=available, 2=in_use, 3=maintenance, 4=unavailable
--- booking_status_enum: 1=pending, 2=confirmed, 3=active, 4=completed, 5=cancelled
--- condition_type_enum: 1=excellent, 2=good, 3=fair, 4=poor, 5=damaged
--- severity_type_enum: 1=low, 2=medium, 3=high, 4=critical
--- payment_method_enum: 1=bank_transfer, 2=credit_card, 3=debit_card, 4=cash
--- fund_addition_status_enum: 1=pending, 2=completed, 3=failed, 4=refunded
--- usage_type_enum: 1=maintenance, 2=insurance, 3=fuel, 4=parking, 5=other
--- payment_status_enum: 1=pending, 2=completed, 3=failed, 4=refunded
--- maintenance_type_enum: 1=routine, 2=repair, 3=emergency, 4=upgrade
--- service_type_enum: 1=maintenance, 2=repair, 3=cleaning, 4=inspection, 5=upgrade
--- service_status_enum: 1=active, 2=inactive
--- service_usage_status_enum: 1=scheduled, 2=in_progress, 3=completed, 4=cancelled
+-- All enums use 0-based indexing for consistency
+
+-- USER RELATED ENUMS
+-- user_role_enum: 0=co_owner, 1=staff, 2=admin
+-- user_status_enum: 0=active, 1=inactive, 2=suspended
+
+-- VEHICLE RELATED ENUMS  
+-- vehicle_status_enum: 0=available, 1=in_use, 2=maintenance, 3=unavailable
+-- vehicle_verification_status_enum: 0=pending, 1=verified, 2=rejected, 3=requires_recheck
+-- condition_type_enum: 0=excellent, 1=good, 2=fair, 3=poor, 4=damaged
+
+-- CONTRACT RELATED ENUMS
+-- contract_status_enum: 0=pending, 1=active, 2=rejected
+
+-- BOOKING RELATED ENUMS
+-- booking_status_enum: 0=pending, 1=confirmed, 2=active, 3=completed, 4=cancelled
+
+-- PAYMENT & FUND RELATED ENUMS
+-- payment_method_enum: 0=bank_transfer, 1=credit_card, 2=debit_card, 3=cash
+-- fund_addition_status_enum: 0=pending, 1=completed, 2=failed, 3=refunded
+-- payment_status_enum: 0=pending, 1=completed, 2=failed, 3=refunded
+
+-- MAINTENANCE & USAGE RELATED ENUMS
+-- maintenance_type_enum: 0=routine, 1=repair, 2=emergency, 3=upgrade
+-- usage_type_enum: 0=maintenance, 1=insurance, 2=fuel, 3=parking, 4=other
 
 -- Create tables
 
@@ -40,14 +50,15 @@ CREATE TABLE users (
 	date_of_birth DATE,
 	address TEXT,
 	profile_image_url VARCHAR(500),
-	status_enum INTEGER DEFAULT 1, -- user_status_enum: 1=active, 2=inactive, 3=suspended
+	role_enum INTEGER DEFAULT 0, -- user_role_enum: 0=co_owner, 1=staff, 2=admin
+	status_enum INTEGER DEFAULT 0, -- user_status_enum: 0=active, 1=inactive, 2=suspended
 	created_at TIMESTAMP DEFAULT NOW(),
 	updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE roles (
 	id SERIAL PRIMARY KEY,
-	role_name_enum INTEGER UNIQUE NOT NULL -- user_role_enum: 1=co_owner, 2=staff, 3=admin
+	role_name_enum INTEGER UNIQUE NOT NULL -- user_role_enum: 0=co_owner, 1=staff, 2=admin
 );
 
 CREATE TABLE user_roles (
@@ -69,30 +80,10 @@ CREATE TABLE funds (
 	updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE groups (
-	id SERIAL PRIMARY KEY,
-	name VARCHAR(200) NOT NULL,
-	description TEXT,
-	created_by INTEGER REFERENCES users(id),
-	fund_id INTEGER REFERENCES funds(id),
-	created_at TIMESTAMP DEFAULT NOW(),
-	updated_at TIMESTAMP DEFAULT NOW()
-);
-
 CREATE TABLE co_owners (
 	user_id INTEGER PRIMARY KEY REFERENCES users(id),
 	created_at TIMESTAMP DEFAULT NOW(),
 	updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE co_owner_groups (
-    co_owner_id INTEGER REFERENCES co_owners(user_id),
-    group_id INTEGER REFERENCES groups(id),
-    PRIMARY KEY (co_owner_id, group_id),
-    ownership_percentage DECIMAL(5,2) NOT NULL,
-    join_date DATE NOT NULL,
-    investment_amount DECIMAL(15,2) NOT NULL,
-    status_enum INTEGER DEFAULT 2 -- co_owner_status_enum: 1=active, 2=pending, 3=left
 );
 
 CREATE TABLE driving_licenses (
@@ -109,7 +100,8 @@ CREATE TABLE driving_licenses (
 
 CREATE TABLE vehicles (
 	id SERIAL PRIMARY KEY,
-	group_id INTEGER REFERENCES groups(id),
+	name VARCHAR(200) NOT NULL,
+	description TEXT,
 	brand VARCHAR(100) NOT NULL,
 	model VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
@@ -122,11 +114,35 @@ CREATE TABLE vehicles (
 	purchase_price DECIMAL(15,2) NOT NULL,
     warranty_until DATE,
 	distance_travelled INTEGER DEFAULT 0,
-	status_enum INTEGER DEFAULT 1, -- vehicle_status_enum: 1=available, 2=in_use, 3=maintenance, 4=unavailable
+	status_enum INTEGER DEFAULT 0, -- vehicle_status_enum: 0=available, 1=in_use, 2=maintenance, 3=unavailable
+	verification_status_enum INTEGER DEFAULT 0, -- vehicle_verification_status_enum: 0=pending, 1=verified, 2=rejected, 3=requires_recheck
 	location_latitude DECIMAL(10,8),
 	location_longitude DECIMAL(11,8),
+	created_by INTEGER REFERENCES users(id),
+	fund_id INTEGER REFERENCES funds(id),
 	created_at TIMESTAMP DEFAULT NOW(),
 	updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE vehicle_verification_history (
+	id SERIAL PRIMARY KEY,
+	vehicle_id INTEGER REFERENCES vehicles(id),
+	staff_id INTEGER REFERENCES users(id), 
+	status_enum INTEGER NOT NULL,
+	notes TEXT, -- Detailed notes from the verification process
+	images JSONB, -- Array of image URLs from verification process
+	created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE vehicle_contracts (
+    co_owner_id INTEGER REFERENCES co_owners(user_id),
+    vehicle_id INTEGER REFERENCES vehicles(id),
+    PRIMARY KEY (co_owner_id, vehicle_id),
+    ownership_percentage DECIMAL(5,2) NOT NULL,
+    investment_amount DECIMAL(15,2) NOT NULL,
+    status_enum INTEGER DEFAULT 0, -- contract_status_enum: 0=active, 1=pending, 2=terminated
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE vehicle_stations (
@@ -145,7 +161,7 @@ CREATE TABLE vehicle_conditions (
 	id SERIAL PRIMARY KEY,
 	vehicle_id INTEGER REFERENCES vehicles(id),
 	reported_by INTEGER REFERENCES users(id),
-	condition_type_enum INTEGER, -- condition_type_enum: 1=excellent, 2=good, 3=fair, 4=poor, 5=damaged
+	condition_type_enum INTEGER, -- condition_type_enum: 0=excellent, 1=good, 2=fair, 3=poor, 4=damaged
 	description TEXT,
 	photo_urls TEXT,
 	odometer_reading INTEGER,
@@ -161,7 +177,7 @@ CREATE TABLE bookings (
 	start_time TIMESTAMP NOT NULL,
 	end_time TIMESTAMP NOT NULL,
 	purpose VARCHAR(500),
-	status_enum INTEGER DEFAULT 1, -- booking_status_enum: 1=pending, 2=confirmed, 3=active, 4=completed, 5=cancelled
+	status_enum INTEGER DEFAULT 0, -- booking_status_enum: 0=pending, 1=confirmed, 2=active, 3=completed, 4=cancelled
 	approved_by INTEGER REFERENCES users(id),
 	total_cost DECIMAL(10,2),
 	created_at TIMESTAMP DEFAULT NOW(),
@@ -190,17 +206,15 @@ CREATE TABLE check_outs (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-
-
 CREATE TABLE fund_additions (
 	id SERIAL PRIMARY KEY,
 	fund_id INTEGER REFERENCES funds(id),
 	co_owner_id INTEGER REFERENCES co_owners(user_id),
 	amount DECIMAL(15,2) NOT NULL,
-	payment_method_enum INTEGER, -- payment_method_enum: 1=bank_transfer, 2=credit_card, 3=debit_card, 4=cash
+	payment_method_enum INTEGER, -- payment_method_enum: 0=bank_transfer, 1=credit_card, 2=debit_card, 3=cash
 	transaction_id VARCHAR(100),
 	description TEXT,
-	status_enum INTEGER DEFAULT 1, -- fund_addition_status_enum: 1=pending, 2=completed, 3=failed, 4=refunded
+	status_enum INTEGER DEFAULT 0, -- fund_addition_status_enum: 0=pending, 1=completed, 2=failed, 3=refunded
 	created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -208,7 +222,7 @@ CREATE TABLE maintenance_costs (
 	id SERIAL PRIMARY KEY,
 	vehicle_id INTEGER REFERENCES vehicles(id),
 	booking_id INTEGER REFERENCES bookings(id),
-	maintenance_type_enum INTEGER, -- maintenance_type_enum: 1=routine, 2=repair, 3=emergency, 4=upgrade
+	maintenance_type_enum INTEGER, -- maintenance_type_enum: 0=routine, 1=repair, 2=emergency, 3=upgrade
 	description TEXT NOT NULL,
 	cost DECIMAL(10,2) NOT NULL,
     is_paid BOOLEAN DEFAULT FALSE,
@@ -222,7 +236,7 @@ CREATE TABLE maintenance_costs (
 CREATE TABLE fund_usage (
 	id SERIAL PRIMARY KEY,
 	fund_id INTEGER REFERENCES funds(id),
-	usage_type_enum INTEGER, -- usage_type_enum: 1=maintenance, 2=insurance, 3=fuel, 4=parking, 5=other
+	usage_type_enum INTEGER, -- usage_type_enum: 0=maintenance, 1=insurance, 2=fuel, 3=parking, 4=other
 	amount DECIMAL(15,2) NOT NULL,
 	description TEXT NOT NULL,
 	image_url VARCHAR(500),
@@ -243,7 +257,7 @@ CREATE TABLE payments (
 	amount DECIMAL(10,2) NOT NULL,
 	transaction_id VARCHAR(100) UNIQUE,
 	payment_gateway VARCHAR(50),
-	status_enum INTEGER DEFAULT 1, -- payment_status_enum: 1=pending, 2=completed, 3=failed, 4=refunded
+	status_enum INTEGER DEFAULT 0, -- payment_status_enum: 0=pending, 1=completed, 2=failed, 3=refunded
 	paid_at TIMESTAMP,
 	created_at TIMESTAMP DEFAULT NOW(),
 	fund_addition_id INTEGER REFERENCES fund_additions(id)

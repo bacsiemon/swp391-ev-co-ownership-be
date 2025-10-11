@@ -19,5 +19,5 @@ public partial class Fund
 
     public virtual ICollection<FundUsage> FundUsages { get; set; } = new List<FundUsage>();
 
-    public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
+    public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 }

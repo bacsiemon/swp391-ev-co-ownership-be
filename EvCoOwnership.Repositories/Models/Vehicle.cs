@@ -10,7 +10,9 @@ public partial class Vehicle
 {
     public int Id { get; set; }
 
-    public int? GroupId { get; set; }
+    public string Name { get; set; }
+
+    public string Description { get; set; }
 
     public string Brand { get; set; }
 
@@ -38,9 +40,15 @@ public partial class Vehicle
 
     public EVehicleStatus? StatusEnum { get; set; }
 
+    public EVehicleVerificationStatus? VerificationStatusEnum { get; set; }
+
     public decimal? LocationLatitude { get; set; }
 
     public decimal? LocationLongitude { get; set; }
+
+    public int? CreatedBy { get; set; }
+
+    public int? FundId { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
@@ -48,9 +56,15 @@ public partial class Vehicle
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
-    public virtual Group Group { get; set; }
+    public virtual User CreatedByNavigation { get; set; }
+
+    public virtual Fund Fund { get; set; }
 
     public virtual ICollection<MaintenanceCost> MaintenanceCosts { get; set; } = new List<MaintenanceCost>();
 
     public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
+
+    public virtual ICollection<VehicleContract> VehicleContracts { get; set; } = new List<VehicleContract>();
+
+    public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
 }

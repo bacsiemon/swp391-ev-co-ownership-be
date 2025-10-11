@@ -6,6 +6,7 @@
 - Use `ALL_CAPS` for constants.
 
 ## Api Commenting
+- XML Content must be written using Markdown syntax.
 - `summary` only includes roles
     - If the enpoint doesn't require authentication, leave it blank.
     - If the endpoint only requires authentication, use `User`.
@@ -17,36 +18,35 @@
 /// <summary>Admin</summary>
 /// <remarks>
 ///
-/// Create a new account.
+/// Create a new account.  
 ///
 /// Parameters:
-/// email: Required, valid email format.
-/// password: Required, minimum 8 characters, must contain uppercase, lowercase, number, and special character.
-/// confirmPassword: Must match the password.
-/// firstName: Required.
-/// lastName: Required.
+/// email: Required, valid email format.  
+/// password: Required, minimum 8 characters, must contain uppercase, lowercase, number, and special character.  
+/// confirmPassword: Must match the password.  
+/// firstName: Required.  
+/// lastName: Required.  
 ///
 /// Sample request:
 ///
-/// POST /api/accounts
-/// {
-/// "email": "user@example.com",
-/// "password": "Password123!",
-/// "confirmPassword": "Password123!",
-/// "firstName": "John",
-/// "lastName": "Doe"
+/// POST /api/accounts  
+/// {  
+/// "email": "user@example.com",  
+/// "password": "Password123!",  
+/// "confirmPassword": "Password123!",  
+/// "firstName": "John",  
+/// "lastName": "Doe"  
 /// }
-///
 /// </remarks>
 /// <response code="400">Validation error. Possible messages:
-/// - EMAIL_REQUIRED
-/// - INVALID_EMAIL_FORMAT
-/// - PASSWORD_REQUIRED
-/// - PASSWORD_MIN_8_CHARACTERS
-/// - PASSWORD_MUST_CONTAIN_UPPERCASE_LOWERCASE_NUMBER_SPECIAL
-/// - CONFIRM_PASSWORD_MUST_MATCH
-/// - FIRST_NAME_REQUIRED
-/// - LAST_NAME_REQUIRED
+/// - EMAIL_REQUIRED  
+/// - INVALID_EMAIL_FORMAT  
+/// - PASSWORD_REQUIRED  
+/// - PASSWORD_MIN_8_CHARACTERS  
+/// - PASSWORD_MUST_CONTAIN_UPPERCASE_LOWERCASE_NUMBER_SPECIAL  
+/// - CONFIRM_PASSWORD_MUST_MATCH  
+/// - FIRST_NAME_REQUIRED  
+/// - LAST_NAME_REQUIRED  
 /// </response>
 ```
 

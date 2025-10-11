@@ -30,6 +30,8 @@ public partial class User
 
     public string ProfileImageUrl { get; set; }
 
+    public EUserRole? RoleEnum { get; set; }
+
     public EUserStatus? StatusEnum { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -44,13 +46,15 @@ public partial class User
 
     public virtual CoOwner CoOwner { get; set; }
 
-    public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
-
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual UserRefreshToken UserRefreshToken { get; set; }
 
     public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
+
+    public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
+
+    public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
 }
