@@ -11,7 +11,7 @@ CREATE SCHEMA public;
 
 -- VEHICLE RELATED ENUMS  
 -- vehicle_status_enum: 0=available, 1=in_use, 2=maintenance, 3=unavailable
--- vehicle_verification_status_enum: 0=pending, 1=verified, 2=rejected, 3=requires_recheck
+-- vehicle_verification_status_enum: 0=pending, 1=VerificationRequested, 2=requires_recheck, 3=verified, 4=rejected
 -- condition_type_enum: 0=excellent, 1=good, 2=fair, 3=poor, 4=damaged
 
 -- CONTRACT RELATED ENUMS

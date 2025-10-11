@@ -5,24 +5,10 @@ namespace EvCoOwnership.Repositories.Enums
     /// </summary>
     public enum EVehicleVerificationStatus
     {
-        /// <summary>
-        /// Vehicle verification is pending
-        /// </summary>
         Pending = 0,
-
-        /// <summary>
-        /// Vehicle has been verified
-        /// </summary>
-        Verified = 1,
-
-        /// <summary>
-        /// Vehicle verification was rejected
-        /// </summary>
-        Rejected = 2,
-
-        /// <summary>
-        /// Vehicle requires recheck
-        /// </summary>
-        RequiresRecheck = 3
+        VerificationRequested = 1,
+        RequiresRecheck = 2,
+        Verified = 3,
+        Rejected = 4
     }
 }
