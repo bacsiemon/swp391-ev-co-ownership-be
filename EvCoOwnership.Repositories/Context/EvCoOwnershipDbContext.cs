@@ -827,8 +827,41 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasForeignKey(d => d.VehicleId)
                 .HasConstraintName("vehicle_verification_history_vehicle_id_fkey");
         });
-
+        ConfigureDateTimeConversions(modelBuilder);
         OnModelCreatingPartial(modelBuilder);
+    }
+
+    private void ConfigureDateTimeConversions(ModelBuilder modelBuilder)
+    {
+        // Convert UTC DateTime to unspecified DateTime for PostgreSQL compatibility
+        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue && v.Value.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+        // Apply converter to all DateTime properties
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            var properties = entityType.ClrType.GetProperties()
+                .Where(p => p.PropertyType == typeof(DateTime) || p.PropertyType == typeof(DateTime?));
+
+            foreach (var property in properties)
+            {
+                if (property.PropertyType == typeof(DateTime))
+                {
+                    modelBuilder.Entity(entityType.Name).Property(property.Name)
+                        .HasConversion(dateTimeConverter);
+                }
+                else if (property.PropertyType == typeof(DateTime?))
+                {
+                    modelBuilder.Entity(entityType.Name).Property(property.Name)
+                        .HasConversion(nullableDateTimeConverter);
+                }
+            }
+        }
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
