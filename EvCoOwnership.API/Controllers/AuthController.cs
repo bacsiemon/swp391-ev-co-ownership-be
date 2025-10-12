@@ -164,6 +164,43 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
+        /// <summary>
+        /// Verifies a driving license (basic version through AuthService)
+        /// </summary>
+        /// <param name="request">License verification request</param>
+        /// <response code="200">License verification successful. Possible messages:
+        /// - LICENSE_VERIFICATION_SUCCESS
+        /// </response>
+        /// <response code="400">Validation error or license verification failed. Possible messages:
+        /// - INVALID_LICENSE_FORMAT
+        /// - LICENSE_NUMBER_REQUIRED
+        /// - ISSUE_DATE_REQUIRED
+        /// - FIRST_NAME_REQUIRED
+        /// - LAST_NAME_REQUIRED
+        /// </response>
+        /// <response code="409">License already registered. Possible messages:
+        /// - LICENSE_ALREADY_REGISTERED
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:
+        /// - INTERNAL_SERVER_ERROR
+        /// </response>
+        /// <remarks>
+        /// Basic license verification through AuthService. For advanced features, use the dedicated License controller.
+        /// </remarks>
+        [HttpPost("verify-license")]
+        public async Task<IActionResult> VerifyLicense([FromBody] VerifyLicenseRequest request)
+        {
+            var response = await _authService.VerifyLicenseAsync(request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                409 => Conflict(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
         #region Development only
         /// <summary>
         /// Gets the generated OTP for the given email
