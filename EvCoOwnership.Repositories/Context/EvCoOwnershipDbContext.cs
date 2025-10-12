@@ -2,8 +2,6 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -51,9 +49,9 @@ public partial class EvCoOwnershipDbContext : DbContext
 
     public virtual DbSet<Vehicle> Vehicles { get; set; }
 
-    public virtual DbSet<VehicleCondition> VehicleConditions { get; set; }
+    public virtual DbSet<VehicleCoOwner> VehicleCoOwners { get; set; }
 
-    public virtual DbSet<VehicleContract> VehicleContracts { get; set; }
+    public virtual DbSet<VehicleCondition> VehicleConditions { get; set; }
 
     public virtual DbSet<VehicleStation> VehicleStations { get; set; }
 
@@ -85,7 +83,8 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("start_time");
             entity.Property(e => e.StatusEnum)
                 .HasDefaultValue(EBookingStatus.Pending)
-                .HasColumnName("status_enum");
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.TotalCost)
                 .HasPrecision(10, 2)
                 .HasColumnName("total_cost");
@@ -329,10 +328,13 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.FundId).HasColumnName("fund_id");
-            entity.Property(e => e.PaymentMethodEnum).HasColumnName("payment_method_enum");
+            entity.Property(e => e.PaymentMethodEnum)
+                .HasColumnName("payment_method_enum")
+                .HasConversion<int>();
             entity.Property(e => e.StatusEnum)
                 .HasDefaultValue(EFundAdditionStatus.Pending)
-                .HasColumnName("status_enum");
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.TransactionId)
                 .HasMaxLength(100)
                 .HasColumnName("transaction_id");
@@ -368,7 +370,9 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasMaxLength(500)
                 .HasColumnName("image_url");
             entity.Property(e => e.MaintenanceCostId).HasColumnName("maintenance_cost_id");
-            entity.Property(e => e.UsageTypeEnum).HasColumnName("usage_type_enum");
+            entity.Property(e => e.UsageTypeEnum)
+                .HasColumnName("usage_type_enum")
+                .HasConversion<int>();
 
             entity.HasOne(d => d.Fund).WithMany(p => p.FundUsages)
                 .HasForeignKey(d => d.FundId)
@@ -428,7 +432,9 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.Property(e => e.IsPaid)
                 .HasDefaultValue(false)
                 .HasColumnName("is_paid");
-            entity.Property(e => e.MaintenanceTypeEnum).HasColumnName("maintenance_type_enum");
+            entity.Property(e => e.MaintenanceTypeEnum)
+                .HasColumnName("maintenance_type_enum")
+                .HasConversion<int>();
             entity.Property(e => e.OdometerReading).HasColumnName("odometer_reading");
             entity.Property(e => e.ServiceDate).HasColumnName("service_date");
             entity.Property(e => e.ServiceProvider)
@@ -470,7 +476,8 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("payment_gateway");
             entity.Property(e => e.StatusEnum)
                 .HasDefaultValue(EPaymentStatus.Pending)
-                .HasColumnName("status_enum");
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.TransactionId)
                 .HasMaxLength(100)
                 .HasColumnName("transaction_id");
@@ -494,7 +501,9 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasIndex(e => e.RoleNameEnum, "roles_role_name_enum_key").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.RoleNameEnum).HasColumnName("role_name_enum");
+            entity.Property(e => e.RoleNameEnum)
+                .HasColumnName("role_name_enum")
+                .HasConversion<int>();
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -546,10 +555,12 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("profile_image_url");
             entity.Property(e => e.RoleEnum)
                 .HasDefaultValue(EUserRole.CoOwner)
-                .HasColumnName("role_enum");
+                .HasColumnName("role_enum")
+                .HasConversion<int>();
             entity.Property(e => e.StatusEnum)
                 .HasDefaultValue(EUserStatus.Active)
-                .HasColumnName("status_enum");
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
@@ -654,14 +665,16 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.Property(e => e.RangeKm).HasColumnName("range_km");
             entity.Property(e => e.StatusEnum)
                 .HasDefaultValue(EVehicleStatus.Available)
-                .HasColumnName("status_enum");
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
             entity.Property(e => e.VerificationStatusEnum)
                 .HasDefaultValue(EVehicleVerificationStatus.Pending)
-                .HasColumnName("verification_status_enum");
+                .HasColumnName("verification_status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.Vin)
                 .IsRequired()
                 .HasMaxLength(17)
@@ -678,6 +691,44 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasConstraintName("vehicles_fund_id_fkey");
         });
 
+        modelBuilder.Entity<VehicleCoOwner>(entity =>
+        {
+            entity.HasKey(e => new { e.CoOwnerId, e.VehicleId }).HasName("vehicle_contracts_pkey");
+
+            entity.ToTable("vehicle_co_owners");
+
+            entity.Property(e => e.CoOwnerId).HasColumnName("co_owner_id");
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.InvestmentAmount)
+                .HasPrecision(15, 2)
+                .HasColumnName("investment_amount");
+            entity.Property(e => e.OwnershipPercentage)
+                .HasPrecision(5, 2)
+                .HasColumnName("ownership_percentage");
+            entity.Property(e => e.StatusEnum)
+                .HasDefaultValue(EContractStatus.Pending)
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.CoOwner).WithMany(p => p.VehicleCoOwners)
+                .HasForeignKey(d => d.CoOwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("vehicle_contracts_co_owner_id_fkey");
+
+            entity.HasOne(d => d.Vehicle).WithMany(p => p.VehicleCoOwners)
+                .HasForeignKey(d => d.VehicleId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("vehicle_contracts_vehicle_id_fkey");
+        });
+
         modelBuilder.Entity<VehicleCondition>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("vehicle_conditions_pkey");
@@ -685,7 +736,9 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.ToTable("vehicle_conditions");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.ConditionTypeEnum).HasColumnName("condition_type_enum");
+            entity.Property(e => e.ConditionTypeEnum)
+                .HasColumnName("condition_type_enum")
+                .HasConversion<int>();
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
@@ -709,43 +762,6 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasOne(d => d.Vehicle).WithMany(p => p.VehicleConditions)
                 .HasForeignKey(d => d.VehicleId)
                 .HasConstraintName("vehicle_conditions_vehicle_id_fkey");
-        });
-
-        modelBuilder.Entity<VehicleContract>(entity =>
-        {
-            entity.HasKey(e => new { e.CoOwnerId, e.VehicleId }).HasName("vehicle_contracts_pkey");
-
-            entity.ToTable("vehicle_contracts");
-
-            entity.Property(e => e.CoOwnerId).HasColumnName("co_owner_id");
-            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
-            entity.Property(e => e.InvestmentAmount)
-                .HasPrecision(15, 2)
-                .HasColumnName("investment_amount");
-            entity.Property(e => e.OwnershipPercentage)
-                .HasPrecision(5, 2)
-                .HasColumnName("ownership_percentage");
-            entity.Property(e => e.StatusEnum)
-                .HasDefaultValue(EContractStatus.Pending)
-                .HasColumnName("status_enum");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("updated_at");
-
-            entity.HasOne(d => d.CoOwner).WithMany(p => p.VehicleContracts)
-                .HasForeignKey(d => d.CoOwnerId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("vehicle_contracts_co_owner_id_fkey");
-
-            entity.HasOne(d => d.Vehicle).WithMany(p => p.VehicleContracts)
-                .HasForeignKey(d => d.VehicleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("vehicle_contracts_vehicle_id_fkey");
         });
 
         modelBuilder.Entity<VehicleStation>(entity =>
@@ -798,7 +814,9 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("images");
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.StaffId).HasColumnName("staff_id");
-            entity.Property(e => e.StatusEnum).HasColumnName("status_enum");
+            entity.Property(e => e.StatusEnum)
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
             entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
 
             entity.HasOne(d => d.Staff).WithMany(p => p.VehicleVerificationHistories)
@@ -810,100 +828,7 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasConstraintName("vehicle_verification_history_vehicle_id_fkey");
         });
 
-        // Configure enum conversions
-        modelBuilder.Entity<User>()
-            .Property(e => e.RoleEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<User>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<Booking>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<Vehicle>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<Vehicle>()
-            .Property(e => e.VerificationStatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<Payment>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<FundAddition>()
-            .Property(e => e.PaymentMethodEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<FundAddition>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<MaintenanceCost>()
-            .Property(e => e.MaintenanceTypeEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<FundUsage>()
-            .Property(e => e.UsageTypeEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<VehicleCondition>()
-            .Property(e => e.ConditionTypeEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<VehicleContract>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<VehicleVerificationHistory>()
-            .Property(e => e.StatusEnum)
-            .HasConversion<int>();
-
-        modelBuilder.Entity<Role>()
-            .Property(e => e.RoleNameEnum)
-            .HasConversion<int>();
-
-        // Configure DateTime conversion to handle UTC DateTime with PostgreSQL timestamp without time zone
-        ConfigureDateTimeConversions(modelBuilder);
-
         OnModelCreatingPartial(modelBuilder);
-    }
-
-    private void ConfigureDateTimeConversions(ModelBuilder modelBuilder)
-    {
-        // Convert UTC DateTime to unspecified DateTime for PostgreSQL compatibility
-        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
-            v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-
-        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
-            v => v.HasValue && v.Value.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : v,
-            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
-
-        // Apply converter to all DateTime properties
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            var properties = entityType.ClrType.GetProperties()
-                .Where(p => p.PropertyType == typeof(DateTime) || p.PropertyType == typeof(DateTime?));
-
-            foreach (var property in properties)
-            {
-                if (property.PropertyType == typeof(DateTime))
-                {
-                    modelBuilder.Entity(entityType.Name).Property(property.Name)
-                        .HasConversion(dateTimeConverter);
-                }
-                else if (property.PropertyType == typeof(DateTime?))
-                {
-                    modelBuilder.Entity(entityType.Name).Property(property.Name)
-                        .HasConversion(nullableDateTimeConverter);
-                }
-            }
-        }
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

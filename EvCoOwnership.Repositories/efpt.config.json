@@ -83,11 +83,11 @@
          "ObjectType": 0
       },
       {
-         "Name": "public.vehicle_conditions",
+         "Name": "public.vehicle_co_owners",
          "ObjectType": 0
       },
       {
-         "Name": "public.vehicle_contracts",
+         "Name": "public.vehicle_conditions",
          "ObjectType": 0
       },
       {

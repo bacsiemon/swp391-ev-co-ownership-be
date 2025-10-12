@@ -62,9 +62,9 @@ public partial class Vehicle
 
     public virtual ICollection<MaintenanceCost> MaintenanceCosts { get; set; } = new List<MaintenanceCost>();
 
-    public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
+    public virtual ICollection<VehicleCoOwner> VehicleCoOwners { get; set; } = new List<VehicleCoOwner>();
 
-    public virtual ICollection<VehicleContract> VehicleContracts { get; set; } = new List<VehicleContract>();
+    public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
 
     public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
 }

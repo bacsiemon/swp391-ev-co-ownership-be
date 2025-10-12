@@ -21,5 +21,5 @@ public partial class CoOwner
 
     public virtual User User { get; set; }
 
-    public virtual ICollection<VehicleContract> VehicleContracts { get; set; } = new List<VehicleContract>();
+    public virtual ICollection<VehicleCoOwner> VehicleCoOwners { get; set; } = new List<VehicleCoOwner>();
 }

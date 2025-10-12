@@ -134,7 +134,7 @@ CREATE TABLE vehicle_verification_history (
 	created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE vehicle_contracts (
+CREATE TABLE vehicle_co_owners (
     co_owner_id INTEGER REFERENCES co_owners(user_id),
     vehicle_id INTEGER REFERENCES vehicles(id),
     PRIMARY KEY (co_owner_id, vehicle_id),
