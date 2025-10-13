@@ -75,6 +75,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "public.user_notifications",
+         "ObjectType": 0
+      },
+      {
          "Name": "public.user_refresh_tokens",
          "ObjectType": 0
       },

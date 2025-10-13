@@ -48,8 +48,6 @@ namespace EvCoOwnership.Repositories.Models
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
-    public virtual ICollection<UserNotification> UserNotifications { get; set; } = new List<UserNotification>();
-
     public virtual UserRefreshToken UserRefreshToken { get; set; }
 
     public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();

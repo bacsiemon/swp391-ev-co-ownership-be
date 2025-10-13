@@ -607,6 +607,32 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasConstraintName("user_notifications_user_id_fkey");
         });
 
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("user_notifications_pkey");
+
+            entity.ToTable("user_notifications");
+
+            entity.HasIndex(e => new { e.NotificationId, e.UserId }, "user_notifications_notification_id_user_id_key").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.ReadAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("read_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.Notification).WithMany(p => p.UserNotifications)
+                .HasForeignKey(d => d.NotificationId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("user_notifications_notification_id_fkey");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserNotifications)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("user_notifications_user_id_fkey");
+        });
+
         modelBuilder.Entity<UserRefreshToken>(entity =>
         {
             entity.HasKey(e => e.UserId).HasName("user_refresh_tokens_pkey");
