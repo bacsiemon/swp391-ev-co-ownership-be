@@ -29,8 +29,7 @@ namespace EvCoOwnership.API.Middlewares
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Data = ex.Message,
-                    AdditionalData = ex.ToString()
+                    Errors = ex.ToString()
                 });
             }
         }

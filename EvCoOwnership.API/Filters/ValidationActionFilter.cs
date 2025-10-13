@@ -60,7 +60,7 @@ namespace EvCoOwnership.API.Filters
                         {
                             StatusCode = 400,
                             Message = "VALIDATION_ERROR",
-                            Data = validationResult.Errors.Select(e => new { 
+                            Errors = validationResult.Errors.Select(e => new { 
                                 Field = e.PropertyName, 
                                 Error = e.ErrorMessage 
                             }).ToList()
