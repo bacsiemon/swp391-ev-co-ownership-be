@@ -39,7 +39,6 @@ namespace EvCoOwnership.Repositories.UoW
         private FundUsageVoteRepository _fundUsageVoteRepository;
         private MaintenanceCostRepository _maintenanceCostRepository;
         private PaymentRepository _paymentRepository;
-        private RoleRepository _roleRepository;
         private UserRefreshTokenRepository _userRefreshTokenRepository;
         private VehicleRepository _vehicleRepository;
         private VehicleConditionRepository _vehicleConditionRepository;
@@ -59,7 +58,6 @@ namespace EvCoOwnership.Repositories.UoW
         public IFundUsageVoteRepository FundUsageVoteRepository { get { return _fundUsageVoteRepository ??= new FundUsageVoteRepository(_context); } }
         public IMaintenanceCostRepository MaintenanceCostRepository { get { return _maintenanceCostRepository ??= new MaintenanceCostRepository(_context); } }
         public IPaymentRepository PaymentRepository { get { return _paymentRepository ??= new PaymentRepository(_context); } }
-        public IRoleRepository RoleRepository { get { return _roleRepository ??= new RoleRepository(_context); } }
         public IUserRefreshTokenRepository UserRefreshTokenRepository { get { return _userRefreshTokenRepository ??= new UserRefreshTokenRepository(_context); } }
         public IVehicleRepository VehicleRepository { get { return _vehicleRepository ??= new VehicleRepository(_context); } }
         public IVehicleConditionRepository VehicleConditionRepository { get { return _vehicleConditionRepository ??= new VehicleConditionRepository(_context); } }

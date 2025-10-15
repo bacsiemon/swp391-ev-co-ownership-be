@@ -56,17 +56,6 @@ CREATE TABLE users (
 	updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE roles (
-	id SERIAL PRIMARY KEY,
-	role_name_enum INTEGER UNIQUE NOT NULL -- user_role_enum: 0=co_owner, 1=staff, 2=admin
-);
-
-CREATE TABLE user_roles (
-    user_id INTEGER REFERENCES users(id),
-    role_id INTEGER REFERENCES roles(id),
-    PRIMARY KEY (user_id, role_id)
-);
-
 CREATE TABLE user_refresh_tokens (
 	user_id INTEGER PRIMARY KEY REFERENCES users(id),
 	refresh_token VARCHAR(255) NOT NULL,

@@ -76,8 +76,8 @@ namespace EvCoOwnership.Services.Services
                 };
             }
 
-            // Get user roles
-            var roles = user.Roles.Select(r => r.RoleNameEnum.ToString()).ToList();
+            // Get user role
+            var roles = user.RoleEnum.HasValue ? new List<string> { user.RoleEnum.ToString() } : new List<string>();
 
             // Generate tokens
             var userWrapper = new JwtUserDataWrapper(user);
@@ -144,15 +144,6 @@ namespace EvCoOwnership.Services.Services
 
             _unitOfWork.UserRepository.Create(user);
             await _unitOfWork.SaveChangesAsync();
-
-            // Get default CoOwner role
-            var coOwnerRole = await _unitOfWork.RoleRepository.GetByRoleNameAsync(EUserRole.CoOwner);
-
-            if (coOwnerRole != null)
-            {
-                user.Roles.Add(coOwnerRole);
-                await _unitOfWork.SaveChangesAsync();
-            }
 
             // Create Co-Owner record
             var coOwner = new CoOwner
@@ -221,8 +212,8 @@ namespace EvCoOwnership.Services.Services
                 };
             }
 
-            // Get user roles
-            var roles = user.Roles.Select(r => r.RoleNameEnum.ToString()).ToList();
+            // Get user role
+            var roles = user.RoleEnum.HasValue ? new List<string> { user.RoleEnum.Value.ToString() } : new List<string>();
 
             // Generate new tokens
             var userWrapper = new JwtUserDataWrapper(user);

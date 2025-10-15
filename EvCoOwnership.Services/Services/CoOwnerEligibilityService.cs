@@ -157,7 +157,7 @@ namespace EvCoOwnership.Services.Services
                 var user = await _unitOfWork.UserRepository.GetUserWithRolesByIdAsync(userId);
 
                 // Check if already a co-owner
-                if (user?.Roles?.Any(r => r.RoleNameEnum == Repositories.Enums.EUserRole.CoOwner) == true)
+                if (user?.RoleEnum == Repositories.Enums.EUserRole.CoOwner)
                 {
                     return new BaseResponse
                     {
@@ -166,14 +166,10 @@ namespace EvCoOwnership.Services.Services
                     };
                 }
 
-                // Add Co-owner role
-                var coOwnerRole = await _unitOfWork.RoleRepository
-                    .GetByRoleNameAsync(Repositories.Enums.EUserRole.CoOwner);
-
-                if (coOwnerRole != null && user != null)
+                // Set Co-owner role
+                if (user != null)
                 {
-                    user.Roles ??= new List<Repositories.Models.Role>();
-                    user.Roles.Add(coOwnerRole);
+                    user.RoleEnum = Repositories.Enums.EUserRole.CoOwner;
                     _unitOfWork.UserRepository.Update(user);
 
                     // Create CoOwner record if not exists
@@ -209,7 +205,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse
                 {
                     StatusCode = 500,
-                    Message = "CO_OWNER_ROLE_NOT_FOUND"
+                    Message = "USER_NOT_FOUND"
                 };
             }
             catch (Exception ex)
@@ -231,7 +227,7 @@ namespace EvCoOwnership.Services.Services
             try
             {
                 var totalUsers = await _unitOfWork.UserRepository.GetAllAsync();
-                var coOwners = totalUsers.Where(u => u.Roles.Any(r => r.RoleNameEnum == Repositories.Enums.EUserRole.CoOwner)).ToList();
+                var coOwners = totalUsers.Where(u => u.RoleEnum == Repositories.Enums.EUserRole.CoOwner).ToList();
                 var totalLicenses = await _unitOfWork.DrivingLicenseRepository.GetAllAsync();
 
                 var stats = new

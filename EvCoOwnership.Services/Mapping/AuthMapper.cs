@@ -41,6 +41,7 @@ namespace EvCoOwnership.Services.Mapping
                 Phone = request.Phone,
                 DateOfBirth = request.DateOfBirth,
                 Address = request.Address,
+                RoleEnum = EUserRole.CoOwner, // Default role for new registrations
                 StatusEnum = EUserStatus.Active,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -50,14 +51,14 @@ namespace EvCoOwnership.Services.Mapping
         /// <summary>
         /// Maps User entity to UserInfo DTO
         /// </summary>
-        /// <param name="user">User entity with roles loaded</param>
+        /// <param name="user">User entity</param>
         /// <returns>UserInfo DTO</returns>
         public static UserInfo ToUserInfo(this User user)
         {
             if (user == null)
                 throw new ArgumentNullException(nameof(user));
 
-            var roles = user.Roles?.Select(r => r.RoleNameEnum.ToString()).ToList() ?? new List<string>();
+            var roles = user.RoleEnum.HasValue ? new List<string> { user.RoleEnum.Value.ToString() } : new List<string>();
 
             return new UserInfo
             {
@@ -77,7 +78,7 @@ namespace EvCoOwnership.Services.Mapping
         /// <summary>
         /// Creates a LoginResponse DTO with tokens and user information
         /// </summary>
-        /// <param name="user">User entity with roles loaded</param>
+        /// <param name="user">User entity</param>
         /// <param name="accessToken">JWT access token</param>
         /// <param name="refreshToken">Refresh token</param>
         /// <param name="accessTokenExpires">Access token expiration date</param>

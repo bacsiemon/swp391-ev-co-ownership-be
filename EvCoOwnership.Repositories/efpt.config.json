@@ -63,19 +63,19 @@
          "ObjectType": 0
       },
       {
+         "Name": "public.notification_entities",
+         "ObjectType": 0
+      },
+      {
          "Name": "public.payments",
          "ObjectType": 0
       },
       {
-         "Name": "public.roles",
+         "Name": "public.user_notifications",
          "ObjectType": 0
       },
       {
          "Name": "public.user_refresh_tokens",
-         "ObjectType": 0
-      },
-      {
-         "Name": "public.user_roles",
          "ObjectType": 0
       },
       {

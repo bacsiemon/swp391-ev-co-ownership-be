@@ -18,7 +18,6 @@ namespace EvCoOwnership.Repositories.UoW
         IFundUsageVoteRepository FundUsageVoteRepository { get; }
         IMaintenanceCostRepository MaintenanceCostRepository { get; }
         IPaymentRepository PaymentRepository { get; }
-        IRoleRepository RoleRepository { get; }
         IUserRefreshTokenRepository UserRefreshTokenRepository { get; }
         IVehicleRepository VehicleRepository { get; }
         IVehicleConditionRepository VehicleConditionRepository { get; }

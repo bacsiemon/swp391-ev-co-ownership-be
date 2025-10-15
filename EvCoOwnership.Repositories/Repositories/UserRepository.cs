@@ -37,14 +37,12 @@ namespace EvCoOwnership.Repositories.Repositories
         public async Task<User?> GetUserWithRolesAsync(int userId)
         {
             return await _context.Users
-                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.Id == userId);
         }
 
         public async Task<User?> GetUserWithRolesByIdAsync(int userId)
         {
             return await _context.Users
-                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.Id == userId);
         }
 
@@ -52,7 +50,6 @@ namespace EvCoOwnership.Repositories.Repositories
         {
             var normalizedEmail = email.ToUpperInvariant();
             return await _context.Users
-                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
         }
     }
