@@ -23,6 +23,7 @@ namespace EvCoOwnership.Repositories.UoW
         IVehicleRepository VehicleRepository { get; }
         IVehicleConditionRepository VehicleConditionRepository { get; }
         IVehicleStationRepository VehicleStationRepository { get; }
+        IVehicleVerificationHistoryRepository VehicleVerificationHistoryRepository { get; }
 
         Task<int> SaveChangesAsync();
     }

@@ -26,24 +26,25 @@ namespace EvCoOwnership.Repositories.UoW
         #endregion
 
         // Repository backing fields
-        private UserRepository _userRepository;
-        private BookingRepository _bookingRepository;
-        private CheckInRepository _checkInRepository;
-        private CheckOutRepository _checkOutRepository;
-        private CoOwnerRepository _coOwnerRepository;
-        private DrivingLicenseRepository _drivingLicenseRepository;
-        private FileUploadRepository _fileUploadRepository;
-        private FundRepository _fundRepository;
-        private FundAdditionRepository _fundAdditionRepository;
-        private FundUsageRepository _fundUsageRepository;
-        private FundUsageVoteRepository _fundUsageVoteRepository;
-        private MaintenanceCostRepository _maintenanceCostRepository;
-        private PaymentRepository _paymentRepository;
-        private RoleRepository _roleRepository;
-        private UserRefreshTokenRepository _userRefreshTokenRepository;
-        private VehicleRepository _vehicleRepository;
-        private VehicleConditionRepository _vehicleConditionRepository;
-        private VehicleStationRepository _vehicleStationRepository;
+        private UserRepository? _userRepository;
+        private BookingRepository? _bookingRepository;
+        private CheckInRepository? _checkInRepository;
+        private CheckOutRepository? _checkOutRepository;
+        private CoOwnerRepository? _coOwnerRepository;
+        private DrivingLicenseRepository? _drivingLicenseRepository;
+        private FileUploadRepository? _fileUploadRepository;
+        private FundRepository? _fundRepository;
+        private FundAdditionRepository? _fundAdditionRepository;
+        private FundUsageRepository? _fundUsageRepository;
+        private FundUsageVoteRepository? _fundUsageVoteRepository;
+        private MaintenanceCostRepository? _maintenanceCostRepository;
+        private PaymentRepository? _paymentRepository;
+        private RoleRepository? _roleRepository;
+        private UserRefreshTokenRepository? _userRefreshTokenRepository;
+        private VehicleRepository? _vehicleRepository;
+        private VehicleConditionRepository? _vehicleConditionRepository;
+        private VehicleStationRepository? _vehicleStationRepository;
+        private VehicleVerificationHistoryRepository? _vehicleVerificationHistoryRepository;
 
         // Repository properties with lazy initialization
         public IUserRepository UserRepository { get { return _userRepository ??= new UserRepository(_context); } }
@@ -64,5 +65,6 @@ namespace EvCoOwnership.Repositories.UoW
         public IVehicleRepository VehicleRepository { get { return _vehicleRepository ??= new VehicleRepository(_context); } }
         public IVehicleConditionRepository VehicleConditionRepository { get { return _vehicleConditionRepository ??= new VehicleConditionRepository(_context); } }
         public IVehicleStationRepository VehicleStationRepository { get { return _vehicleStationRepository ??= new VehicleStationRepository(_context); } }
+        public IVehicleVerificationHistoryRepository VehicleVerificationHistoryRepository { get { return _vehicleVerificationHistoryRepository ??= new VehicleVerificationHistoryRepository(_context); } }
     }
 }
