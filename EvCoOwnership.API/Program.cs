@@ -3,7 +3,7 @@ using EvCoOwnership.API.Extensions;
 using EvCoOwnership.API.Middlewares;
 using EvCoOwnership.Helpers;
 using EvCoOwnership.Repositories;
-using EvCoOwnership.Repositories.Data;
+using EvCoOwnership.Repositories.Context;
 using EvCoOwnership.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -41,7 +41,7 @@ try
     builder.Services.AddServiceConfigurations(builder.Configuration);
     builder.Services.AddRepositoryConfigurations(builder.Configuration);
     builder.Services.AddHelperConfigurations(builder.Configuration);
-    builder.Services.AddDbContext<AppDbContext>(options =>
+    builder.Services.AddDbContext<EvCoOwnershipDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 

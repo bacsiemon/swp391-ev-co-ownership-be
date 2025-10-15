@@ -57,4 +57,5 @@ namespace EvCoOwnership.Repositories.Models
     public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
 
     public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+    }
 }

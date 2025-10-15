@@ -1,5 +1,5 @@
 ﻿using EvCoOwnership.Helpers.BaseClasses;
-using EvCoOwnership.Repositories.Data;
+using EvCoOwnership.Repositories.Context;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -9,9 +9,9 @@ namespace EvCoOwnership.Services
 {
     public class UserService : IUserService
     {
-        private readonly AppDbContext _context;
+        private readonly EvCoOwnershipDbContext _context;
 
-        public UserService(AppDbContext context)
+        public UserService(EvCoOwnershipDbContext context)
         {
             _context = context;
         }

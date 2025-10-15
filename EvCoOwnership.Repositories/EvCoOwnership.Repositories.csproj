@@ -19,5 +19,8 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\EvCoOwnership.Helpers\EvCoOwnership.Helpers.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Data\" />
+	</ItemGroup>
 
 </Project>
