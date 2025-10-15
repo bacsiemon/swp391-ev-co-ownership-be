@@ -35,6 +35,9 @@ try
     // Add FluentValidation services
     builder.Services.AddFluentValidationServices();
 
+    // Add AutoMapper
+    builder.Services.AddAutoMapper(typeof(EvCoOwnership.Services.Mapping.VehicleMappingProfile).Assembly);
+
     builder.Services.AddApiConfigurations(builder.Configuration);
     builder.Services.AddServiceConfigurations(builder.Configuration);
     builder.Services.AddRepositoryConfigurations(builder.Configuration);
