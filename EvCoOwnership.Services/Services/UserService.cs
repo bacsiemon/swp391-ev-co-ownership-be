@@ -1,35 +1,76 @@
 ﻿using EvCoOwnership.Helpers.BaseClasses;
+using EvCoOwnership.Repositories.Data;
 using EvCoOwnership.Repositories.Models;
-using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace EvCoOwnership.Services.Services
+namespace EvCoOwnership.Services
 {
     public class UserService : IUserService
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly AppDbContext _context;
 
-        public UserService(IUnitOfWork unitOfWork)
+        public UserService(AppDbContext context)
         {
-            _unitOfWork = unitOfWork;
+            _context = context;
         }
 
-        public async Task<BaseResponse> GetPagingAsync(int pageIndex, int pageSize)
+        public async Task<IEnumerable<User>> GetAllAsync()
         {
-            var users = await _unitOfWork.UserRepository.GetPaginatedAsync(pageIndex, pageSize, 1, e => e.OrderBy(e => e.Id));
+            return await _context.Users.ToListAsync();
+        }
 
-            return new BaseResponse
-            {
-                StatusCode = 200,
-                Message = "SUCCESS",
-                Data = users.Items,
-                AdditionalData = users.AdditionalData
-            };
+        public async Task<User?> GetByIdAsync(int id)
+        {
+            return await _context.Users.FindAsync(id);
+        }
+
+        public async Task<User> CreateAsync(User user)
+        {
+            user.CreatedAt = DateTime.UtcNow;
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return user;
+        }
+
+        public async Task<User?> UpdateAsync(int id, User updatedUser)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return null;
+
+            user.FirstName = updatedUser.FirstName;
+            user.LastName = updatedUser.LastName;
+            user.Phone = updatedUser.Phone;
+            user.Address = updatedUser.Address;
+            user.ProfileImageUrl = updatedUser.ProfileImageUrl;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return user;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return false;
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<PagedResult<User>> GetPagingAsync(int pageIndex, int pageSize)
+        {
+            var totalCount = await _context.Users.CountAsync();
+
+            var users = await _context.Users
+                .OrderBy(u => u.Id)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<User>(users, totalCount, pageIndex, pageSize);
         }
     }
 }

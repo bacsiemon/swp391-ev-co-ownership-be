@@ -4,11 +4,11 @@ using System;
 using System.Collections.Generic;
 using EvCoOwnership.Repositories.Enums;
 
-namespace EvCoOwnership.Repositories.Models;
-
-public partial class User
+namespace EvCoOwnership.Repositories.Models
 {
-    public int Id { get; set; }
+    public partial class User
+    {
+        public int Id { get; set; }
 
     public string Email { get; set; }
 

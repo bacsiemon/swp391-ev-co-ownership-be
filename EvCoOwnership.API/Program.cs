@@ -1,13 +1,15 @@
-using Microsoft.Extensions.Options;
-using System.Reflection;
 using EvCoOwnership.API;
-using EvCoOwnership.Services;
-using EvCoOwnership.Repositories;
-using EvCoOwnership.Helpers;
-using EvCoOwnership.API.Middlewares;
 using EvCoOwnership.API.Extensions;
+using EvCoOwnership.API.Middlewares;
+using EvCoOwnership.Helpers;
+using EvCoOwnership.Repositories;
+using EvCoOwnership.Repositories.Data;
+using EvCoOwnership.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
+using System.Reflection;
 
 // Create initial bootstrap logger
 Log.Logger = new LoggerConfiguration()
@@ -39,6 +41,9 @@ try
     builder.Services.AddServiceConfigurations(builder.Configuration);
     builder.Services.AddRepositoryConfigurations(builder.Configuration);
     builder.Services.AddHelperConfigurations(builder.Configuration);
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
     var app = builder.Build();
 
