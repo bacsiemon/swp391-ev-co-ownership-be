@@ -24,6 +24,8 @@ namespace EvCoOwnership.Repositories.UoW
         IVehicleCoOwnerRepository VehicleCoOwnerRepository { get; }
         IVehicleConditionRepository VehicleConditionRepository { get; }
         IVehicleStationRepository VehicleStationRepository { get; }
+        INotificationRepository NotificationRepository { get; }
+        IUserNotificationRepository UserNotificationRepository { get; }
 
         Task<int> SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();

@@ -23,6 +23,7 @@ namespace EvCoOwnership.API
         {
             AddSwaggerGen(services);
             AddJwtAuthentication(services, configuration);
+            AddSignalR(services);
             return services;
         }
 
@@ -99,6 +100,22 @@ namespace EvCoOwnership.API
             });
 
             services.AddAuthorization();
+        }
+
+        /// <summary>
+        /// Configures SignalR for real-time notifications
+        /// </summary>
+        /// <param name="services">Service collection</param>
+        public static void AddSignalR(this IServiceCollection services)
+        {
+            services.AddSignalR(options =>
+            {
+                // Configure SignalR options
+                options.EnableDetailedErrors = true;
+                options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+                options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+                options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+            });
         }
     }
 }

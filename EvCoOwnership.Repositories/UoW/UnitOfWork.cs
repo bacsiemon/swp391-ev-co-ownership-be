@@ -50,6 +50,8 @@ namespace EvCoOwnership.Repositories.UoW
         private VehicleCoOwnerRepository _vehicleCoOwnerRepository;
         private VehicleConditionRepository _vehicleConditionRepository;
         private VehicleStationRepository _vehicleStationRepository;
+        private NotificationRepository _notificationRepository;
+        private UserNotificationRepository _userNotificationRepository;
 
         // Repository properties with lazy initialization
         public IUserRepository UserRepository { get { return _userRepository ??= new UserRepository(_context); } }
@@ -70,5 +72,7 @@ namespace EvCoOwnership.Repositories.UoW
         public IVehicleCoOwnerRepository VehicleCoOwnerRepository { get { return _vehicleCoOwnerRepository ??= new VehicleCoOwnerRepository(_context); } }
         public IVehicleConditionRepository VehicleConditionRepository { get { return _vehicleConditionRepository ??= new VehicleConditionRepository(_context); } }
         public IVehicleStationRepository VehicleStationRepository { get { return _vehicleStationRepository ??= new VehicleStationRepository(_context); } }
+        public INotificationRepository NotificationRepository { get { return _notificationRepository ??= new NotificationRepository(_context); } }
+        public IUserNotificationRepository UserNotificationRepository { get { return _userNotificationRepository ??= new UserNotificationRepository(_context); } }
     }
 }

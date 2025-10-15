@@ -1,7 +1,8 @@
 using EvCoOwnership.API;
-using EvCoOwnership.API.Extensions;
-using EvCoOwnership.API.Middlewares;
 using EvCoOwnership.Helpers;
+using EvCoOwnership.API.Middlewares;
+using EvCoOwnership.API.Extensions;
+using EvCoOwnership.API.Hubs;
 using EvCoOwnership.Repositories;
 using EvCoOwnership.Repositories.Context;
 using EvCoOwnership.Services;
@@ -85,7 +86,14 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
+    // Add notification middleware to listen for events
+    app.UseNotificationMiddleware();
+
     app.MapControllers();
+    
+    // Map SignalR hub
+    app.MapHub<NotificationHub>("/notificationHub");
+
     app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
     Log.Information("EvCoOwnership API application started successfully");
