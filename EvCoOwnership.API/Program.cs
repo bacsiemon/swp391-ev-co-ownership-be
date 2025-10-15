@@ -82,6 +82,7 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+    app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
     Log.Information("EvCoOwnership API application started successfully");
     app.Run();
