@@ -28,23 +28,23 @@ namespace EvCoOwnership.API.Controllers
         /// Checks eligibility for Co-owner status
         /// </summary>
         /// <param name="userId">User ID to check (optional, defaults to current user)</param>
-        /// <response code="200">Eligibility check completed. Possible messages:
-        /// - ELIGIBLE_FOR_CO_OWNERSHIP
-        /// - NOT_ELIGIBLE_FOR_CO_OWNERSHIP
+        /// <response code="200">Eligibility check completed. Possible messages:  
+        /// - ELIGIBLE_FOR_CO_OWNERSHIP  
+        /// - NOT_ELIGIBLE_FOR_CO_OWNERSHIP  
         /// </response>
         /// <response code="401">Unauthorized access</response>
         /// <response code="403">Access denied - can only check own eligibility unless admin</response>
-        /// <response code="404">User not found. Possible messages:
-        /// - USER_NOT_FOUND
+        /// <response code="404">User not found. Possible messages:  
+        /// - USER_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Checks if a user meets all requirements to become a Co-owner:
-        /// - Active account status
-        /// - Age 18 or older
-        /// - Valid driving license registered
+        /// Checks if a user meets all requirements to become a Co-owner:  
+        /// - Active account status  
+        /// - Age 18 or older  
+        /// - Valid driving license registered  
         /// 
         /// Users can only check their own eligibility unless they are admin/staff.
         /// </remarks>
@@ -84,22 +84,22 @@ namespace EvCoOwnership.API.Controllers
         /// <summary>
         /// Promotes current user to Co-owner status
         /// </summary>
-        /// <response code="200">Promotion successful. Possible messages:
-        /// - PROMOTION_TO_CO_OWNER_SUCCESS
+        /// <response code="200">Promotion successful. Possible messages:  
+        /// - PROMOTION_TO_CO_OWNER_SUCCESS  
         /// </response>
-        /// <response code="400">Promotion failed - requirements not met. Possible messages:
-        /// - USER_NOT_ELIGIBLE_FOR_CO_OWNERSHIP
+        /// <response code="400">Promotion failed - requirements not met. Possible messages:  
+        /// - USER_NOT_ELIGIBLE_FOR_CO_OWNERSHIP  
         /// </response>
         /// <response code="401">Unauthorized access</response>
-        /// <response code="409">User already has Co-owner status. Possible messages:
-        /// - USER_ALREADY_CO_OWNER
+        /// <response code="409">User already has Co-owner status. Possible messages:  
+        /// - USER_ALREADY_CO_OWNER  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
-        /// - CO_OWNER_ROLE_NOT_FOUND
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
+        /// - CO_OWNER_ROLE_NOT_FOUND  
         /// </response>
         /// <remarks>
-        /// Promotes the current authenticated user to Co-owner status after verifying eligibility.
+        /// Promotes the current authenticated user to Co-owner status after verifying eligibility.  
         /// User must meet all requirements: active account, age 18+, and valid driving license.
         /// </remarks>
         [HttpPost("promote")]
@@ -127,23 +127,23 @@ namespace EvCoOwnership.API.Controllers
         /// Promotes a specific user to Co-owner status (Admin only)
         /// </summary>
         /// <param name="userId">User ID to promote</param>
-        /// <response code="200">Promotion successful. Possible messages:
-        /// - PROMOTION_TO_CO_OWNER_SUCCESS
+        /// <response code="200">Promotion successful. Possible messages:  
+        /// - PROMOTION_TO_CO_OWNER_SUCCESS  
         /// </response>
-        /// <response code="400">Promotion failed - requirements not met. Possible messages:
-        /// - USER_NOT_ELIGIBLE_FOR_CO_OWNERSHIP
+        /// <response code="400">Promotion failed - requirements not met. Possible messages:  
+        /// - USER_NOT_ELIGIBLE_FOR_CO_OWNERSHIP  
         /// </response>
         /// <response code="401">Unauthorized access</response>
         /// <response code="403">Access denied - admin role required</response>
-        /// <response code="409">User already has Co-owner status. Possible messages:
-        /// - USER_ALREADY_CO_OWNER
+        /// <response code="409">User already has Co-owner status. Possible messages:  
+        /// - USER_ALREADY_CO_OWNER  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
-        /// - CO_OWNER_ROLE_NOT_FOUND
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
+        /// - CO_OWNER_ROLE_NOT_FOUND  
         /// </response>
         /// <remarks>
-        /// Allows administrators to promote any eligible user to Co-owner status.
+        /// Allows administrators to promote any eligible user to Co-owner status.  
         /// Target user must meet all eligibility requirements.
         /// </remarks>
         [HttpPost("promote/{userId:int}")]
@@ -165,20 +165,20 @@ namespace EvCoOwnership.API.Controllers
         /// <summary>
         /// Gets Co-ownership system statistics (Admin only)
         /// </summary>
-        /// <response code="200">Statistics retrieved successfully. Possible messages:
-        /// - CO_OWNERSHIP_STATS_RETRIEVED
+        /// <response code="200">Statistics retrieved successfully. Possible messages:  
+        /// - CO_OWNERSHIP_STATS_RETRIEVED  
         /// </response>
         /// <response code="401">Unauthorized access</response>
         /// <response code="403">Access denied - admin role required</response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Provides comprehensive statistics about the Co-ownership system including:
-        /// - Total users and Co-owners
-        /// - Co-ownership adoption rate
-        /// - License registration statistics
-        /// - Expired and expiring licenses
+        /// Provides comprehensive statistics about the Co-ownership system including:  
+        /// - Total users and Co-owners  
+        /// - Co-ownership adoption rate  
+        /// - License registration statistics  
+        /// - Expired and expiring licenses  
         /// </remarks>
         [HttpGet("statistics")]
         [Authorize(Roles = "Admin,Staff")]

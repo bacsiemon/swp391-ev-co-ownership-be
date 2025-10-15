@@ -67,12 +67,12 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="200">Validation passed</response>
         /// <response code="400">Validation failed</response>
         /// <remarks>
-        /// This endpoint demonstrates automatic FluentValidation.
-        /// Try sending invalid data to see validation errors:
-        /// - Empty name
-        /// - Invalid email format
-        /// - Negative age
-        /// - OptionalField longer than 100 characters
+        /// This endpoint demonstrates automatic FluentValidation.  
+        /// Try sending invalid data to see validation errors:  
+        /// - Empty name  
+        /// - Invalid email format  
+        /// - Negative age  
+        /// - OptionalField longer than 100 characters  
         /// </remarks>
         [HttpPost("test-fluentvalidation")]
         public IActionResult TestFluentValidation([FromBody] TestValidationRequest request)
@@ -98,7 +98,7 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="200">Validation passed</response>
         /// <response code="400">Validation failed</response>
         /// <remarks>
-        /// This endpoint tests the existing ForgotPasswordRequest DTO validation.
+        /// This endpoint tests the existing ForgotPasswordRequest DTO validation.  
         /// Try sending an invalid email to see validation errors.
         /// </remarks>
         [HttpPost("test-auth-validation")]
@@ -124,7 +124,7 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="request">Test validation request (validation will be skipped)</param>
         /// <response code="200">Always succeeds (validation skipped)</response>
         /// <remarks>
-        /// This endpoint demonstrates how to skip validation for specific actions.
+        /// This endpoint demonstrates how to skip validation for specific actions.  
         /// Even invalid data will be accepted here.
         /// </remarks>
         [HttpPost("test-skip-validation")]
@@ -153,14 +153,14 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="400">Validation failed</response>
         /// <response code="500">Upload failed</response>
         /// <remarks>
-        /// This endpoint tests the file upload functionality.
+        /// This endpoint tests the file upload functionality.  
         /// Upload any supported file type to test the complete upload flow.
         /// 
-        /// Supported file types:
-        /// - Images: JPEG, JPG, PNG, GIF, WEBP
-        /// - Documents: PDF, DOC, DOCX, XLS, XLSX, TXT
+        /// **Supported file types:**  
+        /// - Images: JPEG, JPG, PNG, GIF, WEBP  
+        /// - Documents: PDF, DOC, DOCX, XLS, XLSX, TXT  
         /// 
-        /// Maximum file size: 10MB
+        /// **Maximum file size:** 10MB
         /// </remarks>
         [HttpPost("test-file-upload")]
         public async Task<IActionResult> TestFileUpload(IFormFile file)

@@ -26,14 +26,14 @@ namespace EvCoOwnership.API.Controllers
 
         /// <param name="request">Login credentials</param>
         /// <response code="200">Login successful. Possible messages:  
-        /// - LOGIN_SUCCESS
+        /// - LOGIN_SUCCESS  
         /// </response>
         /// <response code="400">Invalid credentials or validation error. Possible messages:  
-        /// - INVALID_EMAIL_OR_PASSWORD
+        /// - INVALID_EMAIL_OR_PASSWORD  
         /// </response>
         /// <response code="403">Account suspended or inactive. Possible messages:  
         /// - ACCOUNT_SUSPENDED  
-        /// - ACCOUNT_INACTIVE
+        /// - ACCOUNT_INACTIVE  
         /// </response>
         /// <remarks>
         /// Authenticates user with email and password
@@ -52,7 +52,7 @@ namespace EvCoOwnership.API.Controllers
         }
 
         /// <response code="201">Registration successful. Possible messages:  
-        /// - REGISTRATION_SUCCESS
+        /// - REGISTRATION_SUCCESS  
         /// </response>
         /// <response code="400">Validation error. Possible messages:  
         /// - EMAIL_REQUIRED  
@@ -62,10 +62,10 @@ namespace EvCoOwnership.API.Controllers
         /// - PASSWORD_MUST_CONTAIN_UPPERCASE_LOWERCASE_NUMBER_SPECIAL  
         /// - CONFIRM_PASSWORD_MUST_MATCH  
         /// - FIRST_NAME_REQUIRED  
-        /// - LAST_NAME_REQUIRED
+        /// - LAST_NAME_REQUIRED  
         /// </response>
         /// <response code="409">Email already exists. Possible messages:  
-        /// - EMAIL_ALREADY_EXISTS
+        /// - EMAIL_ALREADY_EXISTS  
         /// </response>
         /// <remarks>
         /// Registers a new user account
@@ -84,18 +84,18 @@ namespace EvCoOwnership.API.Controllers
         }
 
         /// <response code="200">Token refresh successful. Possible messages:  
-        /// - TOKEN_REFRESH_SUCCESS
+        /// - TOKEN_REFRESH_SUCCESS  
         /// </response>
         /// <response code="400">Validation error</response>
         /// <response code="401">Invalid or expired refresh token. Possible messages:  
-        /// - INVALID_OR_EXPIRED_REFRESH_TOKEN
+        /// - INVALID_OR_EXPIRED_REFRESH_TOKEN  
         /// </response>
         /// <response code="403">Account suspended or inactive. Possible messages:  
         /// - ACCOUNT_SUSPENDED  
-        /// - ACCOUNT_INACTIVE
+        /// - ACCOUNT_INACTIVE  
         /// </response>
         /// <response code="404">User not found. Possible messages:  
-        /// - USER_NOT_FOUND
+        /// - USER_NOT_FOUND  
         /// </response>
         /// <remarks>
         /// Refreshes the access token using a valid refresh token
@@ -116,10 +116,10 @@ namespace EvCoOwnership.API.Controllers
         }
 
         /// <response code="200">Success. Possible messages:  
-        /// - SUCCESS
+        /// - SUCCESS  
         /// </response>
         /// <response code="404">Email not found. Possible messages:  
-        /// - USER_NOT_FOUND
+        /// - USER_NOT_FOUND  
         /// </response>
         /// <remarks>
         /// Generates an OTP and sends it to the user's email for password reset.
@@ -137,16 +137,16 @@ namespace EvCoOwnership.API.Controllers
         }
 
         /// <response code="200">Success. Possible messages:  
-        /// - SUCCESS
+        /// - SUCCESS  
         /// </response>
         /// <response code="400">Validation Error. Possible messages:  
         /// - EMAIL_REQUIRED  
         /// - INVALID_EMAIL_FORMAT  
         /// - OTP_MIN_6_CHARACTERS  
-        /// - NEW_PASSWORD_MIN_8_CHARACTERS
+        /// - NEW_PASSWORD_MIN_8_CHARACTERS  
         /// </response>
         /// <response code="404">Email not found. Possible messages:  
-        /// - USER_NOT_FOUND
+        /// - USER_NOT_FOUND  
         /// </response>
         /// <remarks>
         /// Resets the user's password using the provided OTP.
@@ -168,21 +168,21 @@ namespace EvCoOwnership.API.Controllers
         /// Verifies a driving license (basic version through AuthService)
         /// </summary>
         /// <param name="request">License verification request</param>
-        /// <response code="200">License verification successful. Possible messages:
-        /// - LICENSE_VERIFICATION_SUCCESS
+        /// <response code="200">License verification successful. Possible messages:  
+        /// - LICENSE_VERIFICATION_SUCCESS  
         /// </response>
-        /// <response code="400">Validation error or license verification failed. Possible messages:
-        /// - INVALID_LICENSE_FORMAT
-        /// - LICENSE_NUMBER_REQUIRED
-        /// - ISSUE_DATE_REQUIRED
-        /// - FIRST_NAME_REQUIRED
-        /// - LAST_NAME_REQUIRED
+        /// <response code="400">Validation error or license verification failed. Possible messages:  
+        /// - INVALID_LICENSE_FORMAT  
+        /// - LICENSE_NUMBER_REQUIRED  
+        /// - ISSUE_DATE_REQUIRED  
+        /// - FIRST_NAME_REQUIRED  
+        /// - LAST_NAME_REQUIRED  
         /// </response>
-        /// <response code="409">License already registered. Possible messages:
-        /// - LICENSE_ALREADY_REGISTERED
+        /// <response code="409">License already registered. Possible messages:  
+        /// - LICENSE_ALREADY_REGISTERED  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
         /// Basic license verification through AuthService. For advanced features, use the dedicated License controller.

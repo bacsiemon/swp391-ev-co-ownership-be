@@ -23,35 +23,34 @@ namespace EvCoOwnership.API.Controllers
 
         /// <summary>User</summary>
         /// <remarks>
-        /// 
         /// Upload a new file to the system.
         /// 
-        /// Parameters:
-        /// file: Required, file to upload. Maximum size: 10MB.
+        /// **Parameters:**  
+        /// - **file:** Required, file to upload. Maximum size: 10MB.
         /// 
-        /// Supported file types:
-        /// - Images: JPEG, JPG, PNG, GIF, WEBP
-        /// - Documents: PDF, DOC, DOCX, XLS, XLSX, TXT
+        /// **Supported file types:**  
+        /// - Images: JPEG, JPG, PNG, GIF, WEBP  
+        /// - Documents: PDF, DOC, DOCX, XLS, XLSX, TXT  
         /// 
-        /// Sample request:
-        /// 
+        /// **Sample request:**  
+        /// ```
         /// POST /api/fileupload/upload
         /// Content-Type: multipart/form-data
         /// 
         /// file: [binary file data]
-        /// 
+        /// ```
         /// </remarks>
         /// <param name="file">File to upload</param>
-        /// <response code="201">File upload successful. Possible messages:
-        /// - FILE_UPLOAD_SUCCESS
+        /// <response code="201">File upload successful. Possible messages:  
+        /// - FILE_UPLOAD_SUCCESS  
         /// </response>
-        /// <response code="400">Validation error. Possible messages:
-        /// - FILE_REQUIRED
-        /// - INVALID_FILE_TYPE
-        /// - FILE_SIZE_EXCEEDS_LIMIT
+        /// <response code="400">Validation error. Possible messages:  
+        /// - FILE_REQUIRED  
+        /// - INVALID_FILE_TYPE  
+        /// - FILE_SIZE_EXCEEDS_LIMIT  
         /// </response>
-        /// <response code="500">Server error. Possible messages:
-        /// - FILE_UPLOAD_FAILED
+        /// <response code="500">Server error. Possible messages:  
+        /// - FILE_UPLOAD_FAILED  
         /// </response>
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFile(IFormFile file)
@@ -75,17 +74,15 @@ namespace EvCoOwnership.API.Controllers
 
         /// <summary>User</summary>
         /// <remarks>
-        /// 
         /// Download a file by its ID. Returns the file content with appropriate headers.
-        /// 
         /// </remarks>
         /// <param name="id">File ID</param>
         /// <response code="200">File download successful</response>
-        /// <response code="404">File not found. Possible messages:
-        /// - FILE_NOT_FOUND
+        /// <response code="404">File not found. Possible messages:  
+        /// - FILE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Server error. Possible messages:
-        /// - FILE_RETRIEVAL_FAILED
+        /// <response code="500">Server error. Possible messages:  
+        /// - FILE_RETRIEVAL_FAILED  
         /// </response>
         [HttpGet("{id:int}/download")]
         public async Task<IActionResult> DownloadFile(int id)
@@ -125,20 +122,18 @@ namespace EvCoOwnership.API.Controllers
 
         /// <summary>User</summary>
         /// <remarks>
-        /// 
-        /// Get file information without downloading the file content.
+        /// Get file information without downloading the file content.  
         /// Returns file metadata including size, type, upload date, and download URL.
-        /// 
         /// </remarks>
         /// <param name="id">File ID</param>
-        /// <response code="200">File info retrieved successfully. Possible messages:
-        /// - FILE_INFO_RETRIEVED_SUCCESS
+        /// <response code="200">File info retrieved successfully. Possible messages:  
+        /// - FILE_INFO_RETRIEVED_SUCCESS  
         /// </response>
-        /// <response code="404">File not found. Possible messages:
-        /// - FILE_NOT_FOUND
+        /// <response code="404">File not found. Possible messages:  
+        /// - FILE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Server error. Possible messages:
-        /// - FILE_INFO_RETRIEVAL_FAILED
+        /// <response code="500">Server error. Possible messages:  
+        /// - FILE_INFO_RETRIEVAL_FAILED  
         /// </response>
         [HttpGet("{id:int}/info")]
         public async Task<IActionResult> GetFileInfo(int id)
@@ -156,20 +151,18 @@ namespace EvCoOwnership.API.Controllers
 
         /// <summary>User</summary>
         /// <remarks>
-        /// 
-        /// Delete a file from the system. This action is irreversible.
+        /// Delete a file from the system. This action is irreversible.  
         /// Only administrators can delete files.
-        /// 
         /// </remarks>
         /// <param name="id">File ID</param>
-        /// <response code="200">File deletion successful. Possible messages:
-        /// - FILE_DELETE_SUCCESS
+        /// <response code="200">File deletion successful. Possible messages:  
+        /// - FILE_DELETE_SUCCESS  
         /// </response>
-        /// <response code="404">File not found. Possible messages:
-        /// - FILE_NOT_FOUND
+        /// <response code="404">File not found. Possible messages:  
+        /// - FILE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Server error. Possible messages:
-        /// - FILE_DELETE_FAILED
+        /// <response code="500">Server error. Possible messages:  
+        /// - FILE_DELETE_FAILED  
         /// </response>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteFile(int id)

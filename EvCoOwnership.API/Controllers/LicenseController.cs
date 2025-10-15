@@ -28,39 +28,39 @@ namespace EvCoOwnership.API.Controllers
         /// Verifies a driving license with the provided information
         /// </summary>
         /// <param name="request">License verification request containing license details</param>
-        /// <response code="200">License verification successful. Possible messages:
-        /// - LICENSE_VERIFICATION_SUCCESS
+        /// <response code="200">License verification successful. Possible messages:  
+        /// - LICENSE_VERIFICATION_SUCCESS  
         /// </response>
-        /// <response code="400">License verification failed. Possible messages:
-        /// - LICENSE_VERIFICATION_FAILED
-        /// - LICENSE_NUMBER_REQUIRED
-        /// - LICENSE_NUMBER_INVALID_LENGTH
-        /// - LICENSE_NUMBER_INVALID_FORMAT
-        /// - ISSUE_DATE_REQUIRED
-        /// - ISSUE_DATE_CANNOT_BE_FUTURE
-        /// - ISSUED_BY_REQUIRED
-        /// - ISSUED_BY_MAX_100_CHARACTERS
-        /// - ISSUED_BY_INVALID_FORMAT
-        /// - FIRST_NAME_REQUIRED
-        /// - FIRST_NAME_MAX_50_CHARACTERS
-        /// - FIRST_NAME_ONLY_LETTERS_AND_SPACES
-        /// - LAST_NAME_REQUIRED
-        /// - LAST_NAME_MAX_50_CHARACTERS
-        /// - LAST_NAME_ONLY_LETTERS_AND_SPACES
-        /// - DATE_OF_BIRTH_REQUIRED
-        /// - MUST_BE_AT_LEAST_18_YEARS_OLD
-        /// - DATE_OF_BIRTH_TOO_OLD
-        /// - INVALID_IMAGE_FILE
-        /// - IMAGE_SIZE_TOO_LARGE
+        /// <response code="400">License verification failed. Possible messages:  
+        /// - LICENSE_VERIFICATION_FAILED  
+        /// - LICENSE_NUMBER_REQUIRED  
+        /// - LICENSE_NUMBER_INVALID_LENGTH  
+        /// - LICENSE_NUMBER_INVALID_FORMAT  
+        /// - ISSUE_DATE_REQUIRED  
+        /// - ISSUE_DATE_CANNOT_BE_FUTURE  
+        /// - ISSUED_BY_REQUIRED  
+        /// - ISSUED_BY_MAX_100_CHARACTERS  
+        /// - ISSUED_BY_INVALID_FORMAT  
+        /// - FIRST_NAME_REQUIRED  
+        /// - FIRST_NAME_MAX_50_CHARACTERS  
+        /// - FIRST_NAME_ONLY_LETTERS_AND_SPACES  
+        /// - LAST_NAME_REQUIRED  
+        /// - LAST_NAME_MAX_50_CHARACTERS  
+        /// - LAST_NAME_ONLY_LETTERS_AND_SPACES  
+        /// - DATE_OF_BIRTH_REQUIRED  
+        /// - MUST_BE_AT_LEAST_18_YEARS_OLD  
+        /// - DATE_OF_BIRTH_TOO_OLD  
+        /// - INVALID_IMAGE_FILE  
+        /// - IMAGE_SIZE_TOO_LARGE  
         /// </response>
-        /// <response code="409">License already registered. Possible messages:
-        /// - LICENSE_ALREADY_REGISTERED
+        /// <response code="409">License already registered. Possible messages:  
+        /// - LICENSE_ALREADY_REGISTERED  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Verifies a driving license against government databases and internal records.
+        /// Verifies a driving license against government databases and internal records.  
         /// Supports Vietnamese driving license formats and validates all provided information.
         /// </remarks>
         [HttpPost("verify")]
@@ -81,15 +81,15 @@ namespace EvCoOwnership.API.Controllers
         /// Checks if a license number is already registered in the system
         /// </summary>
         /// <param name="licenseNumber">License number to check</param>
-        /// <response code="200">Check completed successfully. Possible messages:
-        /// - LICENSE_EXISTS
-        /// - LICENSE_NOT_FOUND
+        /// <response code="200">Check completed successfully. Possible messages:  
+        /// - LICENSE_EXISTS  
+        /// - LICENSE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Quickly checks if a license number is already registered without performing full verification.
+        /// Quickly checks if a license number is already registered without performing full verification.  
         /// Useful for preventing duplicate registrations.
         /// </remarks>
         [HttpGet("check-exists")]
@@ -113,22 +113,22 @@ namespace EvCoOwnership.API.Controllers
         /// Gets license information by license number (requires authentication)
         /// </summary>
         /// <param name="licenseNumber">License number to lookup</param>
-        /// <response code="200">License information retrieved successfully. Possible messages:
-        /// - SUCCESS
+        /// <response code="200">License information retrieved successfully. Possible messages:  
+        /// - SUCCESS  
         /// </response>
         /// <response code="401">Unauthorized access</response>
-        /// <response code="403">Access denied. Possible messages:
-        /// - ACCESS_DENIED
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED  
         /// </response>
-        /// <response code="404">Not found. Possible messages:
-        /// - USER_NOT_FOUND
-        /// - LICENSE_NOT_FOUND
+        /// <response code="404">Not found. Possible messages:  
+        /// - USER_NOT_FOUND  
+        /// - LICENSE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Retrieves detailed license information. Users can only view their own licenses,
+        /// Retrieves detailed license information. Users can only view their own licenses,  
         /// while administrators can view any license.
         /// </remarks>
         [HttpGet("info")]
@@ -163,19 +163,19 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <param name="licenseNumber">License number to update</param>
         /// <param name="status">New status for the license</param>
-        /// <response code="200">License status updated successfully. Possible messages:
-        /// - LICENSE_STATUS_UPDATED
+        /// <response code="200">License status updated successfully. Possible messages:  
+        /// - LICENSE_STATUS_UPDATED  
         /// </response>
         /// <response code="401">Unauthorized access</response>
-        /// <response code="403">Access denied. Possible messages:
-        /// - ACCESS_DENIED
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED  
         /// </response>
-        /// <response code="404">Not found. Possible messages:
-        /// - USER_NOT_FOUND
-        /// - LICENSE_NOT_FOUND
+        /// <response code="404">Not found. Possible messages:  
+        /// - USER_NOT_FOUND  
+        /// - LICENSE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
         /// Updates the status of a license. Only administrators and staff members can perform this action.
@@ -216,22 +216,22 @@ namespace EvCoOwnership.API.Controllers
         /// Gets license information for a specific user (requires authentication)
         /// </summary>
         /// <param name="userId">User ID to get license for</param>
-        /// <response code="200">License information retrieved successfully. Possible messages:
-        /// - SUCCESS
+        /// <response code="200">License information retrieved successfully. Possible messages:  
+        /// - SUCCESS  
         /// </response>
         /// <response code="401">Unauthorized access</response>
-        /// <response code="403">Access denied. Possible messages:
-        /// - ACCESS_DENIED
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED  
         /// </response>
-        /// <response code="404">Not found. Possible messages:
-        /// - USER_NOT_FOUND
-        /// - LICENSE_NOT_FOUND
+        /// <response code="404">Not found. Possible messages:  
+        /// - USER_NOT_FOUND  
+        /// - LICENSE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Retrieves license information for a specific user. Users can only view their own licenses,
+        /// Retrieves license information for a specific user. Users can only view their own licenses,  
         /// while administrators can view any user's license.
         /// </remarks>
         [HttpGet("user/{userId:int}")]
@@ -267,31 +267,31 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <param name="licenseId">License ID to update</param>
         /// <param name="request">Updated license information</param>
-        /// <response code="200">License updated successfully. Possible messages:
-        /// - LICENSE_UPDATED_SUCCESSFULLY
+        /// <response code="200">License updated successfully. Possible messages:  
+        /// - LICENSE_UPDATED_SUCCESSFULLY  
         /// </response>
-        /// <response code="400">Bad request. Possible validation messages:
-        /// - LICENSE_NUMBER_REQUIRED
-        /// - LICENSE_NUMBER_INVALID_FORMAT
-        /// - ISSUE_DATE_REQUIRED
-        /// - ISSUED_BY_REQUIRED
-        /// - FIRST_NAME_REQUIRED
-        /// - LAST_NAME_REQUIRED
-        /// - DATE_OF_BIRTH_REQUIRED
-        /// - MUST_BE_AT_LEAST_18_YEARS_OLD
+        /// <response code="400">Bad request. Possible validation messages:  
+        /// - LICENSE_NUMBER_REQUIRED  
+        /// - LICENSE_NUMBER_INVALID_FORMAT  
+        /// - ISSUE_DATE_REQUIRED  
+        /// - ISSUED_BY_REQUIRED  
+        /// - FIRST_NAME_REQUIRED  
+        /// - LAST_NAME_REQUIRED  
+        /// - DATE_OF_BIRTH_REQUIRED  
+        /// - MUST_BE_AT_LEAST_18_YEARS_OLD  
         /// </response>
         /// <response code="401">Unauthorized access</response>
-        /// <response code="403">Access denied. Possible messages:
-        /// - ACCESS_DENIED
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED  
         /// </response>
-        /// <response code="404">Not found. Possible messages:
-        /// - LICENSE_NOT_FOUND
+        /// <response code="404">Not found. Possible messages:  
+        /// - LICENSE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Updates existing license information. Users can only update their own licenses,
+        /// Updates existing license information. Users can only update their own licenses,  
         /// while administrators and staff can update any license.
         /// </remarks>
         [HttpPut("{licenseId:int}")]
@@ -321,21 +321,21 @@ namespace EvCoOwnership.API.Controllers
         /// Deletes a license (admin/staff only or user can delete their own)
         /// </summary>
         /// <param name="licenseId">License ID to delete</param>
-        /// <response code="200">License deleted successfully. Possible messages:
-        /// - LICENSE_DELETED_SUCCESSFULLY
+        /// <response code="200">License deleted successfully. Possible messages:  
+        /// - LICENSE_DELETED_SUCCESSFULLY  
         /// </response>
         /// <response code="401">Unauthorized access</response>
-        /// <response code="403">Access denied. Possible messages:
-        /// - ACCESS_DENIED
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED  
         /// </response>
-        /// <response code="404">Not found. Possible messages:
-        /// - LICENSE_NOT_FOUND
+        /// <response code="404">Not found. Possible messages:  
+        /// - LICENSE_NOT_FOUND  
         /// </response>
-        /// <response code="500">Internal server error. Possible messages:
-        /// - INTERNAL_SERVER_ERROR
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Deletes a license from the system. Users can only delete their own licenses,
+        /// Deletes a license from the system. Users can only delete their own licenses,  
         /// while administrators and staff can delete any license.
         /// </remarks>
         [HttpDelete("{licenseId:int}")]
