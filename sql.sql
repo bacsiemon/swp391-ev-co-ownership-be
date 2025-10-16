@@ -259,3 +259,19 @@ CREATE TABLE file_uploads (
     mime_type VARCHAR(100) NOT NULL,
     uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE notification_entities (
+	id SERIAL PRIMARY KEY,
+	notification_type TEXT NOT NULL,
+	additional_data JSONB, 
+	created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE user_notifications (
+	id SERIAL PRIMARY KEY,
+	notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
+	user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+	read_at TIMESTAMP,
+	UNIQUE(notification_id, user_id)
+);
