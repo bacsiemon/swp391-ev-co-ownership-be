@@ -270,7 +270,7 @@ CREATE TABLE notification_entities (
 
 CREATE TABLE user_notifications (
 	id SERIAL PRIMARY KEY,
-	notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
+	notification_id INTEGER REFERENCES notification_entities(id) ON DELETE CASCADE,
 	user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 	read_at TIMESTAMP,
 	UNIQUE(notification_id, user_id)
