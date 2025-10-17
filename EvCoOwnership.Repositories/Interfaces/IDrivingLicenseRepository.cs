@@ -10,5 +10,6 @@ namespace EvCoOwnership.Repositories.Interfaces
         Task<bool> LicenseNumberExistsAsync(string licenseNumber);
         Task<List<DrivingLicense>> GetByCoOwnerIdAsync(int coOwnerId);
         Task<List<DrivingLicense>> GetExpiringLicensesAsync(int daysThreshold = 30);
+        Task<DrivingLicense?> GetByUserIdAsync(int userId);
     }
 }

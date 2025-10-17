@@ -41,7 +41,7 @@ namespace EvCoOwnership.Repositories.Repositories.Base
             return await query.ToListAsync();
         }
 
-        public async Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, params string[] includeProperties)
+        public async Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null, params string[] includeProperties)
         {
             if (firstPage > page)
                 throw new ArgumentException($"Page ({page}) must be greater or equal than firstPage ({firstPage})");
@@ -115,12 +115,12 @@ namespace EvCoOwnership.Repositories.Repositories.Base
 
         public T GetById(int id)
         {
-            return _context.Set<T>().Find(id);
+            return _context.Set<T>().Find(id)!;
         }
 
         public async Task<T> GetByIdAsync(int id)
         {
-            return await _context.Set<T>().FindAsync(id);
+            return (await _context.Set<T>().FindAsync(id))!;
         }
         public async Task<T> GetByIdAsync(int id, params string[] includes)
         {
@@ -135,27 +135,51 @@ namespace EvCoOwnership.Repositories.Repositories.Base
                 }
             }
 
-            return await query.FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
+            return (await query.FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id))!;
         }
 
         public T GetById(string code)
         {
-            return _context.Set<T>().Find(code);
+            return _context.Set<T>().Find(code)!;
         }
 
         public async Task<T> GetByIdAsync(string code)
         {
-            return await _context.Set<T>().FindAsync(code);
+            return (await _context.Set<T>().FindAsync(code))!;
         }
 
         public T GetById(Guid code)
         {
-            return _context.Set<T>().Find(code);
+            return _context.Set<T>().Find(code)!;
         }
 
         public async Task<T> GetByIdAsync(Guid code)
         {
-            return await _context.Set<T>().FindAsync(code);
+            return (await _context.Set<T>().FindAsync(code))!;
+        }
+
+        // Additional async methods required by interface
+        public async Task<T> AddAsync(T entity)
+        {
+            await _context.Set<T>().AddAsync(entity);
+            return entity;
+        }
+
+        public async Task AddRangeAsync(List<T> entities)
+        {
+            await _context.Set<T>().AddRangeAsync(entities);
+        }
+
+        public async Task<bool> DeleteAsync(T entity)
+        {
+            _context.Set<T>().Remove(entity);
+            return true;
+        }
+
+        public async Task<T> UpdateAsync(T entity)
+        {
+            _context.Set<T>().Update(entity);
+            return entity;
         }
     }
 }

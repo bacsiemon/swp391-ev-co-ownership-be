@@ -1,6 +1,7 @@
 ﻿using EvCoOwnership.Repositories.Context;
 using EvCoOwnership.Repositories.Interfaces;
 using EvCoOwnership.Repositories.Repositories;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EvCoOwnership.Repositories.UoW
 {
@@ -23,6 +24,11 @@ namespace EvCoOwnership.Repositories.UoW
         {
             return await _context.SaveChangesAsync();
         }
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        {
+            return await _context.Database.BeginTransactionAsync();
+        }
         #endregion
 
         // Repository backing fields
@@ -41,6 +47,7 @@ namespace EvCoOwnership.Repositories.UoW
         private PaymentRepository _paymentRepository;
         private UserRefreshTokenRepository _userRefreshTokenRepository;
         private VehicleRepository _vehicleRepository;
+        private VehicleCoOwnerRepository _vehicleCoOwnerRepository;
         private VehicleConditionRepository _vehicleConditionRepository;
         private VehicleStationRepository _vehicleStationRepository;
 
@@ -60,6 +67,7 @@ namespace EvCoOwnership.Repositories.UoW
         public IPaymentRepository PaymentRepository { get { return _paymentRepository ??= new PaymentRepository(_context); } }
         public IUserRefreshTokenRepository UserRefreshTokenRepository { get { return _userRefreshTokenRepository ??= new UserRefreshTokenRepository(_context); } }
         public IVehicleRepository VehicleRepository { get { return _vehicleRepository ??= new VehicleRepository(_context); } }
+        public IVehicleCoOwnerRepository VehicleCoOwnerRepository { get { return _vehicleCoOwnerRepository ??= new VehicleCoOwnerRepository(_context); } }
         public IVehicleConditionRepository VehicleConditionRepository { get { return _vehicleConditionRepository ??= new VehicleConditionRepository(_context); } }
         public IVehicleStationRepository VehicleStationRepository { get { return _vehicleStationRepository ??= new VehicleStationRepository(_context); } }
     }
