@@ -1,4 +1,6 @@
+using EvCoOwnership.API.Attributes;
 using EvCoOwnership.DTOs.VehicleDTOs;
+using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,6 +78,7 @@ namespace EvCoOwnership.API.Controllers
         /// - No I, O, Q allowed to avoid confusion  
         /// </remarks>
         [HttpPost]
+        [AuthorizeRoles(EUserRole.CoOwner)]
         public async Task<IActionResult> CreateVehicle([FromBody] CreateVehicleRequest request)
         {
             // Get user ID from JWT token
@@ -145,6 +148,7 @@ namespace EvCoOwnership.API.Controllers
         /// If vehicle has 70% ownership taken, maximum new ownership percentage is 30%
         /// </remarks>
         [HttpPost("{vehicleId:int}/co-owners")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
         public async Task<IActionResult> AddCoOwner(int vehicleId, [FromBody] AddCoOwnerRequest request)
         {
             // Get user ID from JWT token
@@ -207,6 +211,7 @@ namespace EvCoOwnership.API.Controllers
         /// - Investment amount must be documented for tax purposes  
         /// </remarks>
         [HttpPut("{vehicleId:int}/invitations/respond")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
         public async Task<IActionResult> RespondToInvitation(int vehicleId, [FromBody] RespondToInvitationRequest request)
         {
             // Get user ID from JWT token
@@ -249,6 +254,7 @@ namespace EvCoOwnership.API.Controllers
         /// Only co-owners of the vehicle can access this information.
         /// </remarks>
         [HttpGet("{vehicleId:int}")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
         public async Task<IActionResult> GetVehicle(int vehicleId)
         {
             // Get user ID from JWT token
@@ -287,6 +293,7 @@ namespace EvCoOwnership.API.Controllers
         /// Includes both active and pending co-ownership relationships.
         /// </remarks>
         [HttpGet("my-vehicles")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
         public async Task<IActionResult> GetUserVehicles()
         {
             // Get user ID from JWT token
@@ -324,6 +331,7 @@ namespace EvCoOwnership.API.Controllers
         /// These are invitations that haven't been accepted or rejected yet.
         /// </remarks>
         [HttpGet("invitations/pending")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
         public async Task<IActionResult> GetPendingInvitations()
         {
             // Get user ID from JWT token
@@ -371,6 +379,7 @@ namespace EvCoOwnership.API.Controllers
         /// Cannot remove the last active owner of the vehicle.
         /// </remarks>
         [HttpDelete("{vehicleId:int}/co-owners/{coOwnerUserId:int}")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
         public async Task<IActionResult> RemoveCoOwner(int vehicleId, int coOwnerUserId)
         {
             // Get user ID from JWT token
@@ -417,6 +426,7 @@ namespace EvCoOwnership.API.Controllers
         /// Note: VIN and license plate cannot be changed as they are permanent identifiers.
         /// </remarks>
         [HttpPut("{vehicleId:int}")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
         public async Task<IActionResult> UpdateVehicle(int vehicleId, [FromBody] CreateVehicleRequest request)
         {
             // Get user ID from JWT token
