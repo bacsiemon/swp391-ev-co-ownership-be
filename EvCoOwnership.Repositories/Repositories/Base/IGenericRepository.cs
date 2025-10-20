@@ -8,6 +8,8 @@ namespace EvCoOwnership.Repositories.Repositories.Base
     {
         void Create(T entity);
         void CreateRange(List<T> entities);
+        Task<T> AddAsync(T entity);
+        Task AddRangeAsync(List<T> entities);
         List<T> GetAll();
         Task<List<T>> GetAllAsync();
         Task<List<T>> GetAllAsync(params string[] includeProperties);
@@ -18,10 +20,12 @@ namespace EvCoOwnership.Repositories.Repositories.Base
         Task<T> GetByIdAsync(int id);
         Task<T> GetByIdAsync(int id, params string[] includes);
         Task<T> GetByIdAsync(string code);
-        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, params string[] includeProperties);
+        Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null, params string[] includeProperties);
         bool Remove(T entity);
         void RemoveRange(List<T> entities);
+        Task<bool> DeleteAsync(T entity);
         void Update(T entity);
+        Task<T> UpdateAsync(T entity);
         void UpdateRange(List<T> entities);
     }
 }

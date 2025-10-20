@@ -52,5 +52,13 @@ namespace EvCoOwnership.Repositories.Repositories
                            && dl.ExpiryDate.Value > today)
                 .ToListAsync();
         }
+
+        public async Task<DrivingLicense?> GetByUserIdAsync(int userId)
+        {
+            return await _context.DrivingLicenses
+                .Include(dl => dl.CoOwner)
+                .ThenInclude(co => co.User)
+                .FirstOrDefaultAsync(dl => dl.CoOwner.UserId == userId);
+        }
     }
 }

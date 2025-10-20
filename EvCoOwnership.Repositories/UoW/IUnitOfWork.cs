@@ -1,4 +1,5 @@
 ﻿using EvCoOwnership.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EvCoOwnership.Repositories.UoW
 {
@@ -20,9 +21,11 @@ namespace EvCoOwnership.Repositories.UoW
         IPaymentRepository PaymentRepository { get; }
         IUserRefreshTokenRepository UserRefreshTokenRepository { get; }
         IVehicleRepository VehicleRepository { get; }
+        IVehicleCoOwnerRepository VehicleCoOwnerRepository { get; }
         IVehicleConditionRepository VehicleConditionRepository { get; }
         IVehicleStationRepository VehicleStationRepository { get; }
 
         Task<int> SaveChangesAsync();
+        Task<IDbContextTransaction> BeginTransactionAsync();
     }
 }
