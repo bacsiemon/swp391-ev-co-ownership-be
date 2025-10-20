@@ -78,6 +78,10 @@ try
 
     app.UseHttpsRedirection();
 
+    // Custom authorization middleware (must be before UseAuthentication and UseAuthorization)
+    app.UseMiddleware<AuthorizationMiddleware>();
+    app.UseMiddleware<ExceptionMiddleware>();
+
     app.UseAuthentication();
     app.UseAuthorization();
 

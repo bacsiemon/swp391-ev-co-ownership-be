@@ -1,5 +1,6 @@
+using EvCoOwnership.API.Attributes;
+using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,7 +11,7 @@ namespace EvCoOwnership.API.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [AuthorizeRoles] // Requires authentication only
     public class CoOwnerController : ControllerBase
     {
         private readonly ICoOwnerEligibilityService _coOwnerEligibilityService;
@@ -147,7 +148,7 @@ namespace EvCoOwnership.API.Controllers
         /// Target user must meet all eligibility requirements.
         /// </remarks>
         [HttpPost("promote/{userId:int}")]
-        [Authorize(Roles = "Admin,Staff")]
+        [AuthorizeRoles(EUserRole.Admin, EUserRole.Staff)]
         public async Task<IActionResult> PromoteUserToCoOwner(int userId)
         {
             var response = await _coOwnerEligibilityService.PromoteToCoOwnerAsync(userId);
@@ -181,7 +182,7 @@ namespace EvCoOwnership.API.Controllers
         /// - Expired and expiring licenses  
         /// </remarks>
         [HttpGet("statistics")]
-        [Authorize(Roles = "Admin,Staff")]
+        [AuthorizeRoles(EUserRole.Admin, EUserRole.Staff)]
         public async Task<IActionResult> GetCoOwnershipStats()
         {
             var response = await _coOwnerEligibilityService.GetCoOwnershipStatsAsync();

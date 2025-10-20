@@ -1,4 +1,6 @@
+using EvCoOwnership.API.Attributes;
 using EvCoOwnership.DTOs.FileUploadDTOs;
+using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +10,7 @@ namespace EvCoOwnership.API.Controllers
     /// <summary>Admin, Staff, CoOwner</summary>
     [Route("api/[controller]")]
     [ApiController]
+    [AuthorizeRoles] // Requires authentication for all endpoints
     public class FileUploadController : ControllerBase
     {
         private readonly IFileUploadService _fileUploadService;
@@ -149,7 +152,7 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
-        /// <summary>User</summary>
+        /// <summary>Admin only - Delete files</summary>
         /// <remarks>
         /// Delete a file from the system. This action is irreversible.  
         /// Only administrators can delete files.
@@ -165,6 +168,7 @@ namespace EvCoOwnership.API.Controllers
         /// - FILE_DELETE_FAILED  
         /// </response>
         [HttpDelete("{id:int}")]
+        [AuthorizeRoles(EUserRole.Admin)]
         public async Task<IActionResult> DeleteFile(int id)
         {
             var response = await _fileUploadService.DeleteFileAsync(id);

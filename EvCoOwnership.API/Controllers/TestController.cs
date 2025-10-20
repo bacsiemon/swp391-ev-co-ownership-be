@@ -3,9 +3,11 @@ using EvCoOwnership.DTOs.TestDTOs;
 using EvCoOwnership.DTOs.AuthDTOs;
 using EvCoOwnership.DTOs.FileUploadDTOs;
 using EvCoOwnership.API.Attributes;
+using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -197,5 +199,159 @@ namespace EvCoOwnership.API.Controllers
                 _ => StatusCode(response.StatusCode, response)
             };
         }
+
+        #region Authorization Testing Endpoints
+
+        /// <summary>
+        /// Test endpoint that requires authentication only (no specific roles)
+        /// </summary>
+        /// <response code="200">Authentication successful</response>
+        /// <response code="401">Unauthorized - missing or invalid token</response>
+        /// <remarks>
+        /// This endpoint demonstrates authentication-only access using AuthorizeRoles attribute with no specified roles.
+        /// </remarks>
+        [HttpGet("test-auth-only")]
+        [AuthorizeRoles] // No roles specified = authentication only
+        public IActionResult TestAuthOnly()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            return Ok(new BaseResponse
+            {
+                StatusCode = 200,
+                Message = "AUTHENTICATION_SUCCESS",
+                Data = new
+                {
+                    Message = "You are authenticated! No specific roles required.",
+                    UserId = userId,
+                    Email = userEmail,
+                    Roles = userRoles,
+                    AccessTime = DateTime.UtcNow
+                }
+            });
+        }
+
+        /// <summary>
+        /// Test endpoint that requires Admin role
+        /// </summary>
+        /// <response code="200">Authorization successful</response>
+        /// <response code="401">Unauthorized - missing or invalid token</response>
+        /// <response code="403">Forbidden - insufficient permissions</response>
+        /// <remarks>
+        /// This endpoint demonstrates role-based authorization requiring Admin role.
+        /// </remarks>
+        [HttpGet("test-admin-only")]
+        [AuthorizeRoles(EUserRole.Admin)]
+        public IActionResult TestAdminOnly()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            return Ok(new BaseResponse
+            {
+                StatusCode = 200,
+                Message = "ADMIN_ACCESS_SUCCESS",
+                Data = new
+                {
+                    Message = "Welcome, Admin! You have full access.",
+                    UserId = userId,
+                    Email = userEmail,
+                    Roles = userRoles,
+                    AccessTime = DateTime.UtcNow
+                }
+            });
+        }
+
+        /// <summary>
+        /// Test endpoint that requires Admin or Staff role
+        /// </summary>
+        /// <response code="200">Authorization successful</response>
+        /// <response code="401">Unauthorized - missing or invalid token</response>
+        /// <response code="403">Forbidden - insufficient permissions</response>
+        /// <remarks>
+        /// This endpoint demonstrates role-based authorization allowing multiple roles (Admin OR Staff).
+        /// </remarks>
+        [HttpGet("test-admin-or-staff")]
+        [AuthorizeRoles(EUserRole.Admin, EUserRole.Staff)]
+        public IActionResult TestAdminOrStaff()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            return Ok(new BaseResponse
+            {
+                StatusCode = 200,
+                Message = "ADMIN_OR_STAFF_ACCESS_SUCCESS",
+                Data = new
+                {
+                    Message = "Welcome, Admin or Staff member! You have elevated access.",
+                    UserId = userId,
+                    Email = userEmail,
+                    Roles = userRoles,
+                    AccessTime = DateTime.UtcNow
+                }
+            });
+        }
+
+        /// <summary>
+        /// Test endpoint that requires CoOwner, Admin, or Staff role
+        /// </summary>
+        /// <response code="200">Authorization successful</response>
+        /// <response code="401">Unauthorized - missing or invalid token</response>
+        /// <response code="403">Forbidden - insufficient permissions</response>
+        /// <remarks>
+        /// This endpoint demonstrates role-based authorization allowing all authenticated user types.
+        /// </remarks>
+        [HttpGet("test-all-roles")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Admin, EUserRole.Staff)]
+        public IActionResult TestAllRoles()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            return Ok(new BaseResponse
+            {
+                StatusCode = 200,
+                Message = "ALL_ROLES_ACCESS_SUCCESS",
+                Data = new
+                {
+                    Message = "Welcome! You have a valid role for this endpoint.",
+                    UserId = userId,
+                    Email = userEmail,
+                    Roles = userRoles,
+                    AccessTime = DateTime.UtcNow
+                }
+            });
+        }
+
+        /// <summary>
+        /// Test endpoint with no authorization (publicly accessible)
+        /// </summary>
+        /// <response code="200">Success</response>
+        /// <remarks>
+        /// This endpoint has no AuthorizeRoles attribute, so it's publicly accessible.
+        /// </remarks>
+        [HttpGet("test-public")]
+        public IActionResult TestPublic()
+        {
+            return Ok(new BaseResponse
+            {
+                StatusCode = 200,
+                Message = "PUBLIC_ACCESS_SUCCESS",
+                Data = new
+                {
+                    Message = "This endpoint is publicly accessible - no authentication required!",
+                    AccessTime = DateTime.UtcNow,
+                    Note = "No AuthorizeRoles attribute means no authentication is required"
+                }
+            });
+        }
+
+        #endregion
     }
 }

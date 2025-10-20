@@ -1,6 +1,7 @@
+using EvCoOwnership.API.Attributes;
 using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -132,7 +133,7 @@ namespace EvCoOwnership.API.Controllers
         /// while administrators can view any license.
         /// </remarks>
         [HttpGet("info")]
-        [Authorize]
+        [AuthorizeRoles]
         public async Task<IActionResult> GetLicenseInfo([FromQuery] string licenseNumber)
         {
             if (string.IsNullOrEmpty(licenseNumber))
@@ -181,7 +182,7 @@ namespace EvCoOwnership.API.Controllers
         /// Updates the status of a license. Only administrators and staff members can perform this action.
         /// </remarks>
         [HttpPatch("status")]
-        [Authorize(Roles = "Admin,Staff")]
+        [AuthorizeRoles(EUserRole.Admin, EUserRole.Staff)]
         public async Task<IActionResult> UpdateLicenseStatus([FromQuery] string licenseNumber, [FromQuery] string status)
         {
             if (string.IsNullOrEmpty(licenseNumber))
@@ -235,7 +236,7 @@ namespace EvCoOwnership.API.Controllers
         /// while administrators can view any user's license.
         /// </remarks>
         [HttpGet("user/{userId:int}")]
-        [Authorize]
+        [AuthorizeRoles]
         public async Task<IActionResult> GetUserLicense(int userId)
         {
             // Get current user ID from JWT token
@@ -295,7 +296,7 @@ namespace EvCoOwnership.API.Controllers
         /// while administrators and staff can update any license.
         /// </remarks>
         [HttpPut("{licenseId:int}")]
-        [Authorize]
+        [AuthorizeRoles]
         public async Task<IActionResult> UpdateLicense(int licenseId, [FromForm] VerifyLicenseRequest request)
         {
             // Get current user ID from JWT token
@@ -339,7 +340,7 @@ namespace EvCoOwnership.API.Controllers
         /// while administrators and staff can delete any license.
         /// </remarks>
         [HttpDelete("{licenseId:int}")]
-        [Authorize]
+        [AuthorizeRoles]
         public async Task<IActionResult> DeleteLicense(int licenseId)
         {
             // Get current user ID from JWT token
