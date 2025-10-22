@@ -41,6 +41,11 @@ namespace EvCoOwnership.Repositories.Repositories.Base
             return await query.ToListAsync();
         }
 
+        public IQueryable<T> GetQueryable()
+        {
+            return _context.Set<T>().AsQueryable();
+        }
+
         public async Task<PaginatedList<T>> GetPaginatedAsync(int page, int size, int firstPage = 1, Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null, params string[] includeProperties)
         {
             if (firstPage > page)
