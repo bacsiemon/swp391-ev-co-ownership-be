@@ -77,6 +77,11 @@ public partial class EvCoOwnershipDbContext : DbContext
     // Ownership History table
     public virtual DbSet<OwnershipHistory> OwnershipHistories { get; set; }
 
+    // Vehicle Upgrade Voting tables
+    public virtual DbSet<VehicleUpgradeProposal> VehicleUpgradeProposals { get; set; }
+
+    public virtual DbSet<VehicleUpgradeVote> VehicleUpgradeVotes { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Booking>(entity =>
