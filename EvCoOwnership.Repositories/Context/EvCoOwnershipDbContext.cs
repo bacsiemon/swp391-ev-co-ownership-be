@@ -72,6 +72,9 @@ public partial class EvCoOwnershipDbContext : DbContext
 
     public virtual DbSet<OwnershipChangeApproval> OwnershipChangeApprovals { get; set; }
 
+    // Ownership History table
+    public virtual DbSet<OwnershipHistory> OwnershipHistories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Booking>(entity =>
@@ -1047,6 +1050,79 @@ public partial class EvCoOwnershipDbContext : DbContext
 
             entity.HasIndex(e => e.OwnershipChangeRequestId);
             entity.HasIndex(e => new { e.UserId, e.ApprovalStatusEnum });
+        });
+
+        // Ownership History configuration
+        modelBuilder.Entity<OwnershipHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.ToTable("ownership_history");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.CoOwnerId).HasColumnName("co_owner_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OwnershipChangeRequestId).HasColumnName("ownership_change_request_id");
+            entity.Property(e => e.PreviousPercentage)
+                .HasPrecision(5, 2)
+                .HasColumnName("previous_percentage");
+            entity.Property(e => e.NewPercentage)
+                .HasPrecision(5, 2)
+                .HasColumnName("new_percentage");
+            entity.Property(e => e.PercentageChange)
+                .HasPrecision(5, 2)
+                .HasColumnName("percentage_change");
+            entity.Property(e => e.PreviousInvestment)
+                .HasPrecision(15, 2)
+                .HasColumnName("previous_investment");
+            entity.Property(e => e.NewInvestment)
+                .HasPrecision(15, 2)
+                .HasColumnName("new_investment");
+            entity.Property(e => e.InvestmentChange)
+                .HasPrecision(15, 2)
+                .HasColumnName("investment_change");
+            entity.Property(e => e.ChangeTypeEnum)
+                .HasColumnName("change_type_enum")
+                .HasConversion<int>();
+            entity.Property(e => e.Reason)
+                .HasMaxLength(1000)
+                .HasColumnName("reason");
+            entity.Property(e => e.ChangedByUserId).HasColumnName("changed_by_user_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Vehicle)
+                .WithMany()
+                .HasForeignKey(d => d.VehicleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.CoOwner)
+                .WithMany()
+                .HasForeignKey(d => d.CoOwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.OwnershipChangeRequest)
+                .WithMany()
+                .HasForeignKey(d => d.OwnershipChangeRequestId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(d => d.ChangedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.ChangedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.VehicleId);
+            entity.HasIndex(e => e.CoOwnerId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
         });
 
         ConfigureDateTimeConversions(modelBuilder);

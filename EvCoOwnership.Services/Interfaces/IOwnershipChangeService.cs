@@ -16,7 +16,7 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="proposedByUserId">ID of user proposing the change</param>
         /// <returns>Response with created ownership change request details</returns>
         Task<BaseResponse<OwnershipChangeRequestResponse>> ProposeOwnershipChangeAsync(
-            ProposeOwnershipChangeRequest request, 
+            ProposeOwnershipChangeRequest request,
             int proposedByUserId);
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="userId">ID of user making the request (for authorization)</param>
         /// <returns>Response with ownership change request details</returns>
         Task<BaseResponse<OwnershipChangeRequestResponse>> GetOwnershipChangeRequestAsync(
-            int requestId, 
+            int requestId,
             int userId);
 
         /// <summary>
@@ -37,8 +37,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="includeCompleted">Include completed (approved/rejected) requests</param>
         /// <returns>Response with list of ownership change requests</returns>
         Task<BaseResponse<List<OwnershipChangeRequestResponse>>> GetVehicleOwnershipChangeRequestsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             bool includeCompleted = false);
 
         /// <summary>
@@ -58,8 +58,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="userId">ID of user approving/rejecting</param>
         /// <returns>Response with updated ownership change request details</returns>
         Task<BaseResponse<OwnershipChangeRequestResponse>> ApproveOrRejectOwnershipChangeAsync(
-            int requestId, 
-            ApproveOwnershipChangeRequest request, 
+            int requestId,
+            ApproveOwnershipChangeRequest request,
             int userId);
 
         /// <summary>
@@ -84,7 +84,60 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="includeCompleted">Include completed requests</param>
         /// <returns>Response with list of ownership change requests</returns>
         Task<BaseResponse<List<OwnershipChangeRequestResponse>>> GetUserOwnershipChangeRequestsAsync(
-            int userId, 
+            int userId,
             bool includeCompleted = false);
+
+        // Ownership History Methods
+
+        /// <summary>
+        /// Gets ownership history for a specific vehicle
+        /// </summary>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="userId">ID of user making the request (for authorization)</param>
+        /// <param name="request">Filter parameters (optional)</param>
+        /// <returns>Response with list of ownership history records</returns>
+        Task<BaseResponse<List<OwnershipHistoryResponse>>> GetVehicleOwnershipHistoryAsync(
+            int vehicleId,
+            int userId,
+            GetOwnershipHistoryRequest? request = null);
+
+        /// <summary>
+        /// Gets ownership timeline showing evolution of ownership for all co-owners
+        /// </summary>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="userId">ID of user making the request (for authorization)</param>
+        /// <returns>Response with complete ownership timeline</returns>
+        Task<BaseResponse<VehicleOwnershipTimelineResponse>> GetVehicleOwnershipTimelineAsync(
+            int vehicleId,
+            int userId);
+
+        /// <summary>
+        /// Gets ownership snapshot at a specific point in time
+        /// </summary>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="snapshotDate">Date for the snapshot</param>
+        /// <param name="userId">ID of user making the request (for authorization)</param>
+        /// <returns>Response with ownership snapshot</returns>
+        Task<BaseResponse<OwnershipSnapshotResponse>> GetOwnershipSnapshotAsync(
+            int vehicleId,
+            DateTime snapshotDate,
+            int userId);
+
+        /// <summary>
+        /// Gets ownership history statistics for a vehicle
+        /// </summary>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="userId">ID of user making the request (for authorization)</param>
+        /// <returns>Response with ownership history statistics</returns>
+        Task<BaseResponse<OwnershipHistoryStatisticsResponse>> GetOwnershipHistoryStatisticsAsync(
+            int vehicleId,
+            int userId);
+
+        /// <summary>
+        /// Gets ownership history for a specific co-owner across all vehicles
+        /// </summary>
+        /// <param name="userId">User ID of the co-owner</param>
+        /// <returns>Response with ownership history for the co-owner</returns>
+        Task<BaseResponse<List<OwnershipHistoryResponse>>> GetCoOwnerOwnershipHistoryAsync(int userId);
     }
 }

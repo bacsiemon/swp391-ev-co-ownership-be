@@ -694,6 +694,7 @@ namespace EvCoOwnership.Services.Services
 
         /// <summary>
         /// Applies approved ownership changes to the actual VehicleCoOwner records
+        /// Also creates ownership history records for audit trail
         /// </summary>
         private async Task ApplyOwnershipChangesAsync(OwnershipChangeRequest changeRequest)
         {
@@ -702,6 +703,28 @@ namespace EvCoOwnership.Services.Services
                 var vehicleCoOwner = changeRequest.Vehicle.VehicleCoOwners
                     .First(vco => vco.CoOwnerId == detail.CoOwnerId);
 
+                // Create ownership history record
+                var historyRecord = new OwnershipHistory
+                {
+                    VehicleId = changeRequest.VehicleId,
+                    CoOwnerId = detail.CoOwnerId,
+                    UserId = detail.CoOwner.UserId,
+                    OwnershipChangeRequestId = changeRequest.Id,
+                    PreviousPercentage = detail.CurrentPercentage,
+                    NewPercentage = detail.ProposedPercentage,
+                    PercentageChange = detail.ProposedPercentage - detail.CurrentPercentage,
+                    PreviousInvestment = detail.CurrentInvestment,
+                    NewInvestment = detail.ProposedInvestment,
+                    InvestmentChange = detail.ProposedInvestment - detail.CurrentInvestment,
+                    ChangeTypeEnum = EOwnershipChangeType.Adjustment,
+                    Reason = changeRequest.Reason,
+                    ChangedByUserId = changeRequest.ProposedByUserId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _unitOfWork.DbContext.Set<OwnershipHistory>().Add(historyRecord);
+
+                // Apply the ownership change
                 vehicleCoOwner.OwnershipPercentage = detail.ProposedPercentage;
                 vehicleCoOwner.InvestmentAmount = detail.ProposedInvestment;
                 vehicleCoOwner.UpdatedAt = DateTime.UtcNow;
@@ -790,6 +813,474 @@ namespace EvCoOwnership.Services.Services
                     Comments = oca.Comments,
                     RespondedAt = oca.RespondedAt
                 }).ToList() ?? new List<ApprovalResponse>()
+            };
+        }
+
+        #endregion
+
+        #region Ownership History Methods
+
+        public async Task<BaseResponse<List<OwnershipHistoryResponse>>> GetVehicleOwnershipHistoryAsync(
+            int vehicleId,
+            int userId,
+            GetOwnershipHistoryRequest? request = null)
+        {
+            try
+            {
+                // Validate user is authorized to view this vehicle's history
+                var isCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId && vco.CoOwner.UserId == userId);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<List<OwnershipHistoryResponse>>
+                    {
+                        StatusCode = 403,
+                        Message = "NOT_AUTHORIZED_TO_VIEW_VEHICLE_HISTORY",
+                        Data = null
+                    };
+                }
+
+                request ??= new GetOwnershipHistoryRequest();
+
+                var query = _unitOfWork.DbContext.Set<OwnershipHistory>()
+                    .Include(oh => oh.Vehicle)
+                    .Include(oh => oh.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .Include(oh => oh.ChangedByUser)
+                    .Where(oh => oh.VehicleId == vehicleId);
+
+                // Apply filters
+                if (!string.IsNullOrEmpty(request.ChangeType))
+                {
+                    if (Enum.TryParse<EOwnershipChangeType>(request.ChangeType, true, out var changeType))
+                    {
+                        query = query.Where(oh => oh.ChangeTypeEnum == changeType);
+                    }
+                }
+
+                if (request.StartDate.HasValue)
+                {
+                    query = query.Where(oh => oh.CreatedAt >= request.StartDate.Value);
+                }
+
+                if (request.EndDate.HasValue)
+                {
+                    query = query.Where(oh => oh.CreatedAt <= request.EndDate.Value);
+                }
+
+                if (request.CoOwnerId.HasValue)
+                {
+                    query = query.Where(oh => oh.CoOwnerId == request.CoOwnerId.Value);
+                }
+
+                var totalCount = await query.CountAsync();
+
+                var history = await query
+                    .OrderByDescending(oh => oh.CreatedAt)
+                    .Skip(request.Offset)
+                    .Take(request.Limit)
+                    .ToListAsync();
+
+                var responses = history.Select(MapHistoryToResponse).ToList();
+
+                return new BaseResponse<List<OwnershipHistoryResponse>>
+                {
+                    StatusCode = 200,
+                    Message = $"FOUND_{responses.Count}_OWNERSHIP_HISTORY_RECORDS",
+                    Data = responses,
+                    AdditionalData = new { TotalCount = totalCount, Offset = request.Offset, Limit = request.Limit }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving ownership history for vehicle {vehicleId}");
+                return new BaseResponse<List<OwnershipHistoryResponse>>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null,
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<VehicleOwnershipTimelineResponse>> GetVehicleOwnershipTimelineAsync(
+            int vehicleId,
+            int userId)
+        {
+            try
+            {
+                // Validate user is authorized
+                var isCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId && vco.CoOwner.UserId == userId);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<VehicleOwnershipTimelineResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "NOT_AUTHORIZED_TO_VIEW_VEHICLE_TIMELINE",
+                        Data = null
+                    };
+                }
+
+                var vehicle = await _unitOfWork.DbContext.Set<Vehicle>()
+                    .Include(v => v.VehicleCoOwners)
+                    .ThenInclude(vco => vco.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse<VehicleOwnershipTimelineResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var allHistory = await _unitOfWork.DbContext.Set<OwnershipHistory>()
+                    .Include(oh => oh.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .Include(oh => oh.ChangedByUser)
+                    .Include(oh => oh.Vehicle)
+                    .Where(oh => oh.VehicleId == vehicleId)
+                    .OrderBy(oh => oh.CreatedAt)
+                    .ToListAsync();
+
+                var timeline = new VehicleOwnershipTimelineResponse
+                {
+                    VehicleId = vehicle.Id,
+                    VehicleName = vehicle.Name,
+                    LicensePlate = vehicle.LicensePlate,
+                    VehicleCreatedAt = vehicle.CreatedAt,
+                    TotalHistoryRecords = allHistory.Count,
+                    AllChanges = allHistory.Select(MapHistoryToResponse).OrderByDescending(h => h.CreatedAt).ToList()
+                };
+
+                // Group by co-owner
+                var coOwnerTimelines = new List<CoOwnerOwnershipTimeline>();
+                foreach (var coOwner in vehicle.VehicleCoOwners)
+                {
+                    var coOwnerHistory = allHistory.Where(h => h.CoOwnerId == coOwner.CoOwnerId).ToList();
+
+                    var coOwnerTimeline = new CoOwnerOwnershipTimeline
+                    {
+                        CoOwnerId = coOwner.CoOwnerId,
+                        UserId = coOwner.CoOwner.UserId,
+                        CoOwnerName = $"{coOwner.CoOwner.User.FirstName} {coOwner.CoOwner.User.LastName}",
+                        Email = coOwner.CoOwner.User.Email,
+                        CurrentPercentage = coOwner.OwnershipPercentage,
+                        InitialPercentage = coOwnerHistory.FirstOrDefault()?.PreviousPercentage ?? coOwner.OwnershipPercentage,
+                        TotalChange = coOwner.OwnershipPercentage - (coOwnerHistory.FirstOrDefault()?.PreviousPercentage ?? coOwner.OwnershipPercentage),
+                        JoinedAt = coOwner.CreatedAt,
+                        ChangeCount = coOwnerHistory.Count,
+                        Changes = coOwnerHistory.Select(MapHistoryToResponse).ToList()
+                    };
+
+                    coOwnerTimelines.Add(coOwnerTimeline);
+                }
+
+                timeline.CoOwnersTimeline = coOwnerTimelines;
+
+                return new BaseResponse<VehicleOwnershipTimelineResponse>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_OWNERSHIP_TIMELINE_RETRIEVED_SUCCESSFULLY",
+                    Data = timeline
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving ownership timeline for vehicle {vehicleId}");
+                return new BaseResponse<VehicleOwnershipTimelineResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null,
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<OwnershipSnapshotResponse>> GetOwnershipSnapshotAsync(
+            int vehicleId,
+            DateTime snapshotDate,
+            int userId)
+        {
+            try
+            {
+                // Validate user is authorized
+                var isCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId && vco.CoOwner.UserId == userId);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<OwnershipSnapshotResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "NOT_AUTHORIZED_TO_VIEW_VEHICLE_SNAPSHOT",
+                        Data = null
+                    };
+                }
+
+                var vehicle = await _unitOfWork.DbContext.Set<Vehicle>()
+                    .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse<OwnershipSnapshotResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                // Get all history records up to the snapshot date
+                var historyUpToDate = await _unitOfWork.DbContext.Set<OwnershipHistory>()
+                    .Include(oh => oh.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .Where(oh => oh.VehicleId == vehicleId && oh.CreatedAt <= snapshotDate)
+                    .OrderBy(oh => oh.CreatedAt)
+                    .ToListAsync();
+
+                // Get current co-owners
+                var currentCoOwners = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
+                    .Include(vco => vco.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .Where(vco => vco.VehicleId == vehicleId)
+                    .ToListAsync();
+
+                var snapshot = new OwnershipSnapshotResponse
+                {
+                    VehicleId = vehicle.Id,
+                    VehicleName = vehicle.Name,
+                    LicensePlate = vehicle.LicensePlate,
+                    SnapshotDate = snapshotDate,
+                    CoOwners = new List<CoOwnerSnapshot>()
+                };
+
+                // Calculate ownership at snapshot date for each co-owner
+                foreach (var coOwner in currentCoOwners)
+                {
+                    var coOwnerHistoryUpToDate = historyUpToDate
+                        .Where(h => h.CoOwnerId == coOwner.CoOwnerId)
+                        .OrderByDescending(h => h.CreatedAt)
+                        .FirstOrDefault();
+
+                    var ownershipAtDate = coOwnerHistoryUpToDate?.NewPercentage ?? coOwner.OwnershipPercentage;
+                    var investmentAtDate = coOwnerHistoryUpToDate?.NewInvestment ?? coOwner.InvestmentAmount;
+
+                    // Only include if co-owner existed at snapshot date
+                    if (coOwner.CreatedAt <= snapshotDate)
+                    {
+                        snapshot.CoOwners.Add(new CoOwnerSnapshot
+                        {
+                            CoOwnerId = coOwner.CoOwnerId,
+                            UserId = coOwner.CoOwner.UserId,
+                            CoOwnerName = $"{coOwner.CoOwner.User.FirstName} {coOwner.CoOwner.User.LastName}",
+                            Email = coOwner.CoOwner.User.Email,
+                            OwnershipPercentage = ownershipAtDate,
+                            InvestmentAmount = investmentAtDate
+                        });
+                    }
+                }
+
+                snapshot.TotalPercentage = snapshot.CoOwners.Sum(co => co.OwnershipPercentage);
+
+                return new BaseResponse<OwnershipSnapshotResponse>
+                {
+                    StatusCode = 200,
+                    Message = "OWNERSHIP_SNAPSHOT_RETRIEVED_SUCCESSFULLY",
+                    Data = snapshot
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving ownership snapshot for vehicle {vehicleId} at {snapshotDate}");
+                return new BaseResponse<OwnershipSnapshotResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null,
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<OwnershipHistoryStatisticsResponse>> GetOwnershipHistoryStatisticsAsync(
+            int vehicleId,
+            int userId)
+        {
+            try
+            {
+                // Validate user is authorized
+                var isCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId && vco.CoOwner.UserId == userId);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<OwnershipHistoryStatisticsResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "NOT_AUTHORIZED_TO_VIEW_VEHICLE_STATISTICS",
+                        Data = null
+                    };
+                }
+
+                var vehicle = await _unitOfWork.DbContext.Set<Vehicle>()
+                    .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse<OwnershipHistoryStatisticsResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var allHistory = await _unitOfWork.DbContext.Set<OwnershipHistory>()
+                    .Include(oh => oh.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .Where(oh => oh.VehicleId == vehicleId)
+                    .ToListAsync();
+
+                var currentCoOwners = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
+                    .Where(vco => vco.VehicleId == vehicleId)
+                    .CountAsync();
+
+                var uniqueCoOwners = allHistory.Select(h => h.CoOwnerId).Distinct().Count();
+
+                var changeTypeBreakdown = allHistory
+                    .GroupBy(h => h.ChangeTypeEnum?.ToString() ?? "Unknown")
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                var mostActiveCoOwner = allHistory
+                    .GroupBy(h => new { h.CoOwnerId, h.UserId, CoOwnerName = $"{h.CoOwner.User.FirstName} {h.CoOwner.User.LastName}" })
+                    .OrderByDescending(g => g.Count())
+                    .FirstOrDefault();
+
+                var averageOwnership = currentCoOwners > 0 ? 100m / currentCoOwners : 0;
+
+                var stats = new OwnershipHistoryStatisticsResponse
+                {
+                    VehicleId = vehicle.Id,
+                    VehicleName = vehicle.Name,
+                    TotalChanges = allHistory.Count,
+                    TotalCoOwners = uniqueCoOwners,
+                    CurrentCoOwners = currentCoOwners,
+                    FirstChange = allHistory.Min(h => h.CreatedAt),
+                    LastChange = allHistory.Max(h => h.CreatedAt),
+                    AverageOwnershipPercentage = averageOwnership,
+                    MostActiveCoOwnerId = mostActiveCoOwner?.Key.CoOwnerId ?? 0,
+                    MostActiveCoOwnerName = mostActiveCoOwner?.Key.CoOwnerName,
+                    MostActiveCoOwnerChanges = mostActiveCoOwner?.Count() ?? 0,
+                    ChangeTypeBreakdown = changeTypeBreakdown,
+                    StatisticsGeneratedAt = DateTime.UtcNow
+                };
+
+                return new BaseResponse<OwnershipHistoryStatisticsResponse>
+                {
+                    StatusCode = 200,
+                    Message = "OWNERSHIP_HISTORY_STATISTICS_RETRIEVED_SUCCESSFULLY",
+                    Data = stats
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving ownership history statistics for vehicle {vehicleId}");
+                return new BaseResponse<OwnershipHistoryStatisticsResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null,
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<List<OwnershipHistoryResponse>>> GetCoOwnerOwnershipHistoryAsync(int userId)
+        {
+            try
+            {
+                var coOwner = await _unitOfWork.DbContext.Set<CoOwner>()
+                    .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                if (coOwner == null)
+                {
+                    return new BaseResponse<List<OwnershipHistoryResponse>>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND",
+                        Data = new List<OwnershipHistoryResponse>()
+                    };
+                }
+
+                var history = await _unitOfWork.DbContext.Set<OwnershipHistory>()
+                    .Include(oh => oh.Vehicle)
+                    .Include(oh => oh.CoOwner)
+                    .ThenInclude(co => co.User)
+                    .Include(oh => oh.ChangedByUser)
+                    .Where(oh => oh.UserId == userId)
+                    .OrderByDescending(oh => oh.CreatedAt)
+                    .ToListAsync();
+
+                var responses = history.Select(MapHistoryToResponse).ToList();
+
+                return new BaseResponse<List<OwnershipHistoryResponse>>
+                {
+                    StatusCode = 200,
+                    Message = $"FOUND_{responses.Count}_OWNERSHIP_HISTORY_RECORDS",
+                    Data = responses
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving co-owner ownership history for user {userId}");
+                return new BaseResponse<List<OwnershipHistoryResponse>>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null,
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        /// <summary>
+        /// Maps OwnershipHistory entity to response DTO
+        /// </summary>
+        private OwnershipHistoryResponse MapHistoryToResponse(OwnershipHistory history)
+        {
+            return new OwnershipHistoryResponse
+            {
+                Id = history.Id,
+                VehicleId = history.VehicleId,
+                VehicleName = history.Vehicle?.Name ?? string.Empty,
+                LicensePlate = history.Vehicle?.LicensePlate ?? string.Empty,
+                CoOwnerId = history.CoOwnerId,
+                UserId = history.UserId,
+                CoOwnerName = $"{history.CoOwner?.User?.FirstName} {history.CoOwner?.User?.LastName}",
+                Email = history.CoOwner?.User?.Email ?? string.Empty,
+                OwnershipChangeRequestId = history.OwnershipChangeRequestId,
+                PreviousPercentage = history.PreviousPercentage,
+                NewPercentage = history.NewPercentage,
+                PercentageChange = history.PercentageChange,
+                PreviousInvestment = history.PreviousInvestment,
+                NewInvestment = history.NewInvestment,
+                InvestmentChange = history.InvestmentChange,
+                ChangeType = history.ChangeTypeEnum?.ToString() ?? "Unknown",
+                Reason = history.Reason,
+                ChangedByUserId = history.ChangedByUserId,
+                ChangedByName = history.ChangedByUser != null 
+                    ? $"{history.ChangedByUser.FirstName} {history.ChangedByUser.LastName}" 
+                    : null,
+                CreatedAt = history.CreatedAt
             };
         }
 
