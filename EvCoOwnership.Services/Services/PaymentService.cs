@@ -16,7 +16,7 @@ namespace EvCoOwnership.Services.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public PaymentService(
-            IUnitOfWork unitOfWork, 
+            IUnitOfWork unitOfWork,
             IVnPayService vnPayService,
             IHttpContextAccessor httpContextAccessor)
         {
@@ -57,7 +57,7 @@ namespace EvCoOwnership.Services.Services
 
                 // Generate transaction reference
                 var transactionRef = GenerateTransactionRef(payment.Id, request.PaymentGateway, request.PaymentType);
-                
+
                 // Generate payment URL based on gateway and method
                 var paymentUrl = GenerateAdvancedPaymentUrl(
                     payment,
@@ -363,8 +363,8 @@ namespace EvCoOwnership.Services.Services
                         MaxAmount = 1000000000,
                         Logo = "vnpay-logo.png",
                         SupportedMethods = new List<string> { "Credit Card", "Debit Card", "Online Banking", "QR Code", "E-Wallet" },
-                        SupportedBanks = new List<string> 
-                        { 
+                        SupportedBanks = new List<string>
+                        {
                             "VIETCOMBANK", "VIETINBANK", "BIDV", "AGRIBANK", "TECHCOMBANK",
                             "MBBANK", "TPBANK", "ACB", "VPBank", "SHB", "SACOMBANK", "MSB"
                         }
@@ -460,13 +460,13 @@ namespace EvCoOwnership.Services.Services
         private PaymentResponse MapToPaymentResponse(Payment payment)
         {
             var gateway = ParseGateway(payment.PaymentGateway);
-            
+
             return new PaymentResponse
             {
                 Id = payment.Id,
                 UserId = payment.UserId ?? 0,
-                UserName = payment.User != null 
-                    ? $"{payment.User.FirstName} {payment.User.LastName}".Trim() 
+                UserName = payment.User != null
+                    ? $"{payment.User.FirstName} {payment.User.LastName}".Trim()
                     : "",
                 UserEmail = payment.User?.Email ?? "",
                 Amount = payment.Amount,

@@ -406,7 +406,7 @@ namespace EvCoOwnership.Repositories.DTOs.DisputeDTOs
     {
         public List<DisputeSummary> Disputes { get; set; } = new();
         public DisputeStatistics Statistics { get; set; } = new();
-        public PaginationInfo Pagination { get; set; } = new();
+        public DisputePaginationInfo Pagination { get; set; } = new();
     }
 
     /// <summary>
@@ -461,7 +461,7 @@ namespace EvCoOwnership.Repositories.DTOs.DisputeDTOs
     /// <summary>
     /// Pagination information (reuse from existing)
     /// </summary>
-    public class PaginationInfo
+    public class DisputePaginationInfo
     {
         public int CurrentPage { get; set; }
         public int PageSize { get; set; }

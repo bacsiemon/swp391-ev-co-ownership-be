@@ -427,7 +427,7 @@ namespace EvCoOwnership.Repositories.DTOs.ContractDTOs
     {
         public List<ContractSummary> Contracts { get; set; } = new();
         public ContractStatistics Statistics { get; set; } = new();
-        public PaginationInfo Pagination { get; set; } = new();
+        public ContractPaginationInfo Pagination { get; set; } = new();
     }
 
     /// <summary>
@@ -450,7 +450,7 @@ namespace EvCoOwnership.Repositories.DTOs.ContractDTOs
     /// <summary>
     /// Pagination information
     /// </summary>
-    public class PaginationInfo
+    public class ContractPaginationInfo
     {
         public int CurrentPage { get; set; }
         public int PageSize { get; set; }

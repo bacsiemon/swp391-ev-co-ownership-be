@@ -396,7 +396,7 @@ namespace EvCoOwnership.Repositories.DTOs.DepositDTOs
         /// <summary>
         /// Pagination information
         /// </summary>
-        public PaginationInfo Pagination { get; set; } = new PaginationInfo();
+        public DepositPaginationInfo Pagination { get; set; } = new DepositPaginationInfo();
     }
 
     /// <summary>
@@ -453,7 +453,7 @@ namespace EvCoOwnership.Repositories.DTOs.DepositDTOs
     /// <summary>
     /// Pagination metadata
     /// </summary>
-    public class PaginationInfo
+    public class DepositPaginationInfo
     {
         public int CurrentPage { get; set; }
         public int PageSize { get; set; }

@@ -99,7 +99,7 @@ namespace EvCoOwnership.Repositories.DTOs.UsageAnalyticsDTOs
 
         // Paginated booking history
         public List<PersonalBookingHistory> Bookings { get; set; } = new();
-        public PaginationInfo Pagination { get; set; } = new();
+        public UsageAnalyticsPaginationInfo Pagination { get; set; } = new();
 
         // Vehicle breakdown
         public List<VehicleUsageSummary> VehicleBreakdown { get; set; } = new();
@@ -219,7 +219,7 @@ namespace EvCoOwnership.Repositories.DTOs.UsageAnalyticsDTOs
     /// <summary>
     /// Pagination information
     /// </summary>
-    public class PaginationInfo
+    public class UsageAnalyticsPaginationInfo
     {
         public int CurrentPage { get; set; }
         public int PageSize { get; set; }
