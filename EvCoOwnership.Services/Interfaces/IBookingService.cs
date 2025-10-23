@@ -31,5 +31,11 @@ namespace EvCoOwnership.Services.Interfaces
         Task<BaseResponse<BookingConflictResolutionResponse>> ResolveBookingConflictAsync(int bookingId, int userId, ResolveBookingConflictRequest request);
         Task<BaseResponse<PendingConflictsResponse>> GetPendingConflictsAsync(int userId, GetPendingConflictsRequest request);
         Task<BaseResponse<BookingConflictAnalyticsResponse>> GetConflictAnalyticsAsync(int vehicleId, int userId, DateTime? startDate = null, DateTime? endDate = null);
+
+        // Booking modification and cancellation (Enhanced with policies & impact analysis)
+        Task<BaseResponse<ModifyBookingResponse>> ModifyBookingAsync(int bookingId, int userId, ModifyBookingRequest request);
+        Task<BaseResponse<CancelBookingResponse>> CancelBookingEnhancedAsync(int bookingId, int userId, CancelBookingRequest request);
+        Task<BaseResponse<ModificationValidationResult>> ValidateModificationAsync(int userId, ValidateModificationRequest request);
+        Task<BaseResponse<ModificationHistoryResponse>> GetModificationHistoryAsync(GetModificationHistoryRequest request);
     }
 }

@@ -1963,7 +1963,7 @@ namespace EvCoOwnership.Services.Services
 
                     // Check if I have a conflicting booking
                     var myConflict = conflictingBookings.Any(c => c.CoOwnerId == userId);
-                    
+
                     if (request.OnlyMyConflicts && !myConflict)
                         continue;
 
@@ -2499,7 +2499,7 @@ namespace EvCoOwnership.Services.Services
             var patterns = new List<ConflictPattern>();
 
             // Weekend conflicts
-            var weekendConflicts = bookings.Count(b => 
+            var weekendConflicts = bookings.Count(b =>
                 b.StartTime.DayOfWeek == DayOfWeek.Saturday ||
                 b.StartTime.DayOfWeek == DayOfWeek.Sunday);
 
@@ -2514,7 +2514,7 @@ namespace EvCoOwnership.Services.Services
             }
 
             // Morning rush hour conflicts (7-9 AM)
-            var morningConflicts = bookings.Count(b => 
+            var morningConflicts = bookings.Count(b =>
                 b.StartTime.Hour >= 7 && b.StartTime.Hour <= 9);
 
             if (morningConflicts > 5)
@@ -2560,5 +2560,838 @@ namespace EvCoOwnership.Services.Services
         }
 
         #endregion
+
+        #region Booking Modification and Cancellation (Enhanced)
+
+        public async Task<BaseResponse<ModifyBookingResponse>> ModifyBookingAsync(
+            int bookingId,
+            int userId,
+            ModifyBookingRequest request)
+        {
+            try
+            {
+                // Get booking with full details
+                var booking = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .Include(b => b.Vehicle)
+                        .ThenInclude(v => v.VehicleCoOwners)
+                            .ThenInclude(vco => vco.CoOwner)
+                                .ThenInclude(co => co.User)
+                    .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+                if (booking == null)
+                {
+                    return new BaseResponse<ModifyBookingResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "BOOKING_NOT_FOUND"
+                    };
+                }
+
+                // Validate ownership
+                if (booking.CoOwner?.UserId != userId)
+                {
+                    return new BaseResponse<ModifyBookingResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED"
+                    };
+                }
+
+                // Only pending or confirmed bookings can be modified
+                if (booking.StatusEnum == EBookingStatus.Completed || booking.StatusEnum == EBookingStatus.Cancelled)
+                {
+                    return new BaseResponse<ModifyBookingResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "CANNOT_MODIFY_COMPLETED_OR_CANCELLED_BOOKING"
+                    };
+                }
+
+                // Store original booking data
+                var originalBooking = new BookingModificationSummary
+                {
+                    StartTime = booking.StartTime,
+                    EndTime = booking.EndTime,
+                    Purpose = booking.Purpose ?? "",
+                    DurationHours = (int)(booking.EndTime - booking.StartTime).TotalHours,
+                    Status = booking.StatusEnum ?? EBookingStatus.Pending
+                };
+
+                // Determine new values
+                var newStartTime = request.NewStartTime ?? booking.StartTime;
+                var newEndTime = request.NewEndTime ?? booking.EndTime;
+                var newPurpose = request.NewPurpose ?? booking.Purpose;
+
+                // Analyze impact
+                var hasTimeChange = request.NewStartTime.HasValue || request.NewEndTime.HasValue;
+                var conflicts = new List<ConflictingBookingInfo>();
+                var warnings = new List<string>();
+
+                if (hasTimeChange && !request.SkipConflictCheck)
+                {
+                    // Check for conflicts
+                    var conflictingBookings = await _unitOfWork.BookingRepository.GetQueryable()
+                        .Where(b => b.VehicleId == booking.VehicleId &&
+                                   b.Id != booking.Id &&
+                                   b.StatusEnum != EBookingStatus.Cancelled &&
+                                   ((newStartTime >= b.StartTime && newStartTime < b.EndTime) ||
+                                    (newEndTime > b.StartTime && newEndTime <= b.EndTime) ||
+                                    (newStartTime <= b.StartTime && newEndTime >= b.EndTime)))
+                        .Include(b => b.CoOwner)
+                            .ThenInclude(co => co.User)
+                        .ToListAsync();
+
+                    conflicts = conflictingBookings.Select(c => new ConflictingBookingInfo
+                    {
+                        BookingId = c.Id,
+                        CoOwnerName = $"{c.CoOwner?.User?.FirstName} {c.CoOwner?.User?.LastName}".Trim(),
+                        StartTime = c.StartTime,
+                        EndTime = c.EndTime,
+                        Status = c.StatusEnum ?? EBookingStatus.Pending,
+                        Purpose = c.Purpose ?? "",
+                        OverlapHours = CalculateOverlapHours(newStartTime, newEndTime, c.StartTime, c.EndTime)
+                    }).ToList();
+
+                    if (conflicts.Any())
+                    {
+                        warnings.Add($"Modification creates {conflicts.Count} conflict(s) with other bookings");
+                    }
+                }
+
+                // Check if modification is close to booking time
+                var hoursUntilBooking = (booking.StartTime - DateTime.UtcNow).TotalHours;
+                if (hoursUntilBooking < 2 && hasTimeChange)
+                {
+                    warnings.Add("Modification within 2 hours of booking start time");
+                }
+
+                // Determine status and required approvals
+                ModificationStatus modificationStatus;
+                var requiredApprovals = new List<string>();
+
+                if (conflicts.Any() && request.RequestApprovalIfConflict)
+                {
+                    // Requires approval from conflicting co-owners
+                    modificationStatus = ModificationStatus.PendingApproval;
+                    requiredApprovals = conflicts
+                        .Select(c => c.CoOwnerName)
+                        .Distinct()
+                        .ToList();
+
+                    // Don't apply changes yet, wait for approval
+                }
+                else if (conflicts.Any() && !request.RequestApprovalIfConflict)
+                {
+                    // Conflict detected but user doesn't want to request approval
+                    modificationStatus = ModificationStatus.ConflictDetected;
+
+                    return new BaseResponse<ModifyBookingResponse>
+                    {
+                        StatusCode = 409,
+                        Message = "MODIFICATION_CREATES_CONFLICTS",
+                        Data = new ModifyBookingResponse
+                        {
+                            BookingId = bookingId,
+                            Status = modificationStatus,
+                            Message = "Modification creates conflicts. Set RequestApprovalIfConflict=true or choose different time.",
+                            OriginalBooking = originalBooking,
+                            ImpactAnalysis = new ModificationImpactAnalysis
+                            {
+                                HasTimeChange = hasTimeChange,
+                                HasConflicts = true,
+                                ConflictCount = conflicts.Count,
+                                ConflictingBookings = conflicts,
+                                RequiresCoOwnerApproval = true,
+                                ImpactSummary = $"{conflicts.Count} conflict(s) detected"
+                            },
+                            Warnings = warnings,
+                            SuggestedAlternatives = await GenerateAlternativeSlotSuggestionsAsync(
+                                booking.VehicleId ?? 0,
+                                newStartTime,
+                                newEndTime,
+                                null)
+                        }
+                    };
+                }
+                else
+                {
+                    // No conflicts, apply changes
+                    modificationStatus = ModificationStatus.Success;
+
+                    booking.StartTime = newStartTime;
+                    booking.EndTime = newEndTime;
+                    booking.Purpose = newPurpose;
+                    booking.UpdatedAt = DateTime.UtcNow;
+
+                    await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+                var modifiedBooking = new BookingModificationSummary
+                {
+                    StartTime = newStartTime,
+                    EndTime = newEndTime,
+                    Purpose = newPurpose ?? "",
+                    DurationHours = (int)(newEndTime - newStartTime).TotalHours,
+                    Status = booking.StatusEnum ?? EBookingStatus.Pending
+                };
+
+                // Calculate impact
+                var timeDelta = Math.Abs((int)(
+                    ((newEndTime - newStartTime).TotalHours) -
+                    ((originalBooking.EndTime - originalBooking.StartTime).TotalHours)));
+
+                var impactAnalysis = new ModificationImpactAnalysis
+                {
+                    HasTimeChange = hasTimeChange,
+                    HasConflicts = conflicts.Any(),
+                    ConflictCount = conflicts.Count,
+                    ConflictingBookings = conflicts.Any() ? conflicts : null,
+                    TimeDeltaHours = timeDelta,
+                    RequiresCoOwnerApproval = requiredApprovals.Any(),
+                    ImpactSummary = GenerateModificationImpactSummary(
+                        hasTimeChange, conflicts.Count, timeDelta, requiredApprovals.Count)
+                };
+
+                // Get co-owners to notify
+                var notifiedCoOwners = new List<string>();
+                if (request.NotifyAffectedCoOwners && (hasTimeChange || conflicts.Any()))
+                {
+                    notifiedCoOwners = booking.Vehicle?.VehicleCoOwners
+                        .Where(vco => vco.CoOwner?.UserId != userId)
+                        .Select(vco => $"{vco.CoOwner?.User?.FirstName} {vco.CoOwner?.User?.LastName}".Trim())
+                        .ToList() ?? new();
+                }
+
+                var response = new ModifyBookingResponse
+                {
+                    BookingId = bookingId,
+                    Status = modificationStatus,
+                    Message = modificationStatus switch
+                    {
+                        ModificationStatus.Success => "Booking modified successfully",
+                        ModificationStatus.PendingApproval => $"Modification pending approval from {requiredApprovals.Count} co-owner(s)",
+                        _ => "Modification processed"
+                    },
+                    OriginalBooking = originalBooking,
+                    ModifiedBooking = modifiedBooking,
+                    ImpactAnalysis = impactAnalysis,
+                    RequiredApprovals = requiredApprovals,
+                    NotifiedCoOwners = notifiedCoOwners,
+                    ModifiedAt = DateTime.UtcNow,
+                    Warnings = warnings
+                };
+
+                return new BaseResponse<ModifyBookingResponse>
+                {
+                    StatusCode = modificationStatus == ModificationStatus.Success ? 200 : 202,
+                    Message = modificationStatus == ModificationStatus.Success
+                        ? "BOOKING_MODIFIED_SUCCESSFULLY"
+                        : "MODIFICATION_PENDING_APPROVAL",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<ModifyBookingResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<CancelBookingResponse>> CancelBookingEnhancedAsync(
+            int bookingId,
+            int userId,
+            CancelBookingRequest request)
+        {
+            try
+            {
+                // Get booking
+                var booking = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .Include(b => b.Vehicle)
+                        .ThenInclude(v => v.VehicleCoOwners)
+                            .ThenInclude(vco => vco.CoOwner)
+                                .ThenInclude(co => co.User)
+                    .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+                if (booking == null)
+                {
+                    return new BaseResponse<CancelBookingResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "BOOKING_NOT_FOUND"
+                    };
+                }
+
+                // Validate ownership
+                if (booking.CoOwner?.UserId != userId)
+                {
+                    return new BaseResponse<CancelBookingResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED"
+                    };
+                }
+
+                // Cannot cancel completed booking
+                if (booking.StatusEnum == EBookingStatus.Completed)
+                {
+                    return new BaseResponse<CancelBookingResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "CANNOT_CANCEL_COMPLETED_BOOKING"
+                    };
+                }
+
+                // Already cancelled
+                if (booking.StatusEnum == EBookingStatus.Cancelled)
+                {
+                    return new BaseResponse<CancelBookingResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "BOOKING_ALREADY_CANCELLED"
+                    };
+                }
+
+                // Calculate cancellation policy
+                var hoursUntilBooking = (booking.StartTime - DateTime.UtcNow).TotalHours;
+                var policyInfo = CalculateCancellationPolicy(hoursUntilBooking, request.CancellationType);
+
+                // Check if cancellation is allowed
+                if (!policyInfo.IsCancellationAllowed && request.CancellationType == CancellationType.UserInitiated)
+                {
+                    return new BaseResponse<CancelBookingResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "CANCELLATION_NOT_ALLOWED",
+                        Data = new CancelBookingResponse
+                        {
+                            BookingId = bookingId,
+                            Status = CancellationStatus.Failed,
+                            Message = policyInfo.PolicyRule,
+                            PolicyInfo = policyInfo
+                        }
+                    };
+                }
+
+                var cancelledBooking = new BookingModificationSummary
+                {
+                    StartTime = booking.StartTime,
+                    EndTime = booking.EndTime,
+                    Purpose = booking.Purpose ?? "",
+                    DurationHours = (int)(booking.EndTime - booking.StartTime).TotalHours,
+                    Status = booking.StatusEnum ?? EBookingStatus.Pending
+                };
+
+                // Handle reschedule request
+                List<AlternativeSlotSuggestion>? rescheduleOptions = null;
+                if (request.RequestReschedule)
+                {
+                    if (request.PreferredRescheduleStart.HasValue && request.PreferredRescheduleEnd.HasValue)
+                    {
+                        // Check availability for preferred reschedule time
+                        var hasConflict = await _unitOfWork.BookingRepository.GetQueryable()
+                            .AnyAsync(b => b.VehicleId == booking.VehicleId &&
+                                          b.Id != booking.Id &&
+                                          b.StatusEnum != EBookingStatus.Cancelled &&
+                                          ((request.PreferredRescheduleStart >= b.StartTime && request.PreferredRescheduleStart < b.EndTime) ||
+                                           (request.PreferredRescheduleEnd > b.StartTime && request.PreferredRescheduleEnd <= b.EndTime)));
+
+                        if (!hasConflict)
+                        {
+                            // Can reschedule - create new booking
+                            var newBooking = new Booking
+                            {
+                                CoOwnerId = booking.CoOwnerId,
+                                VehicleId = booking.VehicleId,
+                                StartTime = request.PreferredRescheduleStart.Value,
+                                EndTime = request.PreferredRescheduleEnd.Value,
+                                Purpose = booking.Purpose + " (Rescheduled)",
+                                StatusEnum = EBookingStatus.Pending,
+                                CreatedAt = DateTime.UtcNow
+                            };
+
+                            await _unitOfWork.BookingRepository.AddAsync(newBooking);
+
+                            // Cancel old booking
+                            booking.StatusEnum = EBookingStatus.Cancelled;
+                            booking.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                            await _unitOfWork.SaveChangesAsync();
+
+                            return new BaseResponse<CancelBookingResponse>
+                            {
+                                StatusCode = 200,
+                                Message = "BOOKING_RESCHEDULED_SUCCESSFULLY",
+                                Data = new CancelBookingResponse
+                                {
+                                    BookingId = bookingId,
+                                    Status = CancellationStatus.Rescheduled,
+                                    Message = $"Booking rescheduled successfully to {request.PreferredRescheduleStart:g}",
+                                    CancelledAt = DateTime.UtcNow,
+                                    PolicyInfo = policyInfo,
+                                    CancelledBooking = cancelledBooking,
+                                    RefundInfo = new RefundInfo
+                                    {
+                                        IsRefundable = true,
+                                        RefundAmount = 0,
+                                        RefundPercentage = 100,
+                                        RefundReason = "Rescheduled - no penalty"
+                                    }
+                                }
+                            };
+                        }
+                    }
+
+                    // Generate reschedule options
+                    rescheduleOptions = await GenerateAlternativeSlotSuggestionsAsync(
+                        booking.VehicleId ?? 0,
+                        booking.StartTime,
+                        booking.EndTime,
+                        null);
+                }
+
+                // Calculate refund
+                var refundInfo = CalculateRefundInfo(
+                    booking.TotalCost ?? 0,
+                    hoursUntilBooking,
+                    request.CancellationType);
+
+                // Cancel booking
+                booking.StatusEnum = EBookingStatus.Cancelled;
+                booking.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Notify co-owners
+                var notifiedCoOwners = booking.Vehicle?.VehicleCoOwners
+                    .Where(vco => vco.CoOwner?.UserId != userId)
+                    .Select(vco => $"{vco.CoOwner?.User?.FirstName} {vco.CoOwner?.User?.LastName}".Trim())
+                    .ToList() ?? new();
+
+                var cancellationStatus = policyInfo.CancellationFee > 0
+                    ? CancellationStatus.CancelledWithFee
+                    : refundInfo.IsRefundable
+                        ? CancellationStatus.CancelledWithRefund
+                        : CancellationStatus.Cancelled;
+
+                var response = new CancelBookingResponse
+                {
+                    BookingId = bookingId,
+                    Status = cancellationStatus,
+                    Message = GenerateCancellationMessage(cancellationStatus, policyInfo),
+                    CancelledAt = DateTime.UtcNow,
+                    PolicyInfo = policyInfo,
+                    CancelledBooking = cancelledBooking,
+                    RescheduleOptions = rescheduleOptions,
+                    NotifiedCoOwners = notifiedCoOwners,
+                    RefundInfo = refundInfo
+                };
+
+                return new BaseResponse<CancelBookingResponse>
+                {
+                    StatusCode = 200,
+                    Message = "BOOKING_CANCELLED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<CancelBookingResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<ModificationValidationResult>> ValidateModificationAsync(
+            int userId,
+            ValidateModificationRequest request)
+        {
+            try
+            {
+                var booking = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner)
+                    .Include(b => b.Vehicle)
+                    .FirstOrDefaultAsync(b => b.Id == request.BookingId);
+
+                if (booking == null)
+                {
+                    return new BaseResponse<ModificationValidationResult>
+                    {
+                        StatusCode = 404,
+                        Message = "BOOKING_NOT_FOUND"
+                    };
+                }
+
+                // Validate ownership
+                if (booking.CoOwner?.UserId != userId)
+                {
+                    return new BaseResponse<ModificationValidationResult>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED"
+                    };
+                }
+
+                var validationErrors = new List<string>();
+                var warnings = new List<string>();
+
+                // Check if booking can be modified
+                if (booking.StatusEnum == EBookingStatus.Completed)
+                {
+                    validationErrors.Add("Cannot modify completed booking");
+                }
+
+                if (booking.StatusEnum == EBookingStatus.Cancelled)
+                {
+                    validationErrors.Add("Cannot modify cancelled booking");
+                }
+
+                var newStartTime = request.NewStartTime ?? booking.StartTime;
+                var newEndTime = request.NewEndTime ?? booking.EndTime;
+
+                // Check for conflicts
+                var conflicts = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Where(b => b.VehicleId == booking.VehicleId &&
+                               b.Id != booking.Id &&
+                               b.StatusEnum != EBookingStatus.Cancelled &&
+                               ((newStartTime >= b.StartTime && newStartTime < b.EndTime) ||
+                                (newEndTime > b.StartTime && newEndTime <= b.EndTime) ||
+                                (newStartTime <= b.StartTime && newEndTime >= b.EndTime)))
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .ToListAsync();
+
+                var hasConflicts = conflicts.Any();
+                if (hasConflicts)
+                {
+                    warnings.Add($"Modification creates {conflicts.Count} conflict(s)");
+                }
+
+                // Time validations
+                var hoursUntilBooking = (booking.StartTime - DateTime.UtcNow).TotalHours;
+                if (hoursUntilBooking < 1)
+                {
+                    warnings.Add("Modification very close to booking start time (less than 1 hour)");
+                }
+
+                // Generate alternatives if conflicts
+                List<AlternativeSlotSuggestion>? alternatives = null;
+                if (hasConflicts)
+                {
+                    alternatives = await GenerateAlternativeSlotSuggestionsAsync(
+                        booking.VehicleId ?? 0,
+                        newStartTime,
+                        newEndTime,
+                        null);
+                }
+
+                var impactAnalysis = new ModificationImpactAnalysis
+                {
+                    HasTimeChange = request.NewStartTime.HasValue || request.NewEndTime.HasValue,
+                    HasConflicts = hasConflicts,
+                    ConflictCount = conflicts.Count,
+                    ConflictingBookings = conflicts.Select(c => new ConflictingBookingInfo
+                    {
+                        BookingId = c.Id,
+                        CoOwnerName = $"{c.CoOwner?.User?.FirstName} {c.CoOwner?.User?.LastName}".Trim(),
+                        StartTime = c.StartTime,
+                        EndTime = c.EndTime,
+                        Status = c.StatusEnum ?? EBookingStatus.Pending,
+                        Purpose = c.Purpose ?? "",
+                        OverlapHours = CalculateOverlapHours(newStartTime, newEndTime, c.StartTime, c.EndTime)
+                    }).ToList(),
+                    RequiresCoOwnerApproval = hasConflicts,
+                    ImpactSummary = hasConflicts
+                        ? $"{conflicts.Count} conflict(s) - requires co-owner approval"
+                        : "No conflicts - modification can proceed"
+                };
+
+                var recommendation = GenerateModificationRecommendation(
+                    hasConflicts, hoursUntilBooking, conflicts.Count);
+
+                var result = new ModificationValidationResult
+                {
+                    IsValid = !validationErrors.Any(),
+                    HasConflicts = hasConflicts,
+                    ValidationErrors = validationErrors,
+                    Warnings = warnings,
+                    ImpactAnalysis = impactAnalysis,
+                    AlternativeSuggestions = alternatives,
+                    Recommendation = recommendation
+                };
+
+                return new BaseResponse<ModificationValidationResult>
+                {
+                    StatusCode = 200,
+                    Message = result.IsValid ? "VALIDATION_PASSED" : "VALIDATION_FAILED",
+                    Data = result
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<ModificationValidationResult>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<ModificationHistoryResponse>> GetModificationHistoryAsync(
+            GetModificationHistoryRequest request)
+        {
+            try
+            {
+                // This would require a BookingHistory table to track modifications
+                // For now, return a placeholder response
+                var response = new ModificationHistoryResponse
+                {
+                    TotalModifications = 0,
+                    TotalCancellations = 0,
+                    History = new()
+                };
+
+                return new BaseResponse<ModificationHistoryResponse>
+                {
+                    StatusCode = 200,
+                    Message = "MODIFICATION_HISTORY_RETRIEVED",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<ModificationHistoryResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods for Modification & Cancellation
+
+        private CancellationPolicyInfo CalculateCancellationPolicy(
+            double hoursUntilBooking,
+            CancellationType cancellationType)
+        {
+            // Cancellation policy rules
+            if (cancellationType != CancellationType.UserInitiated)
+            {
+                // Emergency/system cancellations have no penalty
+                return new CancellationPolicyInfo
+                {
+                    IsCancellationAllowed = true,
+                    CancellationFee = 0,
+                    HoursUntilBooking = (int)hoursUntilBooking,
+                    PolicyRule = "Emergency cancellation - no penalty",
+                    IsWithinGracePeriod = true,
+                    GracePeriodInfo = "Emergency cancellations are always allowed"
+                };
+            }
+
+            // User-initiated cancellation policies
+            if (hoursUntilBooking >= 24)
+            {
+                // Free cancellation if more than 24h before booking
+                return new CancellationPolicyInfo
+                {
+                    IsCancellationAllowed = true,
+                    CancellationFee = 0,
+                    HoursUntilBooking = (int)hoursUntilBooking,
+                    PolicyRule = "Free cancellation (24+ hours before booking)",
+                    IsWithinGracePeriod = true,
+                    GracePeriodInfo = "You can cancel free of charge up to 24 hours before booking"
+                };
+            }
+            else if (hoursUntilBooking >= 2)
+            {
+                // 25% fee if 2-24h before booking
+                return new CancellationPolicyInfo
+                {
+                    IsCancellationAllowed = true,
+                    CancellationFee = 0.25m, // 25% of booking cost
+                    HoursUntilBooking = (int)hoursUntilBooking,
+                    PolicyRule = "25% cancellation fee (2-24 hours before booking)",
+                    IsWithinGracePeriod = false,
+                    GracePeriodInfo = "Cancellation within 24h incurs 25% fee"
+                };
+            }
+            else if (hoursUntilBooking >= 0)
+            {
+                // 50% fee if less than 2h before booking
+                return new CancellationPolicyInfo
+                {
+                    IsCancellationAllowed = true,
+                    CancellationFee = 0.50m, // 50% of booking cost
+                    HoursUntilBooking = (int)hoursUntilBooking,
+                    PolicyRule = "50% cancellation fee (less than 2 hours before booking)",
+                    IsWithinGracePeriod = false,
+                    GracePeriodInfo = "Late cancellation incurs 50% fee"
+                };
+            }
+            else
+            {
+                // Cannot cancel after booking has started
+                return new CancellationPolicyInfo
+                {
+                    IsCancellationAllowed = false,
+                    CancellationFee = 1.0m, // 100% penalty
+                    HoursUntilBooking = (int)hoursUntilBooking,
+                    PolicyRule = "Cannot cancel booking after it has started",
+                    IsWithinGracePeriod = false,
+                    GracePeriodInfo = "Active bookings cannot be cancelled"
+                };
+            }
+        }
+
+        private RefundInfo CalculateRefundInfo(
+            decimal totalCost,
+            double hoursUntilBooking,
+            CancellationType cancellationType)
+        {
+            if (cancellationType != CancellationType.UserInitiated)
+            {
+                // Full refund for non-user cancellations
+                return new RefundInfo
+                {
+                    IsRefundable = true,
+                    RefundAmount = totalCost,
+                    RefundPercentage = 100,
+                    RefundReason = $"{cancellationType} - full refund",
+                    EstimatedRefundDate = DateTime.UtcNow.AddDays(3)
+                };
+            }
+
+            // User-initiated refund based on timing
+            if (hoursUntilBooking >= 24)
+            {
+                return new RefundInfo
+                {
+                    IsRefundable = true,
+                    RefundAmount = totalCost,
+                    RefundPercentage = 100,
+                    RefundReason = "Cancelled 24+ hours in advance",
+                    EstimatedRefundDate = DateTime.UtcNow.AddDays(3)
+                };
+            }
+            else if (hoursUntilBooking >= 2)
+            {
+                return new RefundInfo
+                {
+                    IsRefundable = true,
+                    RefundAmount = totalCost * 0.75m,
+                    RefundPercentage = 75,
+                    RefundReason = "Cancelled 2-24 hours in advance (25% fee)",
+                    EstimatedRefundDate = DateTime.UtcNow.AddDays(5)
+                };
+            }
+            else if (hoursUntilBooking >= 0)
+            {
+                return new RefundInfo
+                {
+                    IsRefundable = true,
+                    RefundAmount = totalCost * 0.50m,
+                    RefundPercentage = 50,
+                    RefundReason = "Late cancellation (50% fee)",
+                    EstimatedRefundDate = DateTime.UtcNow.AddDays(7)
+                };
+            }
+            else
+            {
+                return new RefundInfo
+                {
+                    IsRefundable = false,
+                    RefundAmount = 0,
+                    RefundPercentage = 0,
+                    RefundReason = "No refund for cancellations after booking start",
+                    EstimatedRefundDate = null
+                };
+            }
+        }
+
+        private string GenerateModificationImpactSummary(
+            bool hasTimeChange,
+            int conflictCount,
+            int timeDelta,
+            int approvalCount)
+        {
+            var parts = new List<string>();
+
+            if (hasTimeChange)
+            {
+                parts.Add($"Time changed by {timeDelta} hour(s)");
+            }
+
+            if (conflictCount > 0)
+            {
+                parts.Add($"{conflictCount} conflict(s) detected");
+            }
+
+            if (approvalCount > 0)
+            {
+                parts.Add($"Requires {approvalCount} approval(s)");
+            }
+
+            return parts.Any()
+                ? string.Join(". ", parts)
+                : "Minor modification with no significant impact";
+        }
+
+        private string GenerateCancellationMessage(
+            CancellationStatus status,
+            CancellationPolicyInfo policy)
+        {
+            return status switch
+            {
+                CancellationStatus.Cancelled => "Booking cancelled successfully",
+                CancellationStatus.CancelledWithFee =>
+                    $"Booking cancelled with {policy.CancellationFee * 100}% cancellation fee",
+                CancellationStatus.CancelledWithRefund =>
+                    $"Booking cancelled. Refund will be processed within 3-7 business days",
+                CancellationStatus.Rescheduled => "Booking rescheduled successfully",
+                _ => "Booking cancellation processed"
+            };
+        }
+
+        private string GenerateModificationRecommendation(
+            bool hasConflicts,
+            double hoursUntilBooking,
+            int conflictCount)
+        {
+            if (hoursUntilBooking < 1)
+            {
+                return "⚠️ Very close to booking time. Contact vehicle owner directly for urgent changes.";
+            }
+
+            if (hasConflicts)
+            {
+                return $"⚠️ Modification creates {conflictCount} conflict(s). Consider alternative time slots or request co-owner approval.";
+            }
+
+            if (hoursUntilBooking < 24)
+            {
+                return "⚠️ Modification within 24 hours. Changes may incur fees or require approval.";
+            }
+
+            return "✅ Modification can proceed without issues.";
+        }
+
+        #endregion
     }
 }
+

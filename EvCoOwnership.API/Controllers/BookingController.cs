@@ -1159,6 +1159,430 @@ namespace EvCoOwnership.API.Controllers
         }
 
         #endregion
+
+        #region Booking Modification and Cancellation
+
+        /// <summary>
+        /// Modifies an existing booking with conflict validation and impact analysis
+        /// </summary>
+        /// <remarks>
+        /// **Role requirement:** CoOwner (must be the booking creator)
+        /// 
+        /// **Modify Booking with Enhanced Validation:**
+        /// 
+        /// Allows co-owners to modify their bookings with intelligent conflict detection, impact analysis, and co-owner notification:
+        /// 
+        /// **Key Features:**
+        /// - **Conflict Validation**: Automatically detects conflicts with other bookings when time is changed
+        /// - **Impact Analysis**: Calculates time changes, cost implications, and required approvals
+        /// - **Approval Workflow**: Can request co-owner approval if modification creates conflicts
+        /// - **Co-owner Notifications**: Optionally notify affected co-owners about the modification
+        /// - **Alternative Suggestions**: Provides alternative time slots if conflicts are detected
+        /// - **Smart Warnings**: Alerts about late modifications (within 2 hours of booking start)
+        /// 
+        /// **Modification Rules:**
+        /// - Only `Pending` or `Confirmed` bookings can be modified
+        /// - Cannot modify `Completed` or `Cancelled` bookings
+        /// - Must be the original booking creator
+        /// - If modification creates conflicts:
+        ///   - With `RequestApprovalIfConflict=true`: Status becomes `PendingApproval` (requires co-owner approval)
+        ///   - With `RequestApprovalIfConflict=false`: Returns 409 Conflict with alternative suggestions
+        /// 
+        /// **Modification Scenarios:**
+        /// 
+        /// 1. **Simple Modification (No Conflicts):**
+        ///    - Change purpose only → Success immediately
+        ///    - Change time with no conflicts → Success immediately
+        /// 
+        /// 2. **Modification with Conflicts (Approval Requested):**
+        ///    - Change time creates conflicts → Status: `PendingApproval`
+        ///    - Requires approval from conflicting co-owners → Returns list of required approvals
+        ///    - Modification not applied until approved
+        /// 
+        /// 3. **Modification with Conflicts (No Approval Requested):**
+        ///    - Change time creates conflicts → Returns 409 Conflict
+        ///    - Provides alternative time slot suggestions
+        ///    - User must choose different time or request approval
+        /// 
+        /// **Sample Request (Simple Modification):**
+        /// ```json
+        /// {
+        ///   "newStartTime": "2025-01-25T14:00:00Z",
+        ///   "newEndTime": "2025-01-25T18:00:00Z",
+        ///   "newPurpose": "Updated: Shopping and errands",
+        ///   "modificationReason": "Need to extend the booking by 1 hour",
+        ///   "skipConflictCheck": false,
+        ///   "notifyAffectedCoOwners": true,
+        ///   "requestApprovalIfConflict": false
+        /// }
+        /// ```
+        /// 
+        /// **Sample Request (With Approval Request):**
+        /// ```json
+        /// {
+        ///   "newStartTime": "2025-01-26T08:00:00Z",
+        ///   "newEndTime": "2025-01-26T12:00:00Z",
+        ///   "modificationReason": "Need to reschedule to Saturday morning",
+        ///   "skipConflictCheck": false,
+        ///   "notifyAffectedCoOwners": true,
+        ///   "requestApprovalIfConflict": true
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="bookingId">Booking ID to modify</param>
+        /// <param name="request">Modification request with new values</param>
+        /// <response code="200">Booking modified successfully (no conflicts or conflicts resolved)</response>
+        /// <response code="202">Modification pending approval (conflicts detected, approval requested)</response>
+        /// <response code="400">Cannot modify completed/cancelled booking</response>
+        /// <response code="403">Access denied - not the booking creator</response>
+        /// <response code="404">Booking not found</response>
+        /// <response code="409">Modification creates conflicts (no approval requested - includes alternative suggestions)</response>
+        [HttpPost("{bookingId:int}/modify")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> ModifyBooking(
+            int bookingId,
+            [FromBody] ModifyBookingRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.ModifyBookingAsync(bookingId, userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                202 => Accepted(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                409 => Conflict(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Cancels a booking with policy-based fees, refunds, and reschedule options
+        /// </summary>
+        /// <remarks>
+        /// **Role requirement:** CoOwner (must be the booking creator)
+        /// 
+        /// **Enhanced Booking Cancellation with Policies:**
+        /// 
+        /// Allows co-owners to cancel their bookings with intelligent policy application, fee calculation, refund processing, and reschedule alternatives:
+        /// 
+        /// **Key Features:**
+        /// - **Smart Cancellation Policies**: Fees based on timing (grace period, normal, late cancellation)
+        /// - **Refund Calculation**: Automatic calculation of refundable amounts based on policy
+        /// - **Reschedule Options**: Option to reschedule instead of cancelling
+        /// - **Emergency Handling**: No-fee cancellation for emergency or vehicle issues
+        /// - **Co-owner Notifications**: Automatically notifies other co-owners
+        /// - **Alternative Suggestions**: Provides alternative time slots if rescheduling
+        /// 
+        /// **Cancellation Policy (User-Initiated):**
+        /// 
+        /// | Time Before Booking | Cancellation Fee | Refund % | Grace Period |
+        /// |---------------------|------------------|----------|--------------|
+        /// | 24+ hours           | 0%               | 100%     | ✅ Yes       |
+        /// | 2-24 hours          | 25%              | 75%      | ❌ No        |
+        /// | Less than 2 hours   | 50%              | 50%      | ❌ No        |
+        /// | After booking start | 100% (No cancel) | 0%       | ❌ No        |
+        /// 
+        /// **Cancellation Types:**
+        /// - `UserInitiated` (0): Normal user cancellation - follows policy above
+        /// - `SystemCancelled` (1): System cancellation - full refund
+        /// - `Emergency` (2): Emergency cancellation - no fee, full refund
+        /// - `VehicleUnavailable` (3): Vehicle issue - no fee, full refund
+        /// - `MaintenanceRequired` (4): Maintenance needed - no fee, full refund
+        /// 
+        /// **Reschedule Flow:**
+        /// 1. Set `RequestReschedule=true`
+        /// 2. Optionally provide `PreferredRescheduleStart` and `PreferredRescheduleEnd`
+        /// 3. If preferred time available → Creates new booking, cancels old one (status: `Rescheduled`)
+        /// 4. If preferred time unavailable → Returns alternative slot suggestions
+        /// 5. No cancellation fee for rescheduling
+        /// 
+        /// **Sample Request (Normal Cancellation - 24+ hours):**
+        /// ```json
+        /// {
+        ///   "cancellationReason": "Plans changed - no longer need the vehicle",
+        ///   "cancellationType": 0,
+        ///   "requestReschedule": false,
+        ///   "acceptCancellationFee": true
+        /// }
+        /// ```
+        /// 
+        /// **Sample Request (Late Cancellation):**
+        /// ```json
+        /// {
+        ///   "cancellationReason": "Unexpected conflict at work",
+        ///   "cancellationType": 0,
+        ///   "requestReschedule": false,
+        ///   "acceptCancellationFee": true
+        /// }
+        /// ```
+        /// 
+        /// **Sample Request (Reschedule to Specific Time):**
+        /// ```json
+        /// {
+        ///   "cancellationReason": "Need to reschedule to next weekend",
+        ///   "cancellationType": 0,
+        ///   "requestReschedule": true,
+        ///   "preferredRescheduleStart": "2025-02-01T09:00:00Z",
+        ///   "preferredRescheduleEnd": "2025-02-01T13:00:00Z",
+        ///   "acceptCancellationFee": true
+        /// }
+        /// ```
+        /// 
+        /// **Sample Request (Emergency Cancellation):**
+        /// ```json
+        /// {
+        ///   "cancellationReason": "Family emergency - immediate cancellation needed",
+        ///   "cancellationType": 2,
+        ///   "requestReschedule": false,
+        ///   "acceptCancellationFee": false
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="bookingId">Booking ID to cancel</param>
+        /// <param name="request">Cancellation request with reason and options</param>
+        /// <response code="200">Booking cancelled successfully (includes policy info, refund details, reschedule options)</response>
+        /// <response code="400">Cannot cancel completed/already cancelled booking, or cancellation not allowed by policy</response>
+        /// <response code="403">Access denied - not the booking creator</response>
+        /// <response code="404">Booking not found</response>
+        [HttpPost("{bookingId:int}/cancel-enhanced")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> CancelBookingEnhanced(
+            int bookingId,
+            [FromBody] CancelBookingRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.CancelBookingEnhancedAsync(bookingId, userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Validates a proposed booking modification without applying changes
+        /// </summary>
+        /// <remarks>
+        /// **Role requirement:** CoOwner (must be the booking creator)
+        /// 
+        /// **Pre-Validation for Booking Modifications:**
+        /// 
+        /// Allows co-owners to check the feasibility and impact of a proposed modification before actually making the change:
+        /// 
+        /// **Key Features:**
+        /// - **Pre-Flight Check**: Validates modification without committing changes
+        /// - **Conflict Detection**: Identifies all conflicts with proposed time change
+        /// - **Impact Analysis**: Shows detailed impact (conflicts, costs, approvals needed)
+        /// - **Warnings**: Lists all warnings (close to booking time, conflicts, etc.)
+        /// - **Alternative Suggestions**: Provides conflict-free alternative time slots
+        /// - **Smart Recommendations**: AI-driven recommendations based on analysis
+        /// 
+        /// **Use Cases:**
+        /// 1. **Check Before Modify**: Validate proposed changes before actual modification
+        /// 2. **Explore Options**: See impact of different time changes
+        /// 3. **Find Alternatives**: Get suggestions for conflict-free modifications
+        /// 4. **Approval Preview**: See which co-owners need to approve
+        /// 
+        /// **Validation Results:**
+        /// - `IsValid`: Whether modification is allowed (booking not completed/cancelled)
+        /// - `HasConflicts`: Whether proposed time creates conflicts
+        /// - `ValidationErrors[]`: List of validation errors (blocking issues)
+        /// - `Warnings[]`: List of warnings (non-blocking but important)
+        /// - `ImpactAnalysis`: Detailed impact analysis object
+        /// - `AlternativeSuggestions[]`: Conflict-free alternative time slots
+        /// - `Recommendation`: Smart recommendation based on analysis
+        /// 
+        /// **Sample Request:**
+        /// ```json
+        /// {
+        ///   "bookingId": 42,
+        ///   "newStartTime": "2025-01-26T09:00:00Z",
+        ///   "newEndTime": "2025-01-26T13:00:00Z",
+        ///   "newPurpose": "Grocery shopping and bank errands"
+        /// }
+        /// ```
+        /// 
+        /// **Sample Response (No Conflicts):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "VALIDATION_PASSED",
+        ///   "data": {
+        ///     "isValid": true,
+        ///     "hasConflicts": false,
+        ///     "validationErrors": [],
+        ///     "warnings": [],
+        ///     "impactAnalysis": {
+        ///       "hasTimeChange": true,
+        ///       "hasConflicts": false,
+        ///       "conflictCount": 0,
+        ///       "timeDeltaHours": 1,
+        ///       "requiresCoOwnerApproval": false,
+        ///       "impactSummary": "No conflicts - modification can proceed"
+        ///     },
+        ///     "recommendation": "✅ Modification can proceed without issues."
+        ///   }
+        /// }
+        /// ```
+        /// 
+        /// **Sample Response (With Conflicts):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "VALIDATION_PASSED",
+        ///   "data": {
+        ///     "isValid": true,
+        ///     "hasConflicts": true,
+        ///     "validationErrors": [],
+        ///     "warnings": [
+        ///       "Modification creates 2 conflict(s)"
+        ///     ],
+        ///     "impactAnalysis": {
+        ///       "hasTimeChange": true,
+        ///       "hasConflicts": true,
+        ///       "conflictCount": 2,
+        ///       "conflictingBookings": [
+        ///         {
+        ///           "bookingId": 45,
+        ///           "coOwnerName": "Alice Johnson",
+        ///           "startTime": "2025-01-26T10:00:00Z",
+        ///           "endTime": "2025-01-26T12:00:00Z",
+        ///           "status": 1,
+        ///           "purpose": "Weekend trip",
+        ///           "overlapHours": 2.0
+        ///         }
+        ///       ],
+        ///       "requiresCoOwnerApproval": true,
+        ///       "impactSummary": "2 conflict(s) - requires co-owner approval"
+        ///     },
+        ///     "alternativeSuggestions": [
+        ///       {
+        ///         "startTime": "2025-01-26T13:00:00Z",
+        ///         "endTime": "2025-01-26T17:00:00Z",
+        ///         "reason": "Next available slot after conflicts",
+        ///         "hasConflict": false
+        ///       }
+        ///     ],
+        ///     "recommendation": "⚠️ Modification creates 2 conflict(s). Consider alternative time slots or request co-owner approval."
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Validation request with proposed changes</param>
+        /// <response code="200">Validation completed (check isValid field for result)</response>
+        /// <response code="403">Access denied - not the booking creator</response>
+        /// <response code="404">Booking not found</response>
+        [HttpPost("validate-modification")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> ValidateModification([FromBody] ValidateModificationRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.ValidateModificationAsync(userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Retrieves modification history for bookings
+        /// </summary>
+        /// <remarks>
+        /// **Role requirement:** CoOwner
+        /// 
+        /// **Booking Modification Audit Trail:**
+        /// 
+        /// Provides full history of all booking modifications and cancellations with before/after snapshots:
+        /// 
+        /// **Key Features:**
+        /// - **Full Audit Trail**: Complete history of all modifications
+        /// - **Before/After Comparison**: Shows original and modified values
+        /// - **Filter by Booking**: Get history for specific booking
+        /// - **Filter by User**: Get history for specific co-owner
+        /// - **Filter by Date**: Get history within date range
+        /// - **Filter by Status**: Filter by modification status
+        /// - **Statistics**: Summary stats (total modifications, cancellations)
+        /// 
+        /// **History Entry Contains:**
+        /// - Modification type (TimeChange, PurposeChange, StatusChange, Cancellation)
+        /// - Modified by (user who made the change)
+        /// - Modified at (timestamp)
+        /// - Reason for modification
+        /// - Before/After snapshots
+        /// - Status (Success, PendingApproval, Rejected, Failed)
+        /// - Required approvals
+        /// - Approved by (if applicable)
+        /// 
+        /// **Query Parameters:**
+        /// - `bookingId` (optional): Filter by specific booking
+        /// - `userId` (optional): Filter by user who made modification
+        /// - `startDate` (optional): Filter modifications from this date
+        /// - `endDate` (optional): Filter modifications until this date
+        /// - `status` (optional): Filter by modification status
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/booking/modification-history?bookingId=42
+        /// GET /api/booking/modification-history?userId=5&amp;startDate=2025-01-01
+        /// GET /api/booking/modification-history?status=1
+        /// ```
+        /// 
+        /// **Note:** This feature requires a `BookingHistory` database table to track modifications.
+        /// Current implementation returns placeholder data. Full implementation pending database migration.
+        /// </remarks>
+        /// <param name="bookingId">Optional: Filter by booking ID</param>
+        /// <param name="userId">Optional: Filter by user who made modification</param>
+        /// <param name="startDate">Optional: Filter from this date</param>
+        /// <param name="endDate">Optional: Filter until this date</param>
+        /// <param name="status">Optional: Filter by modification status</param>
+        /// <response code="200">Modification history retrieved successfully</response>
+        [HttpGet("modification-history")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> GetModificationHistory(
+            [FromQuery] int? bookingId = null,
+            [FromQuery] int? userId = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] ModificationStatus? status = null)
+        {
+            var request = new GetModificationHistoryRequest
+            {
+                BookingId = bookingId,
+                UserId = userId,
+                StartDate = startDate,
+                EndDate = endDate,
+                FilterByStatus = status
+            };
+
+            var response = await _bookingService.GetModificationHistoryAsync(request);
+            return Ok(response);
+        }
+
+        #endregion
     }
 }
+
 
