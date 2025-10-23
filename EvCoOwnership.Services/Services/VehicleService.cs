@@ -1252,10 +1252,10 @@ namespace EvCoOwnership.Services.Services
         }
 
         public async Task<BaseResponse> GetVehicleAvailabilityScheduleAsync(
-            int vehicleId, 
-            int userId, 
-            DateTime startDate, 
-            DateTime endDate, 
+            int vehicleId,
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
             string? statusFilter = null)
         {
             try
@@ -1313,7 +1313,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
                         .FirstOrDefaultAsync(co => co.UserId == userId);
-                    
+
                     if (coOwner == null)
                     {
                         return new BaseResponse
@@ -1324,8 +1324,8 @@ namespace EvCoOwnership.Services.Services
                     }
 
                     // Check if user is co-owner of this vehicle
-                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco => 
-                        vco.CoOwnerId == coOwner.UserId && 
+                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
+                        vco.CoOwnerId == coOwner.UserId &&
                         vco.StatusEnum == EContractStatus.Active);
 
                     if (!isCoOwner)
@@ -1376,9 +1376,9 @@ namespace EvCoOwnership.Services.Services
                 var availableDays = new List<DateTime>();
                 for (var date = startDate.Date; date < endDate.Date; date = date.AddDays(1))
                 {
-                    var hasBooking = bookings.Any(b => 
+                    var hasBooking = bookings.Any(b =>
                         b.StartTime.Date <= date && b.EndTime.Date >= date);
-                    
+
                     if (!hasBooking)
                     {
                         availableDays.Add(date);
@@ -1394,8 +1394,8 @@ namespace EvCoOwnership.Services.Services
                     TotalBookings = bookings.Count,
                     ConfirmedBookings = bookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed),
                     PendingBookings = bookings.Count(b => b.StatusEnum == EBookingStatus.Pending),
-                    AverageBookingDuration = bookings.Any() 
-                        ? Math.Round((decimal)bookings.Average(b => (b.EndTime - b.StartTime).TotalHours), 2) 
+                    AverageBookingDuration = bookings.Any()
+                        ? Math.Round((decimal)bookings.Average(b => (b.EndTime - b.StartTime).TotalHours), 2)
                         : 0
                 };
 
@@ -1434,11 +1434,11 @@ namespace EvCoOwnership.Services.Services
         }
 
         public async Task<BaseResponse> FindAvailableTimeSlotsAsync(
-            int vehicleId, 
-            int userId, 
-            DateTime startDate, 
-            DateTime endDate, 
-            int minimumDurationHours = 1, 
+            int vehicleId,
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
+            int minimumDurationHours = 1,
             bool fullDayOnly = false)
         {
             try
@@ -1541,8 +1541,8 @@ namespace EvCoOwnership.Services.Services
                             EndTime = gapEnd,
                             DurationHours = duration,
                             IsFullDay = duration >= 8,
-                            Recommendation = duration >= 8 
-                                ? "Full day available" 
+                            Recommendation = duration >= 8
+                                ? "Full day available"
                                 : $"{duration} hours between bookings"
                         });
                     }
@@ -1578,8 +1578,8 @@ namespace EvCoOwnership.Services.Services
                     MinimumDurationHours = minimumDurationHours,
                     AvailableSlots = availableSlots,
                     TotalSlotsFound = availableSlots.Count,
-                    Message = availableSlots.Any() 
-                        ? $"Found {availableSlots.Count} available time slot(s)" 
+                    Message = availableSlots.Any()
+                        ? $"Found {availableSlots.Count} available time slot(s)"
                         : "No available time slots matching your criteria"
                 };
 
@@ -1603,8 +1603,8 @@ namespace EvCoOwnership.Services.Services
         }
 
         public async Task<BaseResponse> CompareVehicleUtilizationAsync(
-            int userId, 
-            DateTime startDate, 
+            int userId,
+            DateTime startDate,
             DateTime endDate)
         {
             try
@@ -1646,7 +1646,7 @@ namespace EvCoOwnership.Services.Services
                     // Get co-owner's vehicles
                     var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
                         .FirstOrDefaultAsync(co => co.UserId == userId);
-                    
+
                     if (coOwner == null)
                     {
                         return new BaseResponse
@@ -1661,8 +1661,8 @@ namespace EvCoOwnership.Services.Services
                         .Include(v => v.Bookings)
                             .ThenInclude(b => b.CoOwner)
                                 .ThenInclude(co => co.User)
-                        .Where(v => v.VehicleCoOwners.Any(vco => 
-                            vco.CoOwnerId == coOwner.UserId && 
+                        .Where(v => v.VehicleCoOwners.Any(vco =>
+                            vco.CoOwnerId == coOwner.UserId &&
                             vco.StatusEnum == EContractStatus.Active))
                         .ToListAsync();
                 }
@@ -1693,16 +1693,16 @@ namespace EvCoOwnership.Services.Services
                 {
                     var vehicleBookings = vehicle.Bookings
                         .Where(b => b.StartTime < endDate && b.EndTime > startDate)
-                        .Where(b => b.StatusEnum == EBookingStatus.Confirmed || 
+                        .Where(b => b.StatusEnum == EBookingStatus.Confirmed ||
                                    b.StatusEnum == EBookingStatus.Active ||
                                    b.StatusEnum == EBookingStatus.Completed)
                         .ToList();
 
-                    var totalBookedHours = vehicleBookings.Sum(b => 
+                    var totalBookedHours = vehicleBookings.Sum(b =>
                         (int)(b.EndTime - b.StartTime).TotalHours);
 
-                    var utilizationPercentage = totalHoursInPeriod > 0 
-                        ? Math.Round((decimal)totalBookedHours / totalHoursInPeriod * 100, 2) 
+                    var utilizationPercentage = totalHoursInPeriod > 0
+                        ? Math.Round((decimal)totalBookedHours / totalHoursInPeriod * 100, 2)
                         : 0;
 
                     // Find most active day
@@ -1737,8 +1737,8 @@ namespace EvCoOwnership.Services.Services
                     Vehicles = comparisons,
                     MostUtilizedVehicle = comparisons.FirstOrDefault(),
                     LeastUtilizedVehicle = comparisons.LastOrDefault(),
-                    AverageUtilization = comparisons.Any() 
-                        ? Math.Round(comparisons.Average(c => c.UtilizationPercentage), 2) 
+                    AverageUtilization = comparisons.Any()
+                        ? Math.Round(comparisons.Average(c => c.UtilizationPercentage), 2)
                         : 0
                 };
 

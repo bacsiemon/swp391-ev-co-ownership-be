@@ -60,6 +60,11 @@ public partial class EvCoOwnershipDbContext : DbContext
 
     public virtual DbSet<VehicleVerificationHistory> VehicleVerificationHistories { get; set; }
 
+    // Booking Reminder tables
+    public virtual DbSet<UserReminderPreference> UserReminderPreferences { get; set; }
+
+    public virtual DbSet<BookingReminderLog> BookingReminderLogs { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Booking>(entity =>
@@ -846,6 +851,65 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasOne(d => d.Vehicle).WithMany(p => p.VehicleVerificationHistories)
                 .HasForeignKey(d => d.VehicleId)
                 .HasConstraintName("vehicle_verification_history_vehicle_id_fkey");
+        });
+
+        // Configure UserReminderPreference
+        modelBuilder.Entity<UserReminderPreference>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("user_reminder_preferences");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.HoursBeforeBooking).HasColumnName("hours_before_booking");
+            entity.Property(e => e.Enabled).HasColumnName("enabled");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        // Configure BookingReminderLog
+        modelBuilder.Entity<BookingReminderLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("booking_reminder_logs");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BookingId).HasColumnName("booking_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SentAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("sent_at");
+            entity.Property(e => e.BookingStartTime)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("booking_start_time");
+            entity.Property(e => e.HoursBeforeBooking).HasColumnName("hours_before_booking");
+            entity.Property(e => e.Success).HasColumnName("success");
+            entity.Property(e => e.ErrorMessage)
+                .HasMaxLength(500)
+                .HasColumnName("error_message");
+
+            entity.HasOne(d => d.Booking)
+                .WithMany()
+                .HasForeignKey(d => d.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.BookingId, e.UserId });
         });
 
         ConfigureDateTimeConversions(modelBuilder);

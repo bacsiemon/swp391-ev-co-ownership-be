@@ -1,4 +1,5 @@
 ﻿using EvCoOwnership.Helpers.Configuration;
+using EvCoOwnership.Services.BackgroundServices;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Services.Services;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +37,10 @@ namespace EvCoOwnership.Services
             services.AddScoped<IMaintenanceService, MaintenanceService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
             services.AddScoped<IVnPayService, VnPayService>();
+            services.AddScoped<IBookingReminderService, BookingReminderService>();
+
+            // Register background services
+            services.AddHostedService<BookingReminderBackgroundService>();
         }
     }
 }

@@ -10,6 +10,9 @@ namespace EvCoOwnership.Repositories.UoW
         #region base
         private EvCoOwnershipDbContext _context;
 
+        // Expose DbContext for direct queries
+        public EvCoOwnershipDbContext DbContext => _context;
+
         public UnitOfWork(EvCoOwnershipDbContext context)
         {
             _context = context;

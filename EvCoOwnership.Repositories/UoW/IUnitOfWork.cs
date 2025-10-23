@@ -1,10 +1,14 @@
-﻿using EvCoOwnership.Repositories.Interfaces;
+﻿using EvCoOwnership.Repositories.Context;
+using EvCoOwnership.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EvCoOwnership.Repositories.UoW
 {
     public interface IUnitOfWork
     {
+        // DbContext access
+        EvCoOwnershipDbContext DbContext { get; }
+
         // Repository properties
         IUserRepository UserRepository { get; }
         IBookingRepository BookingRepository { get; }

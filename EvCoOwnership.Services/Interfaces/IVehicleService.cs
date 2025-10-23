@@ -139,10 +139,10 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="statusFilter">Optional: Filter bookings by status</param>
         /// <returns>Response containing vehicle availability schedule and utilization stats</returns>
         Task<BaseResponse> GetVehicleAvailabilityScheduleAsync(
-            int vehicleId, 
-            int userId, 
-            DateTime startDate, 
-            DateTime endDate, 
+            int vehicleId,
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
             string? statusFilter = null);
 
         /// <summary>
@@ -156,11 +156,11 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="fullDayOnly">Only return full-day slots</param>
         /// <returns>Response containing available time slots</returns>
         Task<BaseResponse> FindAvailableTimeSlotsAsync(
-            int vehicleId, 
-            int userId, 
-            DateTime startDate, 
-            DateTime endDate, 
-            int minimumDurationHours = 1, 
+            int vehicleId,
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
+            int minimumDurationHours = 1,
             bool fullDayOnly = false);
 
         /// <summary>
@@ -173,8 +173,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="endDate">End date of comparison period</param>
         /// <returns>Response containing vehicle utilization comparison</returns>
         Task<BaseResponse> CompareVehicleUtilizationAsync(
-            int userId, 
-            DateTime startDate, 
+            int userId,
+            DateTime startDate,
             DateTime endDate);
     }
 }
