@@ -289,8 +289,19 @@ namespace EvCoOwnership.API.Controllers
         /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// Retrieves all vehicles where the current user is an owner or co-owner.  
+        /// **MY VEHICLES - Private View**
+        /// 
+        /// Retrieves only vehicles where the current user is an owner or co-owner.  
         /// Includes both active and pending co-ownership relationships.
+        /// 
+        /// **Difference from /api/vehicle/available:**
+        /// - `/my-vehicles` → Only shows vehicles YOU own (private)
+        /// - `/available` → Shows ALL vehicles in marketplace (public discovery)
+        /// 
+        /// **Use Cases:**
+        /// - View my investment portfolio
+        /// - Check my vehicle ownership status
+        /// - Manage my co-owned vehicles
         /// </remarks>
         [HttpGet("my-vehicles")]
         [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
@@ -443,6 +454,127 @@ namespace EvCoOwnership.API.Controllers
                 400 => BadRequest(response),
                 403 => StatusCode(403, response),
                 404 => NotFound(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Gets all available vehicles for co-ownership or booking with pagination and filters
+        /// </summary>
+        /// <param name="pageIndex">Page number (default: 1)</param>
+        /// <param name="pageSize">Items per page (default: 10, max: 50)</param>
+        /// <param name="status">Filter by vehicle status (Available, InUse, Maintenance, Unavailable)</param>
+        /// <param name="verificationStatus">Filter by verification status (Pending, Verified, Rejected, etc.)</param>
+        /// <response code="200">Available vehicles retrieved successfully. Possible messages:  
+        /// - AVAILABLE_VEHICLES_RETRIEVED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="400">Bad request. Possible messages:  
+        /// - INVALID_PAGE_INDEX  
+        /// - INVALID_PAGE_SIZE  
+        /// - INVALID_STATUS_FILTER  
+        /// - INVALID_VERIFICATION_STATUS_FILTER  
+        /// </response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
+        /// </response>
+        /// <remarks>
+        /// **AVAILABLE VEHICLES - Role-Based Access**
+        /// 
+        /// **Access Control by Role:**
+        /// - **Co-owner**: Can only see vehicles in their co-ownership groups (vehicles they are part of)
+        /// - **Staff/Admin**: Can see ALL vehicles in the system
+        /// 
+        /// This ensures privacy - co-owners only discover vehicles within their existing groups,
+        /// while staff/admin have full visibility for management purposes.
+        /// 
+        /// **IMPORTANT - Business Model:**
+        /// - Co-owners: Limited to their group's vehicles (private view)
+        /// - Staff/Admin: Full platform access (public view)
+        /// - Security: Only verified vehicles shown by default
+        /// 
+        /// **Difference from /api/vehicle/my-vehicles:**
+        /// - `/available` → Vehicles you CAN access based on role (group vehicles for co-owner, all for staff/admin)
+        /// - `/my-vehicles` → Only vehicles YOU own (private portfolio)
+        /// 
+        /// **Default Behavior (no filters):**  
+        /// - Status: Available only  
+        /// - VerificationStatus: Verified only  
+        /// - Sorted by: Newest first (CreatedAt descending)  
+        /// 
+        /// **Available Status Filters:**  
+        /// - Available: Vehicle is ready for booking  
+        /// - InUse: Currently being used (bookings in progress)  
+        /// - Maintenance: Under maintenance or repair  
+        /// - Unavailable: Not available for any reason  
+        /// 
+        /// **Available Verification Status Filters:**  
+        /// - Pending: Awaiting verification  
+        /// - VerificationRequested: Verification process started  
+        /// - RequiresRecheck: Needs re-verification  
+        /// - Verified: Fully verified and approved  
+        /// - Rejected: Verification rejected  
+        /// 
+        /// **Response Includes:**  
+        /// - Vehicle details (brand, model, year, specs)  
+        /// - Current co-owners with ownership percentages  
+        /// - Available ownership percentage (100% - total active ownership)  
+        /// - Location information (latitude, longitude)  
+        /// - Status and verification information  
+        /// 
+        /// **Use Cases:**  
+        /// - Co-owners: Browse vehicles in their groups for booking
+        /// - Co-owners: Find investment opportunities within their groups
+        /// - Staff/Admin: View all vehicles for management and oversight
+        /// - Filter by location (frontend can use lat/long)  
+        /// - Check vehicle specifications before booking or investment  
+        /// 
+        /// **Pagination:**  
+        /// - Default: 10 items per page  
+        /// - Maximum: 50 items per page  
+        /// - Returns total count for pagination UI  
+        /// 
+        /// **Privacy and Security:**
+        /// - Role-based filtering protects vehicle privacy
+        /// - Co-owners can only see their group's vehicles
+        /// - Only verified vehicles shown by default (safety)
+        /// - Investment amounts visible within groups for transparency
+        /// 
+        /// **Example Request:**  
+        /// GET /api/vehicle/available?pageIndex=1&amp;pageSize=20&amp;status=Available&amp;verificationStatus=Verified
+        /// </remarks>
+        [HttpGet("available")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
+        public async Task<IActionResult> GetAvailableVehicles(
+            [FromQuery] int pageIndex = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? status = null,
+            [FromQuery] string? verificationStatus = null)
+        {
+            // Validate pagination parameters
+            if (pageIndex < 1)
+            {
+                return BadRequest(new { Message = "INVALID_PAGE_INDEX", Details = "Page index must be at least 1" });
+            }
+
+            if (pageSize < 1 || pageSize > 50)
+            {
+                return BadRequest(new { Message = "INVALID_PAGE_SIZE", Details = "Page size must be between 1 and 50" });
+            }
+
+            // Get user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _vehicleService.GetAvailableVehiclesAsync(userId, pageIndex, pageSize, status, verificationStatus);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
                 500 => StatusCode(500, response),
                 _ => StatusCode(response.StatusCode, response)
             };

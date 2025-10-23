@@ -853,6 +853,122 @@ namespace EvCoOwnership.Services.Services
         }
 
         /// <summary>
+        /// Gets all available vehicles for co-ownership or booking
+        /// </summary>
+        /// <remarks>
+        /// BUSINESS LOGIC - ROLE-BASED ACCESS:
+        /// - **Co-owner**: Can only see vehicles in their co-ownership groups (vehicles they are part of)
+        /// - **Staff/Admin**: Can see ALL vehicles in the system
+        /// 
+        /// This ensures privacy - co-owners only discover vehicles within their existing groups,
+        /// while staff/admin have full visibility for management purposes.
+        /// 
+        /// SECURITY CONSIDERATIONS:
+        /// - Only shows verified vehicles by default (safety)
+        /// - Co-owner contact info is included for legitimate inquiries
+        /// - Role-based filtering prevents unauthorized vehicle discovery
+        /// </remarks>
+        public async Task<BaseResponse> GetAvailableVehiclesAsync(int userId, int pageIndex = 1, int pageSize = 10, string? filterByStatus = null, string? filterByVerificationStatus = null)
+        {
+            try
+            {
+                _logger.LogInformation("Getting available vehicles for userId: {UserId} - pageIndex: {PageIndex}, pageSize: {PageSize}", 
+                    userId, pageIndex, pageSize);
+
+                // Get user to check role
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Determine filtering based on role
+                int? coOwnerIdFilter = null;
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    // Co-owner: only show vehicles in their groups
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "CO_OWNER_PROFILE_NOT_FOUND"
+                        };
+                    }
+                    coOwnerIdFilter = coOwner.UserId;
+                    _logger.LogInformation("Co-owner access: filtering by coOwnerId {CoOwnerId}", coOwner.UserId);
+                }
+                else if (user.RoleEnum == EUserRole.Staff || user.RoleEnum == EUserRole.Admin)
+                {
+                    // Staff/Admin: show all vehicles (coOwnerIdFilter remains null)
+                    _logger.LogInformation("{Role} access: showing all vehicles", user.RoleEnum);
+                }
+                else
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_INSUFFICIENT_PERMISSIONS"
+                    };
+                }
+
+                // Parse filter parameters
+                EVehicleStatus? statusFilter = null;
+                if (!string.IsNullOrEmpty(filterByStatus) && Enum.TryParse<EVehicleStatus>(filterByStatus, true, out var parsedStatus))
+                {
+                    statusFilter = parsedStatus;
+                }
+
+                EVehicleVerificationStatus? verificationFilter = null;
+                if (!string.IsNullOrEmpty(filterByVerificationStatus) && Enum.TryParse<EVehicleVerificationStatus>(filterByVerificationStatus, true, out var parsedVerification))
+                {
+                    verificationFilter = parsedVerification;
+                }
+
+                // Get vehicles from repository with role-based filtering
+                var (vehicles, totalCount) = await _unitOfWork.VehicleRepository.GetAllAvailableVehiclesAsync(
+                    pageIndex, 
+                    pageSize,
+                    coOwnerIdFilter, // null for Staff/Admin, coOwnerId for Co-owner
+                    statusFilter, 
+                    verificationFilter);
+
+                // Map to response DTOs
+                var vehicleResponses = new List<VehicleResponse>();
+                foreach (var vehicle in vehicles)
+                {
+                    var response = await MapVehicleToResponseAsync(vehicle);
+                    vehicleResponses.Add(response);
+                }
+
+                var pagedResult = new PagedResult<VehicleResponse>(vehicleResponses, totalCount, pageIndex, pageSize);
+
+                _logger.LogInformation("Retrieved {Count} available vehicles out of {Total} total", vehicles.Count, totalCount);
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "AVAILABLE_VEHICLES_RETRIEVED_SUCCESSFULLY",
+                    Data = pagedResult
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available vehicles");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
+
+        /// <summary>
         /// Maps Vehicle model to VehicleResponse DTO
         /// </summary>
         private async Task<VehicleResponse> MapVehicleToResponseAsync(Vehicle vehicle)

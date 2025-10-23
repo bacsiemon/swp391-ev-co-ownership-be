@@ -1,5 +1,6 @@
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Repositories.Base;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Interfaces
 {
@@ -24,5 +25,17 @@ namespace EvCoOwnership.Repositories.Interfaces
         /// Gets vehicle by VIN
         /// </summary>
         Task<Vehicle?> GetByVinAsync(string vin);
+
+        /// <summary>
+        /// Gets all available vehicles with pagination and optional filters
+        /// For Co-owners: returns only vehicles in their groups
+        /// For Staff/Admin: returns all vehicles
+        /// </summary>
+        Task<(List<Vehicle> vehicles, int totalCount)> GetAllAvailableVehiclesAsync(
+            int pageIndex, 
+            int pageSize,
+            int? coOwnerId = null,
+            EVehicleStatus? statusFilter = null, 
+            EVehicleVerificationStatus? verificationStatusFilter = null);
     }
 }

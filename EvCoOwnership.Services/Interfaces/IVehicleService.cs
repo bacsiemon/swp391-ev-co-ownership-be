@@ -88,5 +88,20 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="userId">ID of the user making the request</param>
         /// <returns>Response containing the update result</returns>
         Task<BaseResponse> UpdateVehicleAsync(int vehicleId, CreateVehicleRequest request, int userId);
+
+        /// <summary>
+        /// Gets all available vehicles for co-ownership or booking
+        /// </summary>
+        /// <param name="pageIndex">Page number (default: 1)</param>
+        /// <param name="pageSize">Items per page (default: 10)</param>
+        /// <param name="filterByStatus">Filter by vehicle status (optional)</param>
+        /// <param name="filterByVerificationStatus">Filter by verification status (optional)</param>
+        /// <returns>Response containing paginated list of available vehicles</returns>
+        /// <summary>
+        /// Gets available vehicles based on user role
+        /// Co-owner: only their group's vehicles
+        /// Staff/Admin: all vehicles
+        /// </summary>
+        Task<BaseResponse> GetAvailableVehiclesAsync(int userId, int pageIndex = 1, int pageSize = 10, string? filterByStatus = null, string? filterByVerificationStatus = null);
     }
 }

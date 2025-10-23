@@ -175,7 +175,7 @@ namespace EvCoOwnership.Services.Services
                 // Check if user has permission to view this license
                 // (own license or admin/staff role)
                 var isOwner = existingLicense.CoOwner?.UserId == userId;
-                var isAdmin = user.RoleEnum == Repositories.Enums.EUserRole.Admin || 
+                var isAdmin = user.RoleEnum == Repositories.Enums.EUserRole.Admin ||
                               user.RoleEnum == Repositories.Enums.EUserRole.Staff;
 
                 if (!isOwner && !isAdmin)
@@ -225,7 +225,7 @@ namespace EvCoOwnership.Services.Services
                     };
                 }
 
-                if (adminUser.RoleEnum != Repositories.Enums.EUserRole.Admin && 
+                if (adminUser.RoleEnum != Repositories.Enums.EUserRole.Admin &&
                     adminUser.RoleEnum != Repositories.Enums.EUserRole.Staff)
                 {
                     return new BaseResponse
@@ -476,7 +476,7 @@ namespace EvCoOwnership.Services.Services
 
                 // Check permissions - user can only update their own license or admin/staff can update any
                 var currentUser = await _unitOfWork.UserRepository.GetUserWithRolesByIdAsync(currentUserId);
-                var isAdminOrStaff = currentUser?.RoleEnum == Repositories.Enums.EUserRole.Admin || 
+                var isAdminOrStaff = currentUser?.RoleEnum == Repositories.Enums.EUserRole.Admin ||
                                      currentUser?.RoleEnum == Repositories.Enums.EUserRole.Staff;
 
                 if (!isAdminOrStaff && existingLicense.CoOwnerId != currentUserId)
@@ -549,7 +549,7 @@ namespace EvCoOwnership.Services.Services
 
                 // Check permissions - user can only delete their own license or admin/staff can delete any
                 var currentUser = await _unitOfWork.UserRepository.GetUserWithRolesByIdAsync(currentUserId);
-                var isAdminOrStaff = currentUser?.RoleEnum == Repositories.Enums.EUserRole.Admin || 
+                var isAdminOrStaff = currentUser?.RoleEnum == Repositories.Enums.EUserRole.Admin ||
                                      currentUser?.RoleEnum == Repositories.Enums.EUserRole.Staff;
 
                 if (!isAdminOrStaff && existingLicense.CoOwnerId != currentUserId)
@@ -655,7 +655,7 @@ namespace EvCoOwnership.Services.Services
                 await _unitOfWork.DrivingLicenseRepository.AddAsync(license);
                 await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation("License registered successfully: {LicenseId} for user {UserId}", 
+                _logger.LogInformation("License registered successfully: {LicenseId} for user {UserId}",
                     license.Id, userId);
 
                 return new BaseResponse
