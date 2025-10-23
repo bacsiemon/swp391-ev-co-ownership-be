@@ -688,7 +688,7 @@ namespace EvCoOwnership.Services.Services
                     Email = user.Email,
                     Summary = summary,
                     Bookings = bookingHistory,
-                    Pagination = new PaginationInfo
+                    Pagination = new UsageAnalyticsPaginationInfo
                     {
                         CurrentPage = request.PageNumber,
                         PageSize = request.PageSize,

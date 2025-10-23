@@ -488,7 +488,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     Disputes = summaries,
                     Statistics = statistics,
-                    Pagination = new PaginationInfo
+                    Pagination = new DisputePaginationInfo
                     {
                         CurrentPage = request.PageNumber,
                         PageSize = request.PageSize,

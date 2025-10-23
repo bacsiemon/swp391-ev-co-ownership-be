@@ -722,7 +722,7 @@ namespace EvCoOwnership.Services.Services
 
             // Pagination info
             var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
-            var pagination = new PaginationInfo
+            var pagination = new DepositPaginationInfo
             {
                 CurrentPage = request.PageNumber,
                 PageSize = request.PageSize,

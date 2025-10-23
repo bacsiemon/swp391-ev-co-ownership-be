@@ -344,7 +344,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     Contracts = summaries,
                     Statistics = statistics,
-                    Pagination = new PaginationInfo
+                    Pagination = new ContractPaginationInfo
                     {
                         CurrentPage = request.PageNumber,
                         PageSize = request.PageSize,

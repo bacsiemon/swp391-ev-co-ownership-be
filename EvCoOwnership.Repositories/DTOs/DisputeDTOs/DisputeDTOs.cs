@@ -417,19 +417,19 @@ namespace EvCoOwnership.Repositories.DTOs.DisputeDTOs
         public int DisputeId { get; set; }
         public int VehicleId { get; set; }
         public string VehicleName { get; set; } = string.Empty;
-        
+
         public string DisputeType { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string Priority { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
-        
+
         public string Title { get; set; } = string.Empty;
         public string InitiatorName { get; set; } = string.Empty;
         public int RespondentCount { get; set; }
         public int ResponseCount { get; set; }
-        
+
         public decimal? DisputedAmount { get; set; }
-        
+
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public int DaysOpen { get; set; }
