@@ -868,7 +868,21 @@ namespace EvCoOwnership.Services.Services
         /// - Co-owner contact info is included for legitimate inquiries
         /// - Role-based filtering prevents unauthorized vehicle discovery
         /// </remarks>
-        public async Task<BaseResponse> GetAvailableVehiclesAsync(int userId, int pageIndex = 1, int pageSize = 10, string? filterByStatus = null, string? filterByVerificationStatus = null)
+        public async Task<BaseResponse> GetAvailableVehiclesAsync(
+            int userId, 
+            int pageIndex = 1, 
+            int pageSize = 10, 
+            string? filterByStatus = null, 
+            string? filterByVerificationStatus = null,
+            string? brand = null,
+            string? model = null,
+            int? minYear = null,
+            int? maxYear = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? search = null,
+            string? sortBy = null,
+            bool sortDescending = true)
         {
             try
             {
@@ -936,7 +950,16 @@ namespace EvCoOwnership.Services.Services
                     pageSize,
                     coOwnerIdFilter, // null for Staff/Admin, coOwnerId for Co-owner
                     statusFilter,
-                    verificationFilter);
+                    verificationFilter,
+                    brand,
+                    model,
+                    minYear,
+                    maxYear,
+                    minPrice,
+                    maxPrice,
+                    search,
+                    sortBy,
+                    sortDescending);
 
                 // Map to response DTOs
                 var vehicleResponses = new List<VehicleResponse>();

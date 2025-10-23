@@ -36,6 +36,15 @@ namespace EvCoOwnership.Repositories.Interfaces
             int pageSize,
             int? coOwnerId = null,
             EVehicleStatus? statusFilter = null,
-            EVehicleVerificationStatus? verificationStatusFilter = null);
+            EVehicleVerificationStatus? verificationStatusFilter = null,
+            string? brandFilter = null,
+            string? modelFilter = null,
+            int? minYear = null,
+            int? maxYear = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? searchKeyword = null,
+            string? sortBy = null,
+            bool sortDescending = true);
     }
 }

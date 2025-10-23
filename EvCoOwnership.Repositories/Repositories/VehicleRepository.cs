@@ -66,7 +66,16 @@ namespace EvCoOwnership.Repositories.Repositories
             int pageSize,
             int? coOwnerId = null,
             EVehicleStatus? statusFilter = null,
-            EVehicleVerificationStatus? verificationStatusFilter = null)
+            EVehicleVerificationStatus? verificationStatusFilter = null,
+            string? brandFilter = null,
+            string? modelFilter = null,
+            int? minYear = null,
+            int? maxYear = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? searchKeyword = null,
+            string? sortBy = null,
+            bool sortDescending = true)
         {
             var query = _context.Set<Vehicle>()
                 .Include(v => v.VehicleCoOwners)
@@ -107,8 +116,61 @@ namespace EvCoOwnership.Repositories.Repositories
                 query = query.Where(v => v.VerificationStatusEnum == EVehicleVerificationStatus.Verified);
             }
 
-            // Order by creation date (newest first)
-            query = query.OrderByDescending(v => v.CreatedAt);
+            // Brand filter
+            if (!string.IsNullOrWhiteSpace(brandFilter))
+            {
+                query = query.Where(v => v.Brand.ToLower().Contains(brandFilter.ToLower()));
+            }
+
+            // Model filter
+            if (!string.IsNullOrWhiteSpace(modelFilter))
+            {
+                query = query.Where(v => v.Model.ToLower().Contains(modelFilter.ToLower()));
+            }
+
+            // Year range filter
+            if (minYear.HasValue)
+            {
+                query = query.Where(v => v.Year >= minYear.Value);
+            }
+            if (maxYear.HasValue)
+            {
+                query = query.Where(v => v.Year <= maxYear.Value);
+            }
+
+            // Price range filter
+            if (minPrice.HasValue)
+            {
+                query = query.Where(v => v.PurchasePrice >= minPrice.Value);
+            }
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(v => v.PurchasePrice <= maxPrice.Value);
+            }
+
+            // Search keyword (searches in name, brand, model, VIN, license plate)
+            if (!string.IsNullOrWhiteSpace(searchKeyword))
+            {
+                var keyword = searchKeyword.ToLower();
+                query = query.Where(v =>
+                    v.Name.ToLower().Contains(keyword) ||
+                    v.Brand.ToLower().Contains(keyword) ||
+                    v.Model.ToLower().Contains(keyword) ||
+                    v.Vin.ToLower().Contains(keyword) ||
+                    v.LicensePlate.ToLower().Contains(keyword));
+            }
+
+            // Sorting
+            query = sortBy?.ToLower() switch
+            {
+                "name" => sortDescending ? query.OrderByDescending(v => v.Name) : query.OrderBy(v => v.Name),
+                "brand" => sortDescending ? query.OrderByDescending(v => v.Brand) : query.OrderBy(v => v.Brand),
+                "model" => sortDescending ? query.OrderByDescending(v => v.Model) : query.OrderBy(v => v.Model),
+                "year" => sortDescending ? query.OrderByDescending(v => v.Year) : query.OrderBy(v => v.Year),
+                "price" => sortDescending ? query.OrderByDescending(v => v.PurchasePrice) : query.OrderBy(v => v.PurchasePrice),
+                "createdat" => sortDescending ? query.OrderByDescending(v => v.CreatedAt) : query.OrderBy(v => v.CreatedAt),
+                _ => query.OrderByDescending(v => v.CreatedAt) // Default: newest first
+            };
 
             var totalCount = await query.CountAsync();
 

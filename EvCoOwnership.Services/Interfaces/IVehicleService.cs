@@ -98,11 +98,25 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="filterByVerificationStatus">Filter by verification status (optional)</param>
         /// <returns>Response containing paginated list of available vehicles</returns>
         /// <summary>
-        /// Gets available vehicles based on user role
+        /// Gets available vehicles based on user role with comprehensive filters
         /// Co-owner: only their group's vehicles
         /// Staff/Admin: all vehicles
         /// </summary>
-        Task<BaseResponse> GetAvailableVehiclesAsync(int userId, int pageIndex = 1, int pageSize = 10, string? filterByStatus = null, string? filterByVerificationStatus = null);
+        Task<BaseResponse> GetAvailableVehiclesAsync(
+            int userId, 
+            int pageIndex = 1, 
+            int pageSize = 10, 
+            string? filterByStatus = null, 
+            string? filterByVerificationStatus = null,
+            string? brand = null,
+            string? model = null,
+            int? minYear = null,
+            int? maxYear = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? search = null,
+            string? sortBy = null,
+            bool sortDescending = true);
 
         /// <summary>
         /// Gets detailed vehicle information including fund, co-owners, and creator info

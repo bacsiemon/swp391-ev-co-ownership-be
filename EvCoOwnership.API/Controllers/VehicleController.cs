@@ -466,6 +466,15 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="pageSize">Items per page (default: 10, max: 50)</param>
         /// <param name="status">Filter by vehicle status (Available, InUse, Maintenance, Unavailable)</param>
         /// <param name="verificationStatus">Filter by verification status (Pending, Verified, Rejected, etc.)</param>
+        /// <param name="brand">Filter by brand (partial match, case-insensitive). Example: "VinFast", "Tesla", "BMW"</param>
+        /// <param name="model">Filter by model (partial match, case-insensitive). Example: "VF8", "Model 3", "i4"</param>
+        /// <param name="minYear">Minimum manufacturing year. Example: 2020</param>
+        /// <param name="maxYear">Maximum manufacturing year. Example: 2024</param>
+        /// <param name="minPrice">Minimum purchase price in VND. Example: 500000000 (500 million VND)</param>
+        /// <param name="maxPrice">Maximum purchase price in VND. Example: 2000000000 (2 billion VND)</param>
+        /// <param name="search">Search keyword across multiple fields (name, brand, model, VIN, license plate). Case-insensitive.</param>
+        /// <param name="sortBy">Sort field: name, brand, model, year, price, createdAt. Default: createdAt</param>
+        /// <param name="sortDesc">Sort direction: true for descending (default), false for ascending</param>
         /// <response code="200">Available vehicles retrieved successfully. Possible messages:  
         /// - AVAILABLE_VEHICLES_RETRIEVED_SUCCESSFULLY  
         /// </response>
@@ -480,7 +489,7 @@ namespace EvCoOwnership.API.Controllers
         /// - INTERNAL_SERVER_ERROR  
         /// </response>
         /// <remarks>
-        /// **AVAILABLE VEHICLES - Role-Based Access**
+        /// **AVAILABLE VEHICLES - Role-Based Access with Comprehensive Filtering**
         /// 
         /// **Access Control by Role:**
         /// - **Co-owner**: Can only see vehicles in their co-ownership groups (vehicles they are part of)
@@ -516,6 +525,22 @@ namespace EvCoOwnership.API.Controllers
         /// - Verified: Fully verified and approved  
         /// - Rejected: Verification rejected  
         /// 
+        /// **Additional Filtering Options:**
+        /// - **Brand Filter**: Partial text match, case-insensitive (e.g., "vin" matches "VinFast")
+        /// - **Model Filter**: Partial text match, case-insensitive (e.g., "vf" matches "VF8", "VF9")
+        /// - **Year Range**: Filter vehicles manufactured between minYear and maxYear (inclusive)
+        /// - **Price Range**: Filter by purchase price in VND (minPrice to maxPrice)
+        /// - **Keyword Search**: Search across name, brand, model, VIN, and license plate simultaneously
+        /// 
+        /// **Sorting Options:**
+        /// - **name**: Vehicle name (alphabetical)
+        /// - **brand**: Brand name (alphabetical)
+        /// - **model**: Model name (alphabetical)
+        /// - **year**: Manufacturing year (chronological)
+        /// - **price**: Purchase price (numerical)
+        /// - **createdAt**: Date added to system (default, chronological)
+        /// - Direction: sortDesc=true (descending, default) or false (ascending)
+        /// 
         /// **Response Includes:**  
         /// - Vehicle details (brand, model, year, specs)  
         /// - Current co-owners with ownership percentages  
@@ -527,7 +552,10 @@ namespace EvCoOwnership.API.Controllers
         /// - Co-owners: Browse vehicles in their groups for booking
         /// - Co-owners: Find investment opportunities within their groups
         /// - Staff/Admin: View all vehicles for management and oversight
-        /// - Filter by location (frontend can use lat/long)  
+        /// - Filter by brand/model to find specific vehicle types
+        /// - Search by VIN or license plate for vehicle lookup
+        /// - Filter by price range to match budget constraints
+        /// - Sort by year to find newest/oldest vehicles
         /// - Check vehicle specifications before booking or investment  
         /// 
         /// **Pagination:**  
@@ -541,8 +569,43 @@ namespace EvCoOwnership.API.Controllers
         /// - Only verified vehicles shown by default (safety)
         /// - Investment amounts visible within groups for transparency
         /// 
-        /// **Example Request:**  
-        /// GET /api/vehicle/available?pageIndex=1&amp;pageSize=20&amp;status=Available&amp;verificationStatus=Verified
+        /// **Example Requests:**  
+        /// 
+        /// **1. Basic (default filters):**  
+        /// GET /api/vehicle/available
+        /// 
+        /// **2. Filter by brand:**  
+        /// GET /api/vehicle/available?brand=VinFast
+        /// 
+        /// **3. Filter by model:**  
+        /// GET /api/vehicle/available?model=VF8
+        /// 
+        /// **4. Price range (500M - 2B VND):**  
+        /// GET /api/vehicle/available?minPrice=500000000&amp;maxPrice=2000000000
+        /// 
+        /// **5. Year range (2020-2024):**  
+        /// GET /api/vehicle/available?minYear=2020&amp;maxYear=2024
+        /// 
+        /// **6. Combined brand + year + status:**  
+        /// GET /api/vehicle/available?brand=Tesla&amp;minYear=2022&amp;status=Available
+        /// 
+        /// **7. Search by keyword:**  
+        /// GET /api/vehicle/available?search=VF8
+        /// 
+        /// **8. Sort by price (ascending):**  
+        /// GET /api/vehicle/available?sortBy=price&amp;sortDesc=false
+        /// 
+        /// **9. Sort by year (newest first):**  
+        /// GET /api/vehicle/available?sortBy=year&amp;sortDesc=true
+        /// 
+        /// **10. Complex filter (brand + price range + sort):**  
+        /// GET /api/vehicle/available?brand=VinFast&amp;minPrice=1000000000&amp;maxPrice=3000000000&amp;sortBy=price&amp;sortDesc=false&amp;pageSize=20
+        /// 
+        /// **11. Search + year range:**  
+        /// GET /api/vehicle/available?search=electric&amp;minYear=2023&amp;sortBy=createdAt
+        /// 
+        /// **12. Admin view all with status filter:**  
+        /// GET /api/vehicle/available?status=Maintenance&amp;verificationStatus=Verified
         /// </remarks>
         [HttpGet("available")]
         [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
@@ -550,7 +613,16 @@ namespace EvCoOwnership.API.Controllers
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? status = null,
-            [FromQuery] string? verificationStatus = null)
+            [FromQuery] string? verificationStatus = null,
+            [FromQuery] string? brand = null,
+            [FromQuery] string? model = null,
+            [FromQuery] int? minYear = null,
+            [FromQuery] int? maxYear = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] bool sortDesc = true)
         {
             // Validate pagination parameters
             if (pageIndex < 1)
@@ -570,11 +642,15 @@ namespace EvCoOwnership.API.Controllers
                 return Unauthorized(new { Message = "INVALID_TOKEN" });
             }
 
-            var response = await _vehicleService.GetAvailableVehiclesAsync(userId, pageIndex, pageSize, status, verificationStatus);
+            var response = await _vehicleService.GetAvailableVehiclesAsync(
+                userId, pageIndex, pageSize, status, verificationStatus,
+                brand, model, minYear, maxYear, minPrice, maxPrice, search, sortBy, sortDesc);
             return response.StatusCode switch
             {
                 200 => Ok(response),
                 400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
                 500 => StatusCode(500, response),
                 _ => StatusCode(response.StatusCode, response)
             };
