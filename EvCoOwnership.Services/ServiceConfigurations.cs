@@ -27,6 +27,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IFileUploadService, FileUploadService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IVehicleService, VehicleService>();
+            services.AddScoped<IUserProfileService, UserProfileService>();
         }
     }
 }
