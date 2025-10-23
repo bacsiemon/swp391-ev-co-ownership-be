@@ -547,7 +547,7 @@ namespace EvCoOwnership.API.Controllers
         [HttpGet("available")]
         [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff)]
         public async Task<IActionResult> GetAvailableVehicles(
-            [FromQuery] int pageIndex = 1, 
+            [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? status = null,
             [FromQuery] string? verificationStatus = null)
@@ -575,6 +575,82 @@ namespace EvCoOwnership.API.Controllers
             {
                 200 => Ok(response),
                 400 => BadRequest(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Gets detailed vehicle information including fund, co-owners, and creator
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <response code="200">Vehicle detail retrieved successfully. Possible messages:  
+        /// - VEHICLE_DETAIL_RETRIEVED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED_NOT_VEHICLE_CO_OWNER  
+        /// - ACCESS_DENIED_INSUFFICIENT_PERMISSIONS  
+        /// - CO_OWNER_PROFILE_NOT_FOUND  
+        /// </response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - VEHICLE_NOT_FOUND  
+        /// - USER_NOT_FOUND  
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
+        /// </response>
+        /// <remarks>
+        /// **VEHICLE DETAIL - Role-Based Access**
+        /// 
+        /// **Access Control:**
+        /// - **Co-owner**: Can only view details of vehicles they are part of (Active co-owner status required)
+        /// - **Staff/Admin**: Can view details of any vehicle
+        /// 
+        /// **Response Includes:**
+        /// - Complete vehicle specifications (brand, model, year, VIN, license plate, color, battery, range)
+        /// - Purchase and financial information (purchase date, price, warranty)
+        /// - Current status (distance travelled, status, verification status)
+        /// - Location information (latitude, longitude)
+        /// - Complete co-ownership information:
+        ///   - List of all co-owners with contact details
+        ///   - Individual ownership percentages and investment amounts
+        ///   - Co-owner status (Active, Pending, Rejected, Inactive)
+        ///   - Total ownership percentage
+        ///   - Available ownership percentage (100% - total active ownership)
+        /// - Fund information (if exists):
+        ///   - Current fund balance
+        ///   - Total number of additions and usages
+        ///   - Total added and used amounts
+        ///   - Fund creation and update timestamps
+        /// - Creator information (user who created the vehicle)
+        /// 
+        /// **Use Cases:**
+        /// - Co-owners: View complete details of their vehicles
+        /// - Staff/Admin: Manage and verify vehicle information
+        /// - Check fund balance before planning expenses
+        /// - Review co-ownership distribution
+        /// - Verify vehicle specifications and status
+        /// 
+        /// **Example Request:**  
+        /// GET /api/vehicle/123
+        /// </remarks>
+        [HttpGet("{vehicleId}")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
+        public async Task<IActionResult> GetVehicleDetail(int vehicleId)
+        {
+            // Get user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _vehicleService.GetVehicleDetailAsync(vehicleId, userId);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
                 500 => StatusCode(500, response),
                 _ => StatusCode(response.StatusCode, response)
             };

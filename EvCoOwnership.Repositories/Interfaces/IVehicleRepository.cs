@@ -32,10 +32,10 @@ namespace EvCoOwnership.Repositories.Interfaces
         /// For Staff/Admin: returns all vehicles
         /// </summary>
         Task<(List<Vehicle> vehicles, int totalCount)> GetAllAvailableVehiclesAsync(
-            int pageIndex, 
+            int pageIndex,
             int pageSize,
             int? coOwnerId = null,
-            EVehicleStatus? statusFilter = null, 
+            EVehicleStatus? statusFilter = null,
             EVehicleVerificationStatus? verificationStatusFilter = null);
     }
 }

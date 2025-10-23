@@ -103,5 +103,14 @@ namespace EvCoOwnership.Services.Interfaces
         /// Staff/Admin: all vehicles
         /// </summary>
         Task<BaseResponse> GetAvailableVehiclesAsync(int userId, int pageIndex = 1, int pageSize = 10, string? filterByStatus = null, string? filterByVerificationStatus = null);
+
+        /// <summary>
+        /// Gets detailed vehicle information including fund, co-owners, and creator info
+        /// Role-based access: Co-owners can view their group's vehicles, Staff/Admin can view all
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="userId">ID of the requesting user</param>
+        /// <returns>Response containing detailed vehicle information</returns>
+        Task<BaseResponse> GetVehicleDetailAsync(int vehicleId, int userId);
     }
 }

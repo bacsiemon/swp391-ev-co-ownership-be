@@ -872,7 +872,7 @@ namespace EvCoOwnership.Services.Services
         {
             try
             {
-                _logger.LogInformation("Getting available vehicles for userId: {UserId} - pageIndex: {PageIndex}, pageSize: {PageSize}", 
+                _logger.LogInformation("Getting available vehicles for userId: {UserId} - pageIndex: {PageIndex}, pageSize: {PageSize}",
                     userId, pageIndex, pageSize);
 
                 // Get user to check role
@@ -932,10 +932,10 @@ namespace EvCoOwnership.Services.Services
 
                 // Get vehicles from repository with role-based filtering
                 var (vehicles, totalCount) = await _unitOfWork.VehicleRepository.GetAllAvailableVehiclesAsync(
-                    pageIndex, 
+                    pageIndex,
                     pageSize,
                     coOwnerIdFilter, // null for Staff/Admin, coOwnerId for Co-owner
-                    statusFilter, 
+                    statusFilter,
                     verificationFilter);
 
                 // Map to response DTOs
@@ -1020,6 +1020,210 @@ namespace EvCoOwnership.Services.Services
                 LocationLongitude = vehicle.LocationLongitude,
                 CreatedAt = vehicle.CreatedAt,
                 CoOwners = coOwners
+            };
+        }
+
+        /// <summary>
+        /// Gets detailed vehicle information including fund, co-owners, and creator
+        /// </summary>
+        public async Task<BaseResponse> GetVehicleDetailAsync(int vehicleId, int userId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting vehicle detail for vehicleId: {VehicleId}, userId: {UserId}", vehicleId, userId);
+
+                // Get user to check role
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Get vehicle with related data
+                var vehicle = await _unitOfWork.VehicleRepository.GetVehicleWithCoOwnersAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                // Role-based access control
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    // Co-owner can only view vehicles they are part of
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "CO_OWNER_PROFILE_NOT_FOUND"
+                        };
+                    }
+
+                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco => 
+                        vco.CoOwnerId == coOwner.UserId && 
+                        vco.StatusEnum == EContractStatus.Active);
+
+                    if (!isCoOwner)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                        };
+                    }
+                }
+                else if (user.RoleEnum != EUserRole.Staff && user.RoleEnum != EUserRole.Admin)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_INSUFFICIENT_PERMISSIONS"
+                    };
+                }
+
+                // Map vehicle to detailed response
+                var response = await MapVehicleToDetailResponseAsync(vehicle);
+
+                _logger.LogInformation("Vehicle detail retrieved successfully for vehicleId: {VehicleId}", vehicleId);
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_DETAIL_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vehicle detail for vehicleId: {VehicleId}", vehicleId);
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Maps Vehicle model to VehicleDetailResponse DTO with fund information
+        /// </summary>
+        private async Task<VehicleDetailResponse> MapVehicleToDetailResponseAsync(Vehicle vehicle)
+        {
+            // Map co-owners
+            var coOwners = new List<VehicleCoOwnerResponse>();
+            decimal totalOwnershipPercentage = 0;
+
+            foreach (var vco in vehicle.VehicleCoOwners)
+            {
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(vco.CoOwnerId);
+                var user = coOwner != null ? await _unitOfWork.UserRepository.GetByIdAsync(coOwner.UserId) : null;
+
+                if (user != null)
+                {
+                    coOwners.Add(new VehicleCoOwnerResponse
+                    {
+                        CoOwnerId = vco.CoOwnerId,
+                        UserId = user.Id,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        Email = user.Email,
+                        OwnershipPercentage = vco.OwnershipPercentage,
+                        InvestmentAmount = vco.InvestmentAmount,
+                        Status = vco.StatusEnum.ToString(),
+                        CreatedAt = vco.CreatedAt
+                    });
+
+                    // Sum up active ownership percentages
+                    if (vco.StatusEnum == EContractStatus.Active)
+                    {
+                        totalOwnershipPercentage += vco.OwnershipPercentage;
+                    }
+                }
+            }
+
+            // Get fund information if exists
+            VehicleFundInfo? fundInfo = null;
+            if (vehicle.FundId.HasValue)
+            {
+                var fund = await _unitOfWork.FundRepository.GetByIdAsync(vehicle.FundId.Value);
+                if (fund != null)
+                {
+                    var fundAdditions = await _unitOfWork.FundAdditionRepository
+                        .GetAllAsync()
+                        .ContinueWith(task => task.Result.Where(fa => fa.FundId == fund.Id).ToList());
+
+                    var fundUsages = await _unitOfWork.FundUsageRepository
+                        .GetAllAsync()
+                        .ContinueWith(task => task.Result.Where(fu => fu.FundId == fund.Id).ToList());
+
+                    fundInfo = new VehicleFundInfo
+                    {
+                        FundId = fund.Id,
+                        CurrentBalance = fund.CurrentBalance ?? 0,
+                        CreatedAt = fund.CreatedAt,
+                        UpdatedAt = fund.UpdatedAt,
+                        TotalAdditions = fundAdditions.Count,
+                        TotalUsages = fundUsages.Count,
+                        TotalAddedAmount = fundAdditions.Sum(fa => fa.Amount),
+                        TotalUsedAmount = fundUsages.Sum(fu => fu.Amount)
+                    };
+                }
+            }
+
+            // Get creator information
+            CreatorInfo? creatorInfo = null;
+            if (vehicle.CreatedBy.HasValue)
+            {
+                var creator = await _unitOfWork.UserRepository.GetByIdAsync(vehicle.CreatedBy.Value);
+                if (creator != null)
+                {
+                    creatorInfo = new CreatorInfo
+                    {
+                        UserId = creator.Id,
+                        FirstName = creator.FirstName,
+                        LastName = creator.LastName,
+                        Email = creator.Email
+                    };
+                }
+            }
+
+            return new VehicleDetailResponse
+            {
+                Id = vehicle.Id,
+                Name = vehicle.Name,
+                Description = vehicle.Description,
+                Brand = vehicle.Brand,
+                Model = vehicle.Model,
+                Year = vehicle.Year,
+                Vin = vehicle.Vin,
+                LicensePlate = vehicle.LicensePlate,
+                Color = vehicle.Color,
+                BatteryCapacity = vehicle.BatteryCapacity,
+                RangeKm = vehicle.RangeKm,
+                PurchaseDate = vehicle.PurchaseDate,
+                PurchasePrice = vehicle.PurchasePrice,
+                WarrantyUntil = vehicle.WarrantyUntil,
+                DistanceTravelled = vehicle.DistanceTravelled,
+                Status = vehicle.StatusEnum?.ToString(),
+                VerificationStatus = vehicle.VerificationStatusEnum?.ToString(),
+                LocationLatitude = vehicle.LocationLatitude,
+                LocationLongitude = vehicle.LocationLongitude,
+                CreatedAt = vehicle.CreatedAt,
+                UpdatedAt = vehicle.UpdatedAt,
+                CoOwners = coOwners,
+                TotalOwnershipPercentage = totalOwnershipPercentage,
+                AvailableOwnershipPercentage = 100 - totalOwnershipPercentage,
+                Fund = fundInfo,
+                CreatedBy = creatorInfo
             };
         }
     }

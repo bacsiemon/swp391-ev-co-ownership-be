@@ -62,10 +62,10 @@ namespace EvCoOwnership.Repositories.Repositories
         /// If coOwnerId is null (Staff/Admin role): returns all vehicles
         /// </summary>
         public async Task<(List<Vehicle> vehicles, int totalCount)> GetAllAvailableVehiclesAsync(
-            int pageIndex, 
+            int pageIndex,
             int pageSize,
             int? coOwnerId = null,
-            EVehicleStatus? statusFilter = null, 
+            EVehicleStatus? statusFilter = null,
             EVehicleVerificationStatus? verificationStatusFilter = null)
         {
             var query = _context.Set<Vehicle>()
@@ -80,8 +80,8 @@ namespace EvCoOwnership.Repositories.Repositories
             // If coOwnerId is null (Staff/Admin): show all vehicles
             if (coOwnerId.HasValue)
             {
-                query = query.Where(v => v.VehicleCoOwners.Any(vco => 
-                    vco.CoOwnerId == coOwnerId.Value && 
+                query = query.Where(v => v.VehicleCoOwners.Any(vco =>
+                    vco.CoOwnerId == coOwnerId.Value &&
                     vco.StatusEnum == EContractStatus.Active));
             }
 
