@@ -30,10 +30,65 @@ namespace EvCoOwnership.API.Controllers
         /// <summary>
         /// Creates a new payment and returns payment URL
         /// </summary>
+        /// <remarks>
+        /// Sample request for **VNPay with Credit Card**:
+        /// ```json
+        /// {
+        ///   "amount": 500000,
+        ///   "paymentGateway": 0,
+        ///   "paymentMethod": 1,
+        ///   "paymentType": 0,
+        ///   "bookingId": 123,
+        ///   "description": "Payment for vehicle booking"
+        /// }
+        /// ```
+        /// 
+        /// Sample request for **Momo E-Wallet**:
+        /// ```json
+        /// {
+        ///   "amount": 200000,
+        ///   "paymentGateway": 1,
+        ///   "paymentType": 2,
+        ///   "fundAdditionId": 456,
+        ///   "description": "Fund addition via Momo"
+        /// }
+        /// ```
+        /// 
+        /// Sample request for **Online Banking via VNPay**:
+        /// ```json
+        /// {
+        ///   "amount": 1000000,
+        ///   "paymentGateway": 0,
+        ///   "paymentMethod": 0,
+        ///   "bankCode": "VIETCOMBANK",
+        ///   "paymentType": 1,
+        ///   "maintenanceId": 789,
+        ///   "description": "Maintenance payment via banking"
+        /// }
+        /// ```
+        /// 
+        /// **Payment Gateways:**
+        /// - 0 = VNPay (supports all methods)
+        /// - 1 = Momo
+        /// - 2 = ZaloPay
+        /// - 3 = ShopeePay
+        /// - 4 = ViettelPay
+        /// - 5 = BankTransfer
+        /// 
+        /// **Payment Methods (for VNPay):**
+        /// - 0 = BankTransfer
+        /// - 1 = CreditCard
+        /// - 2 = DebitCard
+        /// - 3 = Cash (not applicable for online)
+        /// 
+        /// **Payment Types:**
+        /// - 0 = Booking, 1 = Maintenance, 2 = FundAddition, 3 = Fuel, 4 = Insurance, 5 = Parking, 6 = Toll, 7 = Upgrade, 8 = Dispute, 9 = Contract, 99 = Other
+        /// </remarks>
         /// <param name="request">Create payment request</param>
         /// <response code="201">Payment created successfully, payment URL returned</response>
         /// <response code="400">Validation error</response>
         /// <response code="401">Unauthorized access</response>
+        /// <response code="404">User not found</response>
         [HttpPost]
         public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentRequest request)
         {
@@ -168,6 +223,33 @@ namespace EvCoOwnership.API.Controllers
         {
             var response = await _paymentService.GetPaymentStatisticsAsync();
             return response.StatusCode == 200 ? Ok(response) : StatusCode(response.StatusCode, response);
+        }
+
+        /// <summary>
+        /// Gets available payment gateways information
+        /// </summary>
+        /// <remarks>
+        /// Returns list of supported payment gateways with:
+        /// - Gateway name and description
+        /// - Availability status
+        /// - Min/max payment amounts
+        /// - Supported methods (cards, banking, e-wallets)
+        /// - Supported banks list
+        /// 
+        /// **No authentication required** - public endpoint.
+        /// </remarks>
+        /// <response code="200">Payment gateways retrieved successfully</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("gateways")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAvailableGateways()
+        {
+            var response = await _paymentService.GetAvailableGatewaysAsync();
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
         }
 
         /// <summary>
