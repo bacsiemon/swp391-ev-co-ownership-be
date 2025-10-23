@@ -854,6 +854,311 @@ namespace EvCoOwnership.API.Controllers
         }
 
         #endregion
+
+        #region Booking Conflict Resolution (Advanced Approve/Reject)
+
+        /// <summary>
+        /// Resolve a booking conflict with advanced intelligence (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Advanced conflict resolution system for EV co-ownership with intelligent decision-making.**
+        /// 
+        /// **Resolution Types:**
+        /// - **SimpleApproval (0)**: Basic approve/reject decision
+        /// - **CounterOffer (1)**: Reject with alternative time suggestion
+        /// - **PriorityOverride (2)**: Use ownership % and usage fairness to decide winner
+        /// - **AutoNegotiation (3)**: Let system auto-resolve based on multiple factors
+        /// - **ConsensusRequired (4)**: All conflicting co-owners must approve
+        /// 
+        /// **Key Features:**
+        /// - **Ownership weighting**: Higher ownership % = higher priority (if enabled)
+        /// - **Usage fairness**: Co-owners with less usage get priority
+        /// - **Auto-negotiation**: System calculates optimal resolution
+        /// - **Counter-offers**: Suggest alternative times instead of rejecting
+        /// - **Multi-stakeholder tracking**: See who approved/rejected
+        /// - **Transparent decision**: Full explanation of resolution
+        /// 
+        /// **Request Body (Simple Approval):**
+        /// ```json
+        /// {
+        ///   "isApproved": true,
+        ///   "resolutionType": 0,
+        ///   "notes": "Approved - I can use public transport that day"
+        /// }
+        /// ```
+        /// 
+        /// **Request Body (Counter-Offer):**
+        /// ```json
+        /// {
+        ///   "isApproved": false,
+        ///   "resolutionType": 1,
+        ///   "rejectionReason": "I need the car for medical appointment",
+        ///   "counterOfferStartTime": "2025-01-26T09:00:00",
+        ///   "counterOfferEndTime": "2025-01-26T17:00:00",
+        ///   "notes": "Can you use it the next day instead?"
+        /// }
+        /// ```
+        /// 
+        /// **Request Body (Priority Override):**
+        /// ```json
+        /// {
+        ///   "isApproved": false,
+        ///   "resolutionType": 2,
+        ///   "useOwnershipWeighting": true,
+        ///   "priorityJustification": "I have 60% ownership and less usage this month",
+        ///   "rejectionReason": "I need priority for this booking"
+        /// }
+        /// ```
+        /// 
+        /// **Request Body (Auto-Negotiation):**
+        /// ```json
+        /// {
+        ///   "isApproved": true,
+        ///   "resolutionType": 3,
+        ///   "enableAutoNegotiation": true,
+        ///   "useOwnershipWeighting": true
+        /// }
+        /// ```
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "BOOKING_CONFLICT_RESOLVED_APPROVED",
+        ///   "data": {
+        ///     "bookingId": 124,
+        ///     "outcome": 0,
+        ///     "finalStatus": 1,
+        ///     "resolvedBy": "Alice Johnson",
+        ///     "resolvedAt": "2025-01-17T14:30:00",
+        ///     "resolutionExplanation": "Booking approved by Alice Johnson. Conflicting bookings cancelled.",
+        ///     "stakeholders": [
+        ///       {
+        ///         "userId": 5,
+        ///         "name": "Alice Johnson",
+        ///         "ownershipPercentage": 40,
+        ///         "usageHoursThisMonth": 45,
+        ///         "hasApproved": true,
+        ///         "priorityWeight": 35
+        ///       }
+        ///     ],
+        ///     "approvalStatus": {
+        ///       "totalStakeholders": 1,
+        ///       "approvalsReceived": 1,
+        ///       "rejectionsReceived": 0,
+        ///       "isFullyApproved": true,
+        ///       "approvalPercentage": 100,
+        ///       "weightedApprovalPercentage": 40
+        ///     },
+        ///     "recommendedActions": []
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="bookingId">Booking ID to resolve</param>
+        /// <param name="request">Resolution details</param>
+        /// <response code="200">Conflict resolved successfully</response>
+        /// <response code="400">Booking already processed</response>
+        /// <response code="403">Access denied - not a co-owner</response>
+        /// <response code="404">Booking not found</response>
+        [HttpPost("{bookingId:int}/resolve-conflict")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> ResolveBookingConflict(
+            int bookingId,
+            [FromBody] ResolveBookingConflictRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.ResolveBookingConflictAsync(bookingId, userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Get pending conflicts requiring resolution (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Get all pending booking conflicts that require your attention.**
+        /// 
+        /// **Features:**
+        /// - Filter by vehicle
+        /// - Show only conflicts involving you
+        /// - Auto-resolution preview
+        /// - Priority filtering
+        /// - Actionable insights
+        /// 
+        /// **Query Parameters:**
+        /// - `vehicleId` (optional): Filter by specific vehicle
+        /// - `onlyMyConflicts` (optional): Show only conflicts you're involved in
+        /// - `minimumPriority` (optional): Filter by priority level (0=Low, 1=Medium, 2=High, 3=Urgent)
+        /// - `includeAutoResolvable` (optional): Include conflicts that can be auto-resolved
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "PENDING_CONFLICTS_RETRIEVED",
+        ///   "data": {
+        ///     "totalConflicts": 3,
+        ///     "requiringMyAction": 2,
+        ///     "autoResolvable": 1,
+        ///     "oldestConflictDate": "2025-01-15T10:00:00",
+        ///     "actionItems": [
+        ///       "You have 2 conflict(s) requiring your response",
+        ///       "1 conflict(s) can be auto-resolved"
+        ///     ],
+        ///     "conflicts": [
+        ///       {
+        ///         "bookingId": 124,
+        ///         "requesterName": "Bob Smith",
+        ///         "requestedStartTime": "2025-01-25T09:00:00",
+        ///         "requestedEndTime": "2025-01-25T17:00:00",
+        ///         "purpose": "Business trip",
+        ///         "priority": 2,
+        ///         "conflictsWith": [
+        ///           {
+        ///             "bookingId": 120,
+        ///             "coOwnerName": "Alice Johnson",
+        ///             "overlapHours": 8,
+        ///             "hasResponded": false
+        ///           }
+        ///         ],
+        ///         "daysPending": 2,
+        ///         "canAutoResolve": true,
+        ///         "autoResolutionPreview": {
+        ///           "predictedOutcome": 0,
+        ///           "winnerName": "Bob Smith",
+        ///           "explanation": "Bob Smith likely to be approved (higher priority)",
+        ///           "confidence": 0.8
+        ///         }
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Filter parameters</param>
+        /// <response code="200">Pending conflicts retrieved</response>
+        /// <response code="403">Access denied - not a co-owner</response>
+        [HttpGet("pending-conflicts")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> GetPendingConflicts([FromQuery] GetPendingConflictsRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.GetPendingConflictsAsync(userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Get conflict resolution analytics for a vehicle (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Analytics about booking conflict resolution patterns and co-owner behavior.**
+        /// 
+        /// **Metrics:**
+        /// - Total conflicts resolved vs pending
+        /// - Approval and rejection rates
+        /// - Average resolution time
+        /// - Auto-resolution rate
+        /// - Per co-owner statistics
+        /// - Common conflict patterns
+        /// - Actionable recommendations
+        /// 
+        /// **Query Parameters:**
+        /// - `vehicleId` (required): Vehicle ID
+        /// - `startDate` (optional): Start date for analytics (default: 90 days ago)
+        /// - `endDate` (optional): End date for analytics (default: today)
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "CONFLICT_ANALYTICS_RETRIEVED",
+        ///   "data": {
+        ///     "totalConflictsResolved": 45,
+        ///     "totalConflictsPending": 3,
+        ///     "averageResolutionTimeHours": 12.5,
+        ///     "approvalRate": 68.9,
+        ///     "rejectionRate": 31.1,
+        ///     "autoResolutionRate": 15.6,
+        ///     "statsByCoOwner": [
+        ///       {
+        ///         "userId": 5,
+        ///         "name": "Alice Johnson",
+        ///         "conflictsInitiated": 12,
+        ///         "conflictsReceived": 8,
+        ///         "approvalsGiven": 6,
+        ///         "rejectionsGiven": 2,
+        ///         "successRateAsRequester": 75.0,
+        ///         "averageResponseTimeHours": 8.2
+        ///       }
+        ///     ],
+        ///     "commonPatterns": [
+        ///       {
+        ///         "pattern": "High weekend conflict rate",
+        ///         "occurrences": 15,
+        ///         "recommendation": "Consider implementing weekend rotation schedule"
+        ///       }
+        ///     ],
+        ///     "recommendations": [
+        ///       {
+        ///         "recommendation": "Implement weekend rotation schedule",
+        ///         "rationale": "High weekend conflict rate detected",
+        ///         "suggestedApproach": 4
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="startDate">Start date for analytics</param>
+        /// <param name="endDate">End date for analytics</param>
+        /// <response code="200">Analytics retrieved successfully</response>
+        /// <response code="403">Access denied - not a vehicle co-owner</response>
+        [HttpGet("vehicle/{vehicleId:int}/conflict-analytics")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> GetConflictAnalytics(
+            int vehicleId,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.GetConflictAnalyticsAsync(vehicleId, userId, startDate, endDate);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        #endregion
     }
 }
 

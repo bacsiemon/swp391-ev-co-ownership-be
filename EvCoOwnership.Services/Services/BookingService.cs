@@ -1537,5 +1537,1028 @@ namespace EvCoOwnership.Services.Services
         }
 
         #endregion
+
+        #region Booking Conflict Resolution (Advanced Approve/Reject)
+
+        public async Task<BaseResponse<BookingConflictResolutionResponse>> ResolveBookingConflictAsync(
+            int bookingId,
+            int userId,
+            ResolveBookingConflictRequest request)
+        {
+            try
+            {
+                // Get the booking with all related data
+                var booking = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .Include(b => b.Vehicle)
+                        .ThenInclude(v => v.VehicleCoOwners)
+                            .ThenInclude(vco => vco.CoOwner)
+                                .ThenInclude(co => co.User)
+                    .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+                if (booking == null)
+                {
+                    return new BaseResponse<BookingConflictResolutionResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "BOOKING_NOT_FOUND"
+                    };
+                }
+
+                // Validate user is co-owner of this vehicle
+                var isCoOwner = booking.Vehicle?.VehicleCoOwners
+                    .Any(vco => vco.CoOwner?.UserId == userId && vco.StatusEnum == EContractStatus.Active) ?? false;
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<BookingConflictResolutionResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                    };
+                }
+
+                // Check if booking is still pending
+                if (booking.StatusEnum != EBookingStatus.Pending)
+                {
+                    return new BaseResponse<BookingConflictResolutionResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "BOOKING_ALREADY_PROCESSED"
+                    };
+                }
+
+                // Get all co-owners for this vehicle
+                var allCoOwners = booking.Vehicle?.VehicleCoOwners
+                    .Where(vco => vco.StatusEnum == EContractStatus.Active)
+                    .Select(vco => new
+                    {
+                        UserId = vco.CoOwner?.UserId ?? 0,
+                        Name = $"{vco.CoOwner?.User?.FirstName} {vco.CoOwner?.User?.LastName}".Trim(),
+                        OwnershipPercentage = vco.OwnershipPercentage,
+                        CoOwnerId = vco.CoOwnerId
+                    })
+                    .ToList() ?? new();
+
+                // Get conflicting bookings
+                var conflicts = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Where(b => b.VehicleId == booking.VehicleId &&
+                               b.Id != booking.Id &&
+                               b.StatusEnum != EBookingStatus.Cancelled &&
+                               ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
+                                (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
+                                (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)))
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .ToListAsync();
+
+                // Calculate stakeholders
+                var stakeholders = new List<ConflictStakeholder>();
+                foreach (var coOwner in allCoOwners)
+                {
+                    // Get usage hours this month for this co-owner
+                    var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                    var monthBookings = await _unitOfWork.BookingRepository.GetQueryable()
+                        .Where(b => b.CoOwnerId == coOwner.CoOwnerId &&
+                                   b.VehicleId == booking.VehicleId &&
+                                   b.StatusEnum != EBookingStatus.Cancelled &&
+                                   b.StartTime >= startOfMonth)
+                        .ToListAsync();
+                    var usageHours = monthBookings.Sum(b => (int)(b.EndTime - b.StartTime).TotalHours);
+
+                    var hasConflict = conflicts.Any(c => c.CoOwnerId == coOwner.CoOwnerId);
+
+                    stakeholders.Add(new ConflictStakeholder
+                    {
+                        UserId = coOwner.UserId,
+                        Name = coOwner.Name,
+                        OwnershipPercentage = coOwner.OwnershipPercentage,
+                        UsageHoursThisMonth = usageHours,
+                        HasApproved = false, // Will be updated below
+                        HasRejected = false,
+                        ResponseDate = null,
+                        ResponseNotes = null,
+                        PriorityWeight = CalculatePriorityWeight(
+                            coOwner.OwnershipPercentage,
+                            usageHours,
+                            hasConflict)
+                    });
+                }
+
+                // Determine resolution outcome based on request type
+                ConflictResolutionOutcome outcome;
+                EBookingStatus finalStatus = booking.StatusEnum ?? EBookingStatus.Pending;
+                string resolutionExplanation = "";
+                AutoResolutionInfo? autoResolution = null;
+                CounterOfferInfo? counterOffer = null;
+                List<string> recommendedActions = new();
+
+                // Update stakeholder who responded
+                var respondingStakeholder = stakeholders.FirstOrDefault(s => s.UserId == userId);
+                if (respondingStakeholder != null)
+                {
+                    respondingStakeholder.HasApproved = request.IsApproved;
+                    respondingStakeholder.HasRejected = !request.IsApproved;
+                    respondingStakeholder.ResponseDate = DateTime.UtcNow;
+                    respondingStakeholder.ResponseNotes = request.Notes;
+                }
+
+                switch (request.ResolutionType)
+                {
+                    case ConflictResolutionType.SimpleApproval:
+                        if (request.IsApproved)
+                        {
+                            // Cancel conflicting bookings from this co-owner
+                            foreach (var conflict in conflicts.Where(c => c.CoOwnerId == respondingStakeholder?.UserId))
+                            {
+                                conflict.StatusEnum = EBookingStatus.Cancelled;
+                                conflict.UpdatedAt = DateTime.UtcNow;
+                                await _unitOfWork.BookingRepository.UpdateAsync(conflict);
+                            }
+
+                            finalStatus = EBookingStatus.Confirmed;
+                            booking.StatusEnum = finalStatus;
+                            booking.ApprovedBy = userId;
+                            booking.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.BookingRepository.UpdateAsync(booking);
+
+                            outcome = ConflictResolutionOutcome.Approved;
+                            resolutionExplanation = $"Booking approved by {respondingStakeholder?.Name}. Conflicting bookings cancelled.";
+                        }
+                        else
+                        {
+                            finalStatus = EBookingStatus.Cancelled;
+                            booking.StatusEnum = finalStatus;
+                            booking.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.BookingRepository.UpdateAsync(booking);
+
+                            outcome = ConflictResolutionOutcome.Rejected;
+                            resolutionExplanation = $"Booking rejected by {respondingStakeholder?.Name}. Reason: {request.RejectionReason}";
+                            recommendedActions.Add("Consider requesting an alternative time slot");
+                        }
+                        break;
+
+                    case ConflictResolutionType.CounterOffer:
+                        if (request.CounterOfferStartTime.HasValue && request.CounterOfferEndTime.HasValue)
+                        {
+                            counterOffer = new CounterOfferInfo
+                            {
+                                SuggestedStartTime = request.CounterOfferStartTime.Value,
+                                SuggestedEndTime = request.CounterOfferEndTime.Value,
+                                Reason = request.RejectionReason ?? "Alternative time suggested",
+                                IsRequesterAccepted = false
+                            };
+
+                            outcome = ConflictResolutionOutcome.CounterOfferMade;
+                            resolutionExplanation = $"Counter-offer made: {request.CounterOfferStartTime:g} - {request.CounterOfferEndTime:g}";
+                            recommendedActions.Add($"Requester should review counter-offer from {respondingStakeholder?.Name}");
+                            recommendedActions.Add("Accept counter-offer or request different time");
+                        }
+                        else
+                        {
+                            outcome = ConflictResolutionOutcome.Rejected;
+                            resolutionExplanation = "Counter-offer rejected: Invalid time range provided";
+                        }
+                        break;
+
+                    case ConflictResolutionType.PriorityOverride:
+                        // Use priority weight to determine winner
+                        var requesterCoOwner = allCoOwners.FirstOrDefault(co => co.UserId == booking.CoOwnerId);
+                        var responderCoOwner = allCoOwners.FirstOrDefault(co => co.UserId == userId);
+
+                        if (requesterCoOwner != null && responderCoOwner != null)
+                        {
+                            var requesterWeight = CalculatePriorityWeight(
+                                requesterCoOwner.OwnershipPercentage,
+                                stakeholders.First(s => s.UserId == booking.CoOwnerId).UsageHoursThisMonth,
+                                false);
+
+                            var responderWeight = respondingStakeholder?.PriorityWeight ?? 0;
+
+                            if (request.IsApproved || requesterWeight > responderWeight)
+                            {
+                                finalStatus = EBookingStatus.Confirmed;
+                                booking.StatusEnum = finalStatus;
+                                booking.ApprovedBy = userId;
+                                booking.UpdatedAt = DateTime.UtcNow;
+
+                                outcome = ConflictResolutionOutcome.Approved;
+                                resolutionExplanation = $"Priority override: Requester has higher priority (Weight: {requesterWeight} vs {responderWeight})";
+                            }
+                            else
+                            {
+                                finalStatus = EBookingStatus.Cancelled;
+                                booking.StatusEnum = finalStatus;
+                                booking.UpdatedAt = DateTime.UtcNow;
+
+                                outcome = ConflictResolutionOutcome.Rejected;
+                                resolutionExplanation = $"Priority override: Responder claimed higher priority. {request.PriorityJustification}";
+                            }
+
+                            await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                        }
+                        else
+                        {
+                            outcome = ConflictResolutionOutcome.Rejected;
+                            resolutionExplanation = "Priority override failed: Co-owner data not found";
+                        }
+                        break;
+
+                    case ConflictResolutionType.AutoNegotiation:
+                        if (request.EnableAutoNegotiation)
+                        {
+                            // Auto-resolve based on ownership weight, usage fairness, and priority
+                            var autoResolveResult = await AutoResolveConflictAsync(
+                                booking,
+                                conflicts,
+                                stakeholders,
+                                allCoOwners.FirstOrDefault(co => co.UserId == booking.CoOwnerId)?.OwnershipPercentage ?? 0);
+
+                            outcome = autoResolveResult.Outcome;
+                            finalStatus = autoResolveResult.FinalStatus;
+                            autoResolution = autoResolveResult.AutoResolution;
+                            resolutionExplanation = autoResolveResult.Explanation;
+
+                            booking.StatusEnum = finalStatus;
+                            if (finalStatus == EBookingStatus.Confirmed)
+                            {
+                                booking.ApprovedBy = userId;
+                            }
+                            booking.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                        }
+                        else
+                        {
+                            outcome = ConflictResolutionOutcome.Rejected;
+                            resolutionExplanation = "Auto-negotiation disabled";
+                        }
+                        break;
+
+                    case ConflictResolutionType.ConsensusRequired:
+                        // Check if all stakeholders with conflicts have approved
+                        var conflictingStakeholders = stakeholders
+                            .Where(s => conflicts.Any(c => c.CoOwnerId == s.UserId))
+                            .ToList();
+
+                        var allApproved = conflictingStakeholders.All(s => s.HasApproved);
+
+                        if (allApproved && conflictingStakeholders.Any())
+                        {
+                            finalStatus = EBookingStatus.Confirmed;
+                            booking.StatusEnum = finalStatus;
+                            booking.ApprovedBy = userId;
+                            booking.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.BookingRepository.UpdateAsync(booking);
+
+                            outcome = ConflictResolutionOutcome.Approved;
+                            resolutionExplanation = "Consensus reached: All conflicting co-owners approved";
+                        }
+                        else
+                        {
+                            outcome = ConflictResolutionOutcome.AwaitingMoreApprovals;
+                            resolutionExplanation = $"Awaiting approval from {conflictingStakeholders.Count(s => !s.HasApproved)} more co-owner(s)";
+                            recommendedActions.Add("Pending responses from: " +
+                                string.Join(", ", conflictingStakeholders.Where(s => !s.HasApproved).Select(s => s.Name)));
+                        }
+                        break;
+
+                    default:
+                        outcome = ConflictResolutionOutcome.Rejected;
+                        resolutionExplanation = "Unknown resolution type";
+                        break;
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                // Calculate approval status
+                var approvalStatus = CalculateApprovalStatus(stakeholders, conflicts);
+
+                // Build response
+                var response = new BookingConflictResolutionResponse
+                {
+                    BookingId = booking.Id,
+                    Outcome = outcome,
+                    FinalStatus = finalStatus,
+                    ResolvedBy = respondingStakeholder?.Name ?? "System",
+                    ResolvedAt = DateTime.UtcNow,
+                    ResolutionExplanation = resolutionExplanation,
+                    CounterOffer = counterOffer,
+                    Stakeholders = stakeholders,
+                    ApprovalStatus = approvalStatus,
+                    AutoResolution = autoResolution,
+                    RecommendedActions = recommendedActions
+                };
+
+                return new BaseResponse<BookingConflictResolutionResponse>
+                {
+                    StatusCode = 200,
+                    Message = outcome switch
+                    {
+                        ConflictResolutionOutcome.Approved => "BOOKING_CONFLICT_RESOLVED_APPROVED",
+                        ConflictResolutionOutcome.Rejected => "BOOKING_CONFLICT_RESOLVED_REJECTED",
+                        ConflictResolutionOutcome.CounterOfferMade => "COUNTER_OFFER_MADE",
+                        ConflictResolutionOutcome.AutoResolved => "CONFLICT_AUTO_RESOLVED",
+                        ConflictResolutionOutcome.AwaitingMoreApprovals => "AWAITING_MORE_APPROVALS",
+                        _ => "CONFLICT_RESOLUTION_PROCESSED"
+                    },
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<BookingConflictResolutionResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<PendingConflictsResponse>> GetPendingConflictsAsync(
+            int userId,
+            GetPendingConflictsRequest request)
+        {
+            try
+            {
+                // Get user's co-owner record
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                    .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                if (coOwner == null)
+                {
+                    return new BaseResponse<PendingConflictsResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_A_CO_OWNER"
+                    };
+                }
+
+                // Get vehicles user is co-owner of
+                var vehicleIds = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                    .Where(vco => vco.CoOwnerId == coOwner.UserId && vco.StatusEnum == EContractStatus.Active)
+                    .Select(vco => vco.VehicleId)
+                    .ToListAsync();
+
+                if (!vehicleIds.Any())
+                {
+                    return new BaseResponse<PendingConflictsResponse>
+                    {
+                        StatusCode = 200,
+                        Message = "NO_VEHICLES_FOUND",
+                        Data = new PendingConflictsResponse
+                        {
+                            TotalConflicts = 0,
+                            RequiringMyAction = 0,
+                            Conflicts = new()
+                        }
+                    };
+                }
+
+                // Filter by specific vehicle if requested
+                if (request.VehicleId.HasValue)
+                {
+                    if (!vehicleIds.Contains(request.VehicleId.Value))
+                    {
+                        return new BaseResponse<PendingConflictsResponse>
+                        {
+                            StatusCode = 403,
+                            Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                        };
+                    }
+                    vehicleIds = new List<int> { request.VehicleId.Value };
+                }
+
+                // Get all pending bookings for these vehicles
+                var pendingBookings = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Where(b => vehicleIds.Contains(b.VehicleId ?? 0) &&
+                               b.StatusEnum == EBookingStatus.Pending)
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .Include(b => b.Vehicle)
+                    .OrderBy(b => b.CreatedAt)
+                    .ToListAsync();
+
+                var conflicts = new List<ConflictSummary>();
+                var requiresMyAction = 0;
+                var autoResolvableCount = 0;
+
+                foreach (var booking in pendingBookings)
+                {
+                    // Get conflicting bookings
+                    var conflictingBookings = await _unitOfWork.BookingRepository.GetQueryable()
+                        .Where(b => b.VehicleId == booking.VehicleId &&
+                                   b.Id != booking.Id &&
+                                   b.StatusEnum != EBookingStatus.Cancelled &&
+                                   ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
+                                    (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
+                                    (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)))
+                        .Include(b => b.CoOwner)
+                            .ThenInclude(co => co.User)
+                        .ToListAsync();
+
+                    if (!conflictingBookings.Any())
+                        continue;
+
+                    // Check if I have a conflicting booking
+                    var myConflict = conflictingBookings.Any(c => c.CoOwnerId == userId);
+                    
+                    if (request.OnlyMyConflicts && !myConflict)
+                        continue;
+
+                    if (myConflict)
+                        requiresMyAction++;
+
+                    // Get all co-owners for auto-resolution preview
+                    var vehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                        .Where(vco => vco.VehicleId == booking.VehicleId && vco.StatusEnum == EContractStatus.Active)
+                        .Include(vco => vco.CoOwner)
+                            .ThenInclude(co => co.User)
+                        .ToListAsync();
+
+                    var stakeholders = new List<ConflictStakeholder>();
+                    foreach (var vco in vehicleCoOwners)
+                    {
+                        var usageHours = await GetMonthlyUsageHoursAsync(vco.CoOwnerId, booking.VehicleId ?? 0);
+                        stakeholders.Add(new ConflictStakeholder
+                        {
+                            UserId = vco.CoOwner?.UserId ?? 0,
+                            Name = $"{vco.CoOwner?.User?.FirstName} {vco.CoOwner?.User?.LastName}".Trim(),
+                            OwnershipPercentage = vco.OwnershipPercentage,
+                            UsageHoursThisMonth = usageHours,
+                            PriorityWeight = CalculatePriorityWeight(
+                                vco.OwnershipPercentage,
+                                usageHours,
+                                conflictingBookings.Any(c => c.CoOwnerId == vco.CoOwnerId))
+                        });
+                    }
+
+                    var approvalStatus = CalculateApprovalStatus(stakeholders, conflictingBookings);
+
+                    // Calculate auto-resolution preview
+                    var requesterStakeholder = stakeholders.FirstOrDefault(s => s.UserId == booking.CoOwnerId);
+                    var canAutoResolve = requesterStakeholder != null;
+                    AutoResolutionPreview? autoResolutionPreview = null;
+
+                    if (canAutoResolve && request.IncludeAutoResolvable)
+                    {
+                        autoResolvableCount++;
+                        autoResolutionPreview = GenerateAutoResolutionPreview(
+                            stakeholders,
+                            booking.CoOwnerId ?? 0,
+                            conflictingBookings);
+                    }
+
+                    var conflictSummary = new ConflictSummary
+                    {
+                        BookingId = booking.Id,
+                        RequesterName = $"{booking.CoOwner?.User?.FirstName} {booking.CoOwner?.User?.LastName}".Trim(),
+                        RequestedStartTime = booking.StartTime,
+                        RequestedEndTime = booking.EndTime,
+                        Purpose = booking.Purpose ?? "",
+                        Priority = BookingPriority.Medium, // Default, would come from request if stored
+                        ConflictsWith = conflictingBookings.Select(c =>
+                        {
+                            var conflictInfo = new DetailedConflictingBookingInfo();
+                            conflictInfo.BookingId = c.Id;
+                            conflictInfo.CoOwnerName = $"{c.CoOwner?.User?.FirstName} {c.CoOwner?.User?.LastName}".Trim();
+                            conflictInfo.StartTime = c.StartTime;
+                            conflictInfo.EndTime = c.EndTime;
+                            conflictInfo.Status = c.StatusEnum ?? EBookingStatus.Pending;
+                            conflictInfo.Purpose = c.Purpose ?? "";
+                            conflictInfo.OverlapHours = CalculateOverlapHours(
+                                booking.StartTime, booking.EndTime,
+                                c.StartTime, c.EndTime);
+                            conflictInfo.CoOwnerOwnershipPercentage = stakeholders
+                                .FirstOrDefault(s => s.UserId == c.CoOwnerId)?.OwnershipPercentage ?? 0m;
+                            conflictInfo.HasResponded = false;
+                            return conflictInfo;
+                        }).ToList(),
+                        RequestedAt = booking.CreatedAt ?? DateTime.UtcNow,
+                        DaysPending = (int)(DateTime.UtcNow - (booking.CreatedAt ?? DateTime.UtcNow)).TotalDays,
+                        ApprovalStatus = approvalStatus,
+                        CanAutoResolve = canAutoResolve,
+                        AutoResolutionPreview = autoResolutionPreview
+                    };
+
+                    conflicts.Add(conflictSummary);
+                }
+
+                var actionItems = new List<string>();
+                if (requiresMyAction > 0)
+                {
+                    actionItems.Add($"You have {requiresMyAction} conflict(s) requiring your response");
+                }
+                if (autoResolvableCount > 0)
+                {
+                    actionItems.Add($"{autoResolvableCount} conflict(s) can be auto-resolved");
+                }
+
+                var response = new PendingConflictsResponse
+                {
+                    TotalConflicts = conflicts.Count,
+                    RequiringMyAction = requiresMyAction,
+                    AutoResolvable = autoResolvableCount,
+                    Conflicts = conflicts,
+                    OldestConflictDate = conflicts.Any() ? conflicts.Min(c => c.RequestedAt) : DateTime.UtcNow,
+                    ActionItems = actionItems
+                };
+
+                return new BaseResponse<PendingConflictsResponse>
+                {
+                    StatusCode = 200,
+                    Message = "PENDING_CONFLICTS_RETRIEVED",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<PendingConflictsResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<BookingConflictAnalyticsResponse>> GetConflictAnalyticsAsync(
+            int vehicleId,
+            int userId,
+            DateTime? startDate = null,
+            DateTime? endDate = null)
+        {
+            try
+            {
+                // Validate co-owner access
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                    .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                if (coOwner == null)
+                {
+                    return new BaseResponse<BookingConflictAnalyticsResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_A_CO_OWNER"
+                    };
+                }
+
+                var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId &&
+                                    vco.CoOwnerId == coOwner.UserId &&
+                                    vco.StatusEnum == EContractStatus.Active);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<BookingConflictAnalyticsResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                    };
+                }
+
+                // Set date range (default: last 90 days)
+                var start = startDate ?? DateTime.UtcNow.AddDays(-90);
+                var end = endDate ?? DateTime.UtcNow;
+
+                // Get all bookings in date range
+                var allBookings = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Where(b => b.VehicleId == vehicleId &&
+                               b.CreatedAt >= start &&
+                               b.CreatedAt <= end)
+                    .Include(b => b.CoOwner)
+                        .ThenInclude(co => co.User)
+                    .ToListAsync();
+
+                // Identify conflicts (bookings that had overlapping pending requests)
+                var pendingBookings = allBookings.Where(b => b.StatusEnum == EBookingStatus.Pending).ToList();
+                var resolvedBookings = allBookings.Where(b => b.StatusEnum != EBookingStatus.Pending).ToList();
+
+                var totalConflictsResolved = 0;
+                var totalConflictsPending = pendingBookings.Count;
+                var totalApproved = allBookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed);
+                var totalRejected = allBookings.Count(b => b.StatusEnum == EBookingStatus.Cancelled);
+
+                var totalResolutions = totalApproved + totalRejected;
+                var approvalRate = totalResolutions > 0 ? (decimal)totalApproved / totalResolutions * 100 : 0;
+                var rejectionRate = totalResolutions > 0 ? (decimal)totalRejected / totalResolutions * 100 : 0;
+
+                // Calculate average resolution time
+                var resolutionTimes = resolvedBookings
+                    .Where(b => b.CreatedAt.HasValue && b.UpdatedAt.HasValue)
+                    .Select(b => (b.UpdatedAt!.Value - b.CreatedAt!.Value).TotalHours)
+                    .ToList();
+
+                var avgResolutionTime = resolutionTimes.Any() ? (decimal)resolutionTimes.Average() : 0;
+
+                // Statistics by co-owner
+                var coOwnerStats = await GetCoOwnerConflictStatsAsync(vehicleId, start, end);
+
+                // Identify common patterns
+                var patterns = IdentifyConflictPatterns(allBookings);
+
+                // Generate recommendations
+                var recommendations = GenerateConflictRecommendations(patterns, coOwnerStats);
+
+                var response = new BookingConflictAnalyticsResponse
+                {
+                    TotalConflictsResolved = totalConflictsResolved,
+                    TotalConflictsPending = totalConflictsPending,
+                    AverageResolutionTimeHours = avgResolutionTime,
+                    ApprovalRate = approvalRate,
+                    RejectionRate = rejectionRate,
+                    AutoResolutionRate = 0, // Would need tracking
+                    StatsByCoOwner = coOwnerStats,
+                    CommonPatterns = patterns,
+                    Recommendations = recommendations
+                };
+
+                return new BaseResponse<BookingConflictAnalyticsResponse>
+                {
+                    StatusCode = 200,
+                    Message = "CONFLICT_ANALYTICS_RETRIEVED",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<BookingConflictAnalyticsResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods for Conflict Resolution
+
+        private int CalculatePriorityWeight(decimal ownershipPercentage, int usageHoursThisMonth, bool hasConflict)
+        {
+            // Base weight from ownership (0-50 points)
+            var ownershipWeight = (int)(ownershipPercentage / 2);
+
+            // Fairness weight: Less usage = higher priority (0-30 points)
+            var fairnessWeight = Math.Max(0, 30 - (usageHoursThisMonth / 10));
+
+            // Conflict penalty (-10 points if has existing booking)
+            var conflictPenalty = hasConflict ? -10 : 0;
+
+            return ownershipWeight + fairnessWeight + conflictPenalty;
+        }
+
+        private async Task<(ConflictResolutionOutcome Outcome, EBookingStatus FinalStatus, AutoResolutionInfo AutoResolution, string Explanation)>
+            AutoResolveConflictAsync(
+                Booking requestedBooking,
+                List<Booking> conflictingBookings,
+                List<ConflictStakeholder> stakeholders,
+                decimal requesterOwnership)
+        {
+            var requesterStakeholder = stakeholders.FirstOrDefault(s => s.UserId == requestedBooking.CoOwnerId);
+            if (requesterStakeholder == null)
+            {
+                return (
+                    ConflictResolutionOutcome.Rejected,
+                    EBookingStatus.Cancelled,
+                    new AutoResolutionInfo
+                    {
+                        WasAutoResolved = false,
+                        Reason = AutoResolutionReason.FirstComeFirstServed,
+                        Explanation = "Auto-resolution failed: Requester not found",
+                        RequesterPriorityScore = 0,
+                        ConflictingOwnerPriorityScore = 0,
+                        WinnerName = "Unknown",
+                        FactorsConsidered = new()
+                    },
+                    "Auto-resolution failed: Requester not found");
+            }
+
+            var conflictingStakeholders = stakeholders
+                .Where(s => conflictingBookings.Any(c => c.CoOwnerId == s.UserId))
+                .ToList();
+
+            if (!conflictingStakeholders.Any())
+            {
+                return (
+                    ConflictResolutionOutcome.Approved,
+                    EBookingStatus.Confirmed,
+                    new AutoResolutionInfo
+                    {
+                        WasAutoResolved = true,
+                        Reason = AutoResolutionReason.FirstComeFirstServed,
+                        Explanation = "No conflicts found",
+                        RequesterPriorityScore = requesterStakeholder.PriorityWeight,
+                        ConflictingOwnerPriorityScore = 0,
+                        WinnerName = requesterStakeholder.Name,
+                        FactorsConsidered = new() { "No conflicts" }
+                    },
+                    "Automatically approved - no conflicts");
+            }
+
+            // Calculate average conflicting stakeholder priority
+            var avgConflictPriority = conflictingStakeholders.Average(s => s.PriorityWeight);
+
+            var factors = new List<string>();
+            AutoResolutionReason reason;
+            ConflictResolutionOutcome outcome;
+            EBookingStatus finalStatus;
+            string winner;
+            string explanation;
+
+            // Decision logic
+            if (requesterStakeholder.PriorityWeight > avgConflictPriority + 10)
+            {
+                // Requester has significantly higher priority
+                if (requesterStakeholder.OwnershipPercentage > 50)
+                {
+                    reason = AutoResolutionReason.OwnershipWeight;
+                    factors.Add($"Requester owns {requesterStakeholder.OwnershipPercentage}% (majority)");
+                }
+                else if (requesterStakeholder.UsageHoursThisMonth < conflictingStakeholders.Average(s => s.UsageHoursThisMonth))
+                {
+                    reason = AutoResolutionReason.UsageFairness;
+                    factors.Add($"Requester has lower usage this month ({requesterStakeholder.UsageHoursThisMonth}h)");
+                }
+                else
+                {
+                    reason = AutoResolutionReason.PriorityLevel;
+                    factors.Add($"Requester has higher priority weight ({requesterStakeholder.PriorityWeight})");
+                }
+
+                outcome = ConflictResolutionOutcome.AutoResolved;
+                finalStatus = EBookingStatus.Confirmed;
+                winner = requesterStakeholder.Name;
+                explanation = $"Auto-approved: {requesterStakeholder.Name} has priority";
+
+                // Cancel conflicting bookings
+                foreach (var conflict in conflictingBookings)
+                {
+                    conflict.StatusEnum = EBookingStatus.Cancelled;
+                    conflict.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.BookingRepository.UpdateAsync(conflict);
+                }
+            }
+            else
+            {
+                // Conflicting bookings have priority
+                reason = AutoResolutionReason.FirstComeFirstServed;
+                outcome = ConflictResolutionOutcome.AutoResolved;
+                finalStatus = EBookingStatus.Cancelled;
+                winner = conflictingStakeholders.First().Name;
+                explanation = $"Auto-rejected: Existing bookings have priority";
+                factors.Add("Existing bookings take precedence");
+            }
+
+            var autoResolution = new AutoResolutionInfo
+            {
+                WasAutoResolved = true,
+                Reason = reason,
+                Explanation = explanation,
+                RequesterPriorityScore = requesterStakeholder.PriorityWeight,
+                ConflictingOwnerPriorityScore = (decimal)avgConflictPriority,
+                WinnerName = winner,
+                FactorsConsidered = factors
+            };
+
+            return (outcome, finalStatus, autoResolution, explanation);
+        }
+
+        private ConflictApprovalStatus CalculateApprovalStatus(
+            List<ConflictStakeholder> stakeholders,
+            List<Booking> conflictingBookings)
+        {
+            var conflictingStakeholders = stakeholders
+                .Where(s => conflictingBookings.Any(c => c.CoOwnerId == s.UserId))
+                .ToList();
+
+            var totalStakeholders = conflictingStakeholders.Count;
+            var approvalsReceived = conflictingStakeholders.Count(s => s.HasApproved);
+            var rejectionsReceived = conflictingStakeholders.Count(s => s.HasRejected);
+            var pendingResponses = totalStakeholders - approvalsReceived - rejectionsReceived;
+
+            var approvalPercentage = totalStakeholders > 0
+                ? (decimal)approvalsReceived / totalStakeholders * 100
+                : 0;
+
+            var weightedApprovalPercentage = totalStakeholders > 0
+                ? conflictingStakeholders.Where(s => s.HasApproved).Sum(s => s.OwnershipPercentage)
+                : 0;
+
+            var pendingFrom = conflictingStakeholders
+                .Where(s => !s.HasApproved && !s.HasRejected)
+                .Select(s => s.Name)
+                .ToList();
+
+            return new ConflictApprovalStatus
+            {
+                TotalStakeholders = totalStakeholders,
+                ApprovalsReceived = approvalsReceived,
+                RejectionsReceived = rejectionsReceived,
+                PendingResponses = pendingResponses,
+                ApprovalPercentage = approvalPercentage,
+                WeightedApprovalPercentage = weightedApprovalPercentage,
+                IsFullyApproved = approvalsReceived == totalStakeholders && totalStakeholders > 0,
+                IsRejected = rejectionsReceived > 0,
+                RequiresMoreApprovals = pendingResponses > 0,
+                PendingFrom = pendingFrom
+            };
+        }
+
+        private AutoResolutionPreview GenerateAutoResolutionPreview(
+            List<ConflictStakeholder> stakeholders,
+            int requesterId,
+            List<Booking> conflictingBookings)
+        {
+            var requester = stakeholders.FirstOrDefault(s => s.UserId == requesterId);
+            if (requester == null)
+            {
+                return new AutoResolutionPreview
+                {
+                    PredictedOutcome = ConflictResolutionOutcome.Rejected,
+                    WinnerName = "Unknown",
+                    Explanation = "Requester not found",
+                    Confidence = 0,
+                    Factors = new()
+                };
+            }
+
+            var conflictingStakeholders = stakeholders
+                .Where(s => conflictingBookings.Any(c => c.CoOwnerId == s.UserId))
+                .ToList();
+
+            var avgConflictPriority = conflictingStakeholders.Any()
+                ? conflictingStakeholders.Average(s => s.PriorityWeight)
+                : 0;
+
+            var factors = new List<string>
+            {
+                $"Requester priority: {requester.PriorityWeight}",
+                $"Average conflict priority: {avgConflictPriority:F0}",
+                $"Requester ownership: {requester.OwnershipPercentage}%",
+                $"Requester usage: {requester.UsageHoursThisMonth}h"
+            };
+
+            ConflictResolutionOutcome predicted;
+            string winner;
+            string explanation;
+            decimal confidence;
+
+            if (requester.PriorityWeight > avgConflictPriority + 10)
+            {
+                predicted = ConflictResolutionOutcome.Approved;
+                winner = requester.Name;
+                explanation = $"{requester.Name} likely to be approved (higher priority)";
+                confidence = 0.8m;
+            }
+            else if (requester.PriorityWeight < avgConflictPriority - 10)
+            {
+                predicted = ConflictResolutionOutcome.Rejected;
+                winner = conflictingStakeholders.FirstOrDefault()?.Name ?? "Existing bookings";
+                explanation = "Request likely to be rejected (lower priority)";
+                confidence = 0.7m;
+            }
+            else
+            {
+                predicted = ConflictResolutionOutcome.AwaitingMoreApprovals;
+                winner = "Undecided";
+                explanation = "Close call - manual review recommended";
+                confidence = 0.5m;
+            }
+
+            return new AutoResolutionPreview
+            {
+                PredictedOutcome = predicted,
+                WinnerName = winner,
+                Explanation = explanation,
+                Confidence = confidence,
+                Factors = factors
+            };
+        }
+
+        private async Task<int> GetMonthlyUsageHoursAsync(int coOwnerId, int vehicleId)
+        {
+            var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+            var bookings = await _unitOfWork.BookingRepository.GetQueryable()
+                .Where(b => b.CoOwnerId == coOwnerId &&
+                           b.VehicleId == vehicleId &&
+                           b.StatusEnum != EBookingStatus.Cancelled &&
+                           b.StartTime >= startOfMonth)
+                .ToListAsync();
+
+            return (int)bookings.Sum(b => (b.EndTime - b.StartTime).TotalHours);
+        }
+
+        private async Task<List<CoOwnerConflictStats>> GetCoOwnerConflictStatsAsync(
+            int vehicleId,
+            DateTime startDate,
+            DateTime endDate)
+        {
+            var stats = new List<CoOwnerConflictStats>();
+
+            var coOwners = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                .Where(vco => vco.VehicleId == vehicleId && vco.StatusEnum == EContractStatus.Active)
+                .Include(vco => vco.CoOwner)
+                    .ThenInclude(co => co.User)
+                .ToListAsync();
+
+            foreach (var vco in coOwners)
+            {
+                var bookings = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Where(b => b.CoOwnerId == vco.CoOwnerId &&
+                               b.VehicleId == vehicleId &&
+                               b.CreatedAt >= startDate &&
+                               b.CreatedAt <= endDate)
+                    .ToListAsync();
+
+                var initiated = bookings.Count;
+                var approved = bookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed);
+                var rejected = bookings.Count(b => b.StatusEnum == EBookingStatus.Cancelled);
+
+                stats.Add(new CoOwnerConflictStats
+                {
+                    UserId = vco.CoOwner?.UserId ?? 0,
+                    Name = $"{vco.CoOwner?.User?.FirstName} {vco.CoOwner?.User?.LastName}".Trim(),
+                    ConflictsInitiated = initiated,
+                    ConflictsReceived = 0, // Would need to track
+                    ApprovalsGiven = 0, // Would need to track
+                    RejectionsGiven = 0, // Would need to track
+                    ApprovalRateAsResponder = 0,
+                    SuccessRateAsRequester = initiated > 0 ? (decimal)approved / initiated * 100 : 0,
+                    AverageResponseTimeHours = 0
+                });
+            }
+
+            return stats;
+        }
+
+        private List<ConflictPattern> IdentifyConflictPatterns(List<Booking> bookings)
+        {
+            var patterns = new List<ConflictPattern>();
+
+            // Weekend conflicts
+            var weekendConflicts = bookings.Count(b => 
+                b.StartTime.DayOfWeek == DayOfWeek.Saturday ||
+                b.StartTime.DayOfWeek == DayOfWeek.Sunday);
+
+            if (weekendConflicts > 5)
+            {
+                patterns.Add(new ConflictPattern
+                {
+                    Pattern = "High weekend conflict rate",
+                    Occurrences = weekendConflicts,
+                    Recommendation = "Consider implementing weekend rotation schedule"
+                });
+            }
+
+            // Morning rush hour conflicts (7-9 AM)
+            var morningConflicts = bookings.Count(b => 
+                b.StartTime.Hour >= 7 && b.StartTime.Hour <= 9);
+
+            if (morningConflicts > 5)
+            {
+                patterns.Add(new ConflictPattern
+                {
+                    Pattern = "Morning commute conflicts (7-9 AM)",
+                    Occurrences = morningConflicts,
+                    Recommendation = "Establish priority system for commute times"
+                });
+            }
+
+            return patterns;
+        }
+
+        private List<ConflictResolutionRecommendation> GenerateConflictRecommendations(
+            List<ConflictPattern> patterns,
+            List<CoOwnerConflictStats> stats)
+        {
+            var recommendations = new List<ConflictResolutionRecommendation>();
+
+            if (patterns.Any(p => p.Pattern.Contains("weekend")))
+            {
+                recommendations.Add(new ConflictResolutionRecommendation
+                {
+                    Recommendation = "Implement weekend rotation schedule",
+                    Rationale = "High weekend conflict rate detected",
+                    SuggestedApproach = ConflictResolutionType.ConsensusRequired
+                });
+            }
+
+            if (stats.Any(s => s.SuccessRateAsRequester < 50))
+            {
+                recommendations.Add(new ConflictResolutionRecommendation
+                {
+                    Recommendation = "Review fairness policies for low-success co-owners",
+                    Rationale = "Some co-owners have low approval rates",
+                    SuggestedApproach = ConflictResolutionType.AutoNegotiation
+                });
+            }
+
+            return recommendations;
+        }
+
+        #endregion
     }
 }

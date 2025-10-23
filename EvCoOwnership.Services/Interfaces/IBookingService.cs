@@ -26,5 +26,10 @@ namespace EvCoOwnership.Services.Interfaces
         Task<BaseResponse<string>> CancelSlotRequestAsync(int requestId, int userId, CancelSlotRequestRequest request);
         Task<BaseResponse<PendingSlotRequestsResponse>> GetPendingSlotRequestsAsync(int vehicleId, int userId);
         Task<BaseResponse<SlotRequestAnalytics>> GetSlotRequestAnalyticsAsync(int vehicleId, int userId, DateTime? startDate = null, DateTime? endDate = null);
+
+        // Booking conflict resolution (Advanced approve/reject with intelligence)
+        Task<BaseResponse<BookingConflictResolutionResponse>> ResolveBookingConflictAsync(int bookingId, int userId, ResolveBookingConflictRequest request);
+        Task<BaseResponse<PendingConflictsResponse>> GetPendingConflictsAsync(int userId, GetPendingConflictsRequest request);
+        Task<BaseResponse<BookingConflictAnalyticsResponse>> GetConflictAnalyticsAsync(int vehicleId, int userId, DateTime? startDate = null, DateTime? endDate = null);
     }
 }
