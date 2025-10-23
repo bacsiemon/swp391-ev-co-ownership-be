@@ -584,5 +584,96 @@ namespace EvCoOwnership.Services.Services
                 };
             }
         }
+
+        /// <summary>
+        /// Registers a verified license to the system
+        /// </summary>
+        public async Task<BaseResponse> RegisterLicenseAsync(VerifyLicenseRequest request, int userId)
+        {
+            try
+            {
+                _logger.LogInformation("Registering license for user ID: {UserId}", userId);
+
+                // First verify the license
+                var verificationResult = await PerformLicenseVerificationAsync(request);
+                if (!verificationResult.IsValid)
+                {
+                    _logger.LogWarning("License verification failed for {LicenseNumber}: {Issues}",
+                        request.LicenseNumber, string.Join(", ", verificationResult.Issues ?? new List<string>()));
+
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "LICENSE_VERIFICATION_FAILED",
+                        Data = verificationResult
+                    };
+                }
+
+                // Check if license already exists
+                var existingLicense = await _unitOfWork.DrivingLicenseRepository
+                    .GetByLicenseNumberAsync(request.LicenseNumber);
+
+                if (existingLicense != null)
+                {
+                    _logger.LogWarning("License number {LicenseNumber} already registered", request.LicenseNumber);
+                    return new BaseResponse
+                    {
+                        StatusCode = 409,
+                        Message = "LICENSE_ALREADY_REGISTERED",
+                        Data = new { LicenseNumber = request.LicenseNumber }
+                    };
+                }
+
+                // Get or create CoOwner for the user
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                if (coOwner == null)
+                {
+                    // Create new CoOwner
+                    coOwner = new CoOwner
+                    {
+                        UserId = userId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.CoOwnerRepository.AddAsync(coOwner);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+                // Handle license image upload if provided
+                string? licenseImageUrl = null;
+                if (request.LicenseImage != null)
+                {
+                    // In a real implementation, upload to cloud storage
+                    // For now, generate a mock URL
+                    licenseImageUrl = $"https://storage.example.com/licenses/{coOwner.UserId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg";
+                    _logger.LogInformation("License image uploaded: {Url}", licenseImageUrl);
+                }
+
+                // Create DrivingLicense entity
+                var license = request.ToEntity(coOwner.UserId, licenseImageUrl);
+
+                // Save to database
+                await _unitOfWork.DrivingLicenseRepository.AddAsync(license);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("License registered successfully: {LicenseId} for user {UserId}", 
+                    license.Id, userId);
+
+                return new BaseResponse
+                {
+                    StatusCode = 201,
+                    Message = "LICENSE_REGISTERED_SUCCESSFULLY",
+                    Data = license.ToVerificationResponse()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error registering license for user ID: {UserId}", userId);
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
     }
 }
