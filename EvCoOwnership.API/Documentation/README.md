@@ -5,7 +5,7 @@ Welcome to the EV Co-Ownership project documentation. This folder contains all t
 ## ?? Documentation Index
 
 ### Project Documentation
-- **[Solution Overview](README_Solution.md)** - Main project README with overall information
+- **[Solution Overview](README.md)** - Main project README with overall information
 - **[API Documentation](README_API.md)** - EvCoOwnership.API project documentation
 - **[Helpers Documentation](README_Helpers.md)** - EvCoOwnership.Helpers project documentation
 - **[Repositories Documentation](README_Repositories.md)** - EvCoOwnership.Repositories project documentation
