@@ -126,5 +126,55 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="userId">ID of the requesting user</param>
         /// <returns>Response containing detailed vehicle information</returns>
         Task<BaseResponse> GetVehicleDetailAsync(int vehicleId, int userId);
+
+        // Vehicle Availability Methods
+
+        /// <summary>
+        /// Gets vehicle availability schedule showing booked and free time slots
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="userId">ID of the requesting user</param>
+        /// <param name="startDate">Start date of the period</param>
+        /// <param name="endDate">End date of the period</param>
+        /// <param name="statusFilter">Optional: Filter bookings by status</param>
+        /// <returns>Response containing vehicle availability schedule and utilization stats</returns>
+        Task<BaseResponse> GetVehicleAvailabilityScheduleAsync(
+            int vehicleId, 
+            int userId, 
+            DateTime startDate, 
+            DateTime endDate, 
+            string? statusFilter = null);
+
+        /// <summary>
+        /// Finds available time slots for a vehicle within a date range
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="userId">ID of the requesting user</param>
+        /// <param name="startDate">Start date to search</param>
+        /// <param name="endDate">End date to search</param>
+        /// <param name="minimumDurationHours">Minimum duration required (hours)</param>
+        /// <param name="fullDayOnly">Only return full-day slots</param>
+        /// <returns>Response containing available time slots</returns>
+        Task<BaseResponse> FindAvailableTimeSlotsAsync(
+            int vehicleId, 
+            int userId, 
+            DateTime startDate, 
+            DateTime endDate, 
+            int minimumDurationHours = 1, 
+            bool fullDayOnly = false);
+
+        /// <summary>
+        /// Compares utilization of multiple vehicles in user's group
+        /// Co-owner: vehicles in their groups
+        /// Staff/Admin: all vehicles
+        /// </summary>
+        /// <param name="userId">ID of the requesting user</param>
+        /// <param name="startDate">Start date of comparison period</param>
+        /// <param name="endDate">End date of comparison period</param>
+        /// <returns>Response containing vehicle utilization comparison</returns>
+        Task<BaseResponse> CompareVehicleUtilizationAsync(
+            int userId, 
+            DateTime startDate, 
+            DateTime endDate);
     }
 }

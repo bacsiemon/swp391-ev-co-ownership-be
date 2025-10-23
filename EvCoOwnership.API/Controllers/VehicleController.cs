@@ -759,5 +759,289 @@ namespace EvCoOwnership.API.Controllers
         }
 
         #endregion
+
+        #region Vehicle Availability Endpoints
+
+        /// <summary>
+        /// Gets vehicle availability schedule showing booked and free time slots
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="startDate">Start date of the period (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">End date of the period (format: yyyy-MM-dd)</param>
+        /// <param name="statusFilter">Optional: Filter bookings by status (Confirmed, Pending, etc.)</param>
+        /// <response code="200">Vehicle availability schedule retrieved successfully</response>
+        /// <response code="400">Invalid date range or parameters</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied - not a co-owner of this vehicle</response>
+        /// <response code="404">Vehicle or user not found</response>
+        /// <remarks>
+        /// **VEHICLE AVAILABILITY SCHEDULE - View When a Vehicle is Free/Busy**
+        /// 
+        /// **Purpose:**
+        /// This endpoint provides a detailed view of when a specific vehicle is available or booked,
+        /// helping co-owners plan their usage and avoid conflicts.
+        /// 
+        /// **Access Control:**
+        /// - **Co-owner**: Can only view schedule of vehicles they co-own
+        /// - **Staff/Admin**: Can view schedule of any vehicle
+        /// 
+        /// **Response Includes:**
+        /// 1. **Vehicle Information**: Name, brand, model, license plate, current status
+        /// 2. **Booked Time Slots**: All bookings in the period with:
+        ///    - Who booked it (co-owner name)
+        ///    - Start and end time
+        ///    - Purpose of booking
+        ///    - Booking status
+        /// 3. **Available Days**: List of days with NO bookings at all
+        /// 4. **Utilization Statistics**:
+        ///    - Total booked hours vs available hours
+        ///    - Utilization percentage (how busy the vehicle is)
+        ///    - Number of bookings (total, confirmed, pending)
+        ///    - Average booking duration
+        /// 
+        /// **Use Cases:**
+        /// - **Plan Your Booking**: See when the vehicle is free before creating a booking
+        /// - **Coordination**: See who else is using the vehicle and when
+        /// - **Usage Analysis**: Understand how much the vehicle is being utilized
+        /// - **Find Patterns**: Identify peak usage times
+        /// 
+        /// **Date Range:**
+        /// - Maximum: 90 days
+        /// - Recommended: 7-30 days for typical planning
+        /// 
+        /// **Example Requests:**
+        /// 
+        /// **1. View next week's schedule:**
+        /// GET /api/vehicle/5/availability/schedule?startDate=2025-01-17&amp;endDate=2025-01-24
+        /// 
+        /// **2. View next month (confirmed bookings only):**
+        /// GET /api/vehicle/5/availability/schedule?startDate=2025-01-17&amp;endDate=2025-02-17&amp;statusFilter=Confirmed
+        /// 
+        /// **3. Check January availability:**
+        /// GET /api/vehicle/5/availability/schedule?startDate=2025-01-01&amp;endDate=2025-01-31
+        /// </remarks>
+        [HttpGet("{vehicleId}/availability/schedule")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
+        public async Task<IActionResult> GetVehicleAvailabilitySchedule(
+            int vehicleId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            [FromQuery] string? statusFilter = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _vehicleService.GetVehicleAvailabilityScheduleAsync(
+                vehicleId, userId, startDate, endDate, statusFilter);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Finds available time slots for booking a specific vehicle
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="startDate">Start date to search (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">End date to search (format: yyyy-MM-dd)</param>
+        /// <param name="minimumDurationHours">Minimum duration required in hours (default: 1, max: 24)</param>
+        /// <param name="fullDayOnly">Only return full-day slots (8+ hours) (default: false)</param>
+        /// <response code="200">Available time slots found</response>
+        /// <response code="400">Invalid parameters</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <remarks>
+        /// **FIND AVAILABLE TIME SLOTS - Smart Booking Suggestions**
+        /// 
+        /// **Purpose:**
+        /// Automatically finds time slots when the vehicle is available for booking,
+        /// saving you from manually checking the calendar.
+        /// 
+        /// **How It Works:**
+        /// 1. Analyzes all confirmed bookings in the period
+        /// 2. Identifies gaps between bookings
+        /// 3. Filters slots by your minimum duration requirement
+        /// 4. Returns sorted list of available slots
+        /// 
+        /// **Parameters:**
+        /// - `minimumDurationHours`: Minimum hours needed (e.g., 4 hours for a short trip, 8+ for full day)
+        /// - `fullDayOnly`: Set to true to only see full-day (8+ hour) slots
+        /// 
+        /// **Use Cases:**
+        /// 
+        /// **1. Quick Trip Planning:**
+        /// - "I need the car for 3 hours next week"
+        /// - Set minimumDurationHours=3, get all 3+ hour slots
+        /// 
+        /// **2. Full Day Booking:**
+        /// - "I need the car for a full day trip"
+        /// - Set fullDayOnly=true, only see 8+ hour slots
+        /// 
+        /// **3. Weekend Planning:**
+        /// - "When can I book the car this weekend?"
+        /// - Check Saturday-Sunday with minimum duration
+        /// 
+        /// **4. Flexible Scheduling:**
+        /// - "Show me any available time in the next 2 weeks"
+        /// - Wide date range, low minimum duration
+        /// 
+        /// **Response Includes:**
+        /// - List of available slots with:
+        ///   - Start and end time
+        ///   - Duration in hours
+        ///   - Whether it's a full day
+        ///   - Recommendation (e.g., "Full day available", "4 hours between bookings")
+        /// - Total number of slots found
+        /// - Helpful message if no slots match criteria
+        /// 
+        /// **Example Requests:**
+        /// 
+        /// **1. Find any 2+ hour slots next week:**
+        /// GET /api/vehicle/5/availability/find-slots?startDate=2025-01-17&amp;endDate=2025-01-24&amp;minimumDurationHours=2
+        /// 
+        /// **2. Find full-day slots in January:**
+        /// GET /api/vehicle/5/availability/find-slots?startDate=2025-01-01&amp;endDate=2025-01-31&amp;fullDayOnly=true
+        /// 
+        /// **3. Find 6+ hour slots for weekend:**
+        /// GET /api/vehicle/5/availability/find-slots?startDate=2025-01-20&amp;endDate=2025-01-22&amp;minimumDurationHours=6
+        /// </remarks>
+        [HttpGet("{vehicleId}/availability/find-slots")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
+        public async Task<IActionResult> FindAvailableTimeSlots(
+            int vehicleId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            [FromQuery] int minimumDurationHours = 1,
+            [FromQuery] bool fullDayOnly = false)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _vehicleService.FindAvailableTimeSlotsAsync(
+                vehicleId, userId, startDate, endDate, minimumDurationHours, fullDayOnly);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Compares utilization of multiple vehicles in user's group
+        /// </summary>
+        /// <param name="startDate">Start date of comparison period (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">End date of comparison period (format: yyyy-MM-dd)</param>
+        /// <response code="200">Vehicle utilization comparison retrieved successfully</response>
+        /// <response code="400">Invalid date range</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        /// <response code="404">No vehicles found</response>
+        /// <remarks>
+        /// **VEHICLE UTILIZATION COMPARISON - Which Vehicle is Used Most?**
+        /// 
+        /// **Purpose:**
+        /// Compare how frequently different vehicles are being used,
+        /// helping identify which vehicles are popular and which are underutilized.
+        /// 
+        /// **Access Control:**
+        /// - **Co-owner**: Compares only vehicles in their co-ownership groups
+        /// - **Staff/Admin**: Compares all vehicles in the system
+        /// 
+        /// **Metrics Compared:**
+        /// 1. **Utilization Percentage**: % of time the vehicle is booked (booked hours / total hours)
+        /// 2. **Total Bookings**: Number of bookings in the period
+        /// 3. **Total Booked Hours**: How many hours the vehicle was reserved
+        /// 4. **Most Active Day**: Which day of the week the vehicle is booked most
+        /// 
+        /// **Response Includes:**
+        /// - List of all vehicles with their utilization stats
+        /// - Most utilized vehicle (highest utilization %)
+        /// - Least utilized vehicle (lowest utilization %)
+        /// - Average utilization across all vehicles
+        /// 
+        /// **Use Cases:**
+        /// 
+        /// **1. Fleet Management (Admin/Staff):**
+        /// - Identify underutilized vehicles (consider selling?)
+        /// - Identify over-utilized vehicles (need more of this type?)
+        /// - Balance fleet composition
+        /// 
+        /// **2. Co-owner Group Insights:**
+        /// - See which vehicle is most popular in your group
+        /// - Decide which vehicle to book (choose less busy one)
+        /// - Understand group usage patterns
+        /// 
+        /// **3. Investment Decisions:**
+        /// - High utilization = good ROI, consider investing more
+        /// - Low utilization = might want to reduce ownership stake
+        /// 
+        /// **4. Booking Strategy:**
+        /// - Choose the least utilized vehicle for easier booking
+        /// - Avoid peak-demand vehicles if you're flexible
+        /// 
+        /// **Example Requests:**
+        /// 
+        /// **1. Compare last month:**
+        /// GET /api/vehicle/utilization/compare?startDate=2025-01-01&amp;endDate=2025-01-31
+        /// 
+        /// **2. Compare last quarter:**
+        /// GET /api/vehicle/utilization/compare?startDate=2024-10-01&amp;endDate=2024-12-31
+        /// 
+        /// **3. Compare last 30 days:**
+        /// GET /api/vehicle/utilization/compare?startDate=2024-12-18&amp;endDate=2025-01-17
+        /// 
+        /// **Example Response Insights:**
+        /// ```
+        /// - VinFast VF8: 65% utilization (most popular)
+        /// - Tesla Model 3: 45% utilization
+        /// - BMW i4: 20% utilization (underutilized)
+        /// - Average: 43.3% utilization
+        /// 
+        /// Recommendation: VF8 is in high demand, consider booking early.
+        /// BMW i4 has lots of availability, easier to book anytime.
+        /// ```
+        /// </remarks>
+        [HttpGet("utilization/compare")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
+        public async Task<IActionResult> CompareVehicleUtilization(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _vehicleService.CompareVehicleUtilizationAsync(userId, startDate, endDate);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        #endregion
     }
 }

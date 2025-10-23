@@ -4,6 +4,7 @@ using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
+using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -1248,6 +1249,516 @@ namespace EvCoOwnership.Services.Services
                 Fund = fundInfo,
                 CreatedBy = creatorInfo
             };
+        }
+
+        public async Task<BaseResponse> GetVehicleAvailabilityScheduleAsync(
+            int vehicleId, 
+            int userId, 
+            DateTime startDate, 
+            DateTime endDate, 
+            string? statusFilter = null)
+        {
+            try
+            {
+                // Validate date range
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE",
+                        Errors = "Start date must be before end date"
+                    };
+                }
+
+                // Max 90 days
+                if ((endDate - startDate).TotalDays > 90)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "DATE_RANGE_TOO_LARGE",
+                        Errors = "Date range cannot exceed 90 days"
+                    };
+                }
+
+                // Get vehicle
+                var vehicle = await _unitOfWork.VehicleRepository
+                    .GetQueryable()
+                    .Include(v => v.VehicleCoOwners)
+                    .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                // Check access rights
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Role-based access
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                        .FirstOrDefaultAsync(co => co.UserId == userId);
+                    
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "USER_NOT_CO_OWNER"
+                        };
+                    }
+
+                    // Check if user is co-owner of this vehicle
+                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco => 
+                        vco.CoOwnerId == coOwner.UserId && 
+                        vco.StatusEnum == EContractStatus.Active);
+
+                    if (!isCoOwner)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                        };
+                    }
+                }
+                // Staff/Admin can access all vehicles
+
+                // Parse status filter
+                EBookingStatus? statusEnum = null;
+                if (!string.IsNullOrWhiteSpace(statusFilter))
+                {
+                    if (Enum.TryParse<EBookingStatus>(statusFilter, true, out var parsed))
+                    {
+                        statusEnum = parsed;
+                    }
+                }
+
+                // Get bookings for this vehicle in date range
+                var bookings = await _unitOfWork.BookingRepository.GetBookingsForCalendarAsync(
+                    startDate, endDate, null, vehicleId, statusEnum);
+
+                // Map to time slots
+                var bookedSlots = bookings.Select(b => new VehicleTimeSlot
+                {
+                    StartTime = b.StartTime,
+                    EndTime = b.EndTime,
+                    IsAvailable = false,
+                    BookingId = b.Id,
+                    BookedBy = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim(),
+                    Purpose = b.Purpose,
+                    BookingStatus = b.StatusEnum
+                }).ToList();
+
+                // Calculate statistics
+                var totalHours = (int)(endDate - startDate).TotalHours;
+                var totalDays = (int)(endDate - startDate).TotalDays;
+                var bookedHours = bookings.Sum(b => (int)(b.EndTime - b.StartTime).TotalHours);
+                var availableHours = totalHours - bookedHours;
+                var utilizationPercentage = totalHours > 0 ? Math.Round((decimal)bookedHours / totalHours * 100, 2) : 0;
+
+                // Find available days (days with no bookings)
+                var availableDays = new List<DateTime>();
+                for (var date = startDate.Date; date < endDate.Date; date = date.AddDays(1))
+                {
+                    var hasBooking = bookings.Any(b => 
+                        b.StartTime.Date <= date && b.EndTime.Date >= date);
+                    
+                    if (!hasBooking)
+                    {
+                        availableDays.Add(date);
+                    }
+                }
+
+                var stats = new VehicleUtilizationStats
+                {
+                    TotalDaysInPeriod = totalDays,
+                    TotalBookedHours = bookedHours,
+                    TotalAvailableHours = availableHours,
+                    UtilizationPercentage = utilizationPercentage,
+                    TotalBookings = bookings.Count,
+                    ConfirmedBookings = bookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed),
+                    PendingBookings = bookings.Count(b => b.StatusEnum == EBookingStatus.Pending),
+                    AverageBookingDuration = bookings.Any() 
+                        ? Math.Round((decimal)bookings.Average(b => (b.EndTime - b.StartTime).TotalHours), 2) 
+                        : 0
+                };
+
+                var response = new VehicleAvailabilityScheduleResponse
+                {
+                    VehicleId = vehicle.Id,
+                    VehicleName = vehicle.Name,
+                    Brand = vehicle.Brand,
+                    Model = vehicle.Model,
+                    LicensePlate = vehicle.LicensePlate,
+                    Status = vehicle.StatusEnum ?? EVehicleStatus.Available,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    BookedSlots = bookedSlots,
+                    AvailableDays = availableDays,
+                    UtilizationStats = stats
+                };
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_AVAILABILITY_SCHEDULE_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vehicle availability schedule");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse> FindAvailableTimeSlotsAsync(
+            int vehicleId, 
+            int userId, 
+            DateTime startDate, 
+            DateTime endDate, 
+            int minimumDurationHours = 1, 
+            bool fullDayOnly = false)
+        {
+            try
+            {
+                // Validate
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE"
+                    };
+                }
+
+                if (minimumDurationHours < 1 || minimumDurationHours > 24)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_MINIMUM_DURATION",
+                        Errors = "Minimum duration must be between 1 and 24 hours"
+                    };
+                }
+
+                // Get vehicle and check access (reuse logic)
+                var scheduleResponse = await GetVehicleAvailabilityScheduleAsync(
+                    vehicleId, userId, startDate, endDate, "Confirmed");
+
+                if (scheduleResponse.StatusCode != 200)
+                {
+                    return scheduleResponse;
+                }
+
+                var schedule = scheduleResponse.Data as VehicleAvailabilityScheduleResponse;
+                if (schedule == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 500,
+                        Message = "INTERNAL_SERVER_ERROR"
+                    };
+                }
+
+                // Find available slots
+                var availableSlots = new List<AvailableTimeSlot>();
+                var confirmedBookings = schedule.BookedSlots
+                    .Where(b => b.BookingStatus == EBookingStatus.Confirmed)
+                    .OrderBy(b => b.StartTime)
+                    .ToList();
+
+                // Check slot before first booking
+                if (confirmedBookings.Any())
+                {
+                    var firstBooking = confirmedBookings.First();
+                    if (firstBooking.StartTime > startDate)
+                    {
+                        var duration = (int)(firstBooking.StartTime - startDate).TotalHours;
+                        if (duration >= minimumDurationHours && (!fullDayOnly || duration >= 8))
+                        {
+                            availableSlots.Add(new AvailableTimeSlot
+                            {
+                                StartTime = startDate,
+                                EndTime = firstBooking.StartTime,
+                                DurationHours = duration,
+                                IsFullDay = duration >= 8,
+                                Recommendation = duration >= 8 ? "Full day available" : $"{duration} hours available"
+                            });
+                        }
+                    }
+                }
+                else
+                {
+                    // No bookings at all - entire period is free
+                    var duration = (int)(endDate - startDate).TotalHours;
+                    availableSlots.Add(new AvailableTimeSlot
+                    {
+                        StartTime = startDate,
+                        EndTime = endDate,
+                        DurationHours = duration,
+                        IsFullDay = duration >= 8,
+                        Recommendation = "Entire period available - no bookings"
+                    });
+                }
+
+                // Check slots between bookings
+                for (int i = 0; i < confirmedBookings.Count - 1; i++)
+                {
+                    var currentBooking = confirmedBookings[i];
+                    var nextBooking = confirmedBookings[i + 1];
+
+                    var gapStart = currentBooking.EndTime;
+                    var gapEnd = nextBooking.StartTime;
+                    var duration = (int)(gapEnd - gapStart).TotalHours;
+
+                    if (duration >= minimumDurationHours && (!fullDayOnly || duration >= 8))
+                    {
+                        availableSlots.Add(new AvailableTimeSlot
+                        {
+                            StartTime = gapStart,
+                            EndTime = gapEnd,
+                            DurationHours = duration,
+                            IsFullDay = duration >= 8,
+                            Recommendation = duration >= 8 
+                                ? "Full day available" 
+                                : $"{duration} hours between bookings"
+                        });
+                    }
+                }
+
+                // Check slot after last booking
+                if (confirmedBookings.Any())
+                {
+                    var lastBooking = confirmedBookings.Last();
+                    if (lastBooking.EndTime < endDate)
+                    {
+                        var duration = (int)(endDate - lastBooking.EndTime).TotalHours;
+                        if (duration >= minimumDurationHours && (!fullDayOnly || duration >= 8))
+                        {
+                            availableSlots.Add(new AvailableTimeSlot
+                            {
+                                StartTime = lastBooking.EndTime,
+                                EndTime = endDate,
+                                DurationHours = duration,
+                                IsFullDay = duration >= 8,
+                                Recommendation = duration >= 8 ? "Full day available" : $"{duration} hours available"
+                            });
+                        }
+                    }
+                }
+
+                var response = new AvailableTimeSlotsResponse
+                {
+                    VehicleId = vehicleId,
+                    VehicleName = schedule.VehicleName,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    MinimumDurationHours = minimumDurationHours,
+                    AvailableSlots = availableSlots,
+                    TotalSlotsFound = availableSlots.Count,
+                    Message = availableSlots.Any() 
+                        ? $"Found {availableSlots.Count} available time slot(s)" 
+                        : "No available time slots matching your criteria"
+                };
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "AVAILABLE_TIME_SLOTS_FOUND",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finding available time slots");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse> CompareVehicleUtilizationAsync(
+            int userId, 
+            DateTime startDate, 
+            DateTime endDate)
+        {
+            try
+            {
+                // Validate date range
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE"
+                    };
+                }
+
+                if ((endDate - startDate).TotalDays > 90)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "DATE_RANGE_TOO_LARGE"
+                    };
+                }
+
+                // Get user and determine accessible vehicles
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                List<Vehicle> vehicles;
+
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    // Get co-owner's vehicles
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                        .FirstOrDefaultAsync(co => co.UserId == userId);
+                    
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "USER_NOT_CO_OWNER"
+                        };
+                    }
+
+                    vehicles = await _unitOfWork.VehicleRepository.GetQueryable()
+                        .Include(v => v.VehicleCoOwners)
+                        .Include(v => v.Bookings)
+                            .ThenInclude(b => b.CoOwner)
+                                .ThenInclude(co => co.User)
+                        .Where(v => v.VehicleCoOwners.Any(vco => 
+                            vco.CoOwnerId == coOwner.UserId && 
+                            vco.StatusEnum == EContractStatus.Active))
+                        .ToListAsync();
+                }
+                else
+                {
+                    // Staff/Admin - all vehicles
+                    vehicles = await _unitOfWork.VehicleRepository.GetQueryable()
+                        .Include(v => v.Bookings)
+                            .ThenInclude(b => b.CoOwner)
+                                .ThenInclude(co => co.User)
+                        .ToListAsync();
+                }
+
+                if (!vehicles.Any())
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "NO_VEHICLES_FOUND"
+                    };
+                }
+
+                // Calculate utilization for each vehicle
+                var comparisons = new List<VehicleUtilizationComparison>();
+                var totalHoursInPeriod = (int)(endDate - startDate).TotalHours;
+
+                foreach (var vehicle in vehicles)
+                {
+                    var vehicleBookings = vehicle.Bookings
+                        .Where(b => b.StartTime < endDate && b.EndTime > startDate)
+                        .Where(b => b.StatusEnum == EBookingStatus.Confirmed || 
+                                   b.StatusEnum == EBookingStatus.Active ||
+                                   b.StatusEnum == EBookingStatus.Completed)
+                        .ToList();
+
+                    var totalBookedHours = vehicleBookings.Sum(b => 
+                        (int)(b.EndTime - b.StartTime).TotalHours);
+
+                    var utilizationPercentage = totalHoursInPeriod > 0 
+                        ? Math.Round((decimal)totalBookedHours / totalHoursInPeriod * 100, 2) 
+                        : 0;
+
+                    // Find most active day
+                    var bookingsByDay = vehicleBookings
+                        .GroupBy(b => b.StartTime.DayOfWeek)
+                        .OrderByDescending(g => g.Count())
+                        .FirstOrDefault();
+
+                    var mostActiveDay = bookingsByDay?.Key.ToString() ?? "N/A";
+
+                    comparisons.Add(new VehicleUtilizationComparison
+                    {
+                        VehicleId = vehicle.Id,
+                        VehicleName = vehicle.Name,
+                        Brand = vehicle.Brand,
+                        Model = vehicle.Model,
+                        LicensePlate = vehicle.LicensePlate,
+                        UtilizationPercentage = utilizationPercentage,
+                        TotalBookings = vehicleBookings.Count,
+                        TotalBookedHours = totalBookedHours,
+                        MostActiveDay = mostActiveDay
+                    });
+                }
+
+                // Sort by utilization
+                comparisons = comparisons.OrderByDescending(c => c.UtilizationPercentage).ToList();
+
+                var response = new VehicleUtilizationComparisonResponse
+                {
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    Vehicles = comparisons,
+                    MostUtilizedVehicle = comparisons.FirstOrDefault(),
+                    LeastUtilizedVehicle = comparisons.LastOrDefault(),
+                    AverageUtilization = comparisons.Any() 
+                        ? Math.Round(comparisons.Average(c => c.UtilizationPercentage), 2) 
+                        : 0
+                };
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_UTILIZATION_COMPARISON_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error comparing vehicle utilization");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
         }
     }
 }
