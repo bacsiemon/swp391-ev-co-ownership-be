@@ -38,6 +38,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IUserProfileService, UserProfileService>();
             services.AddScoped<IVnPayService, VnPayService>();
             services.AddScoped<IBookingReminderService, BookingReminderService>();
+            services.AddScoped<IOwnershipChangeService, OwnershipChangeService>();
 
             // Register background services
             services.AddHostedService<BookingReminderBackgroundService>();

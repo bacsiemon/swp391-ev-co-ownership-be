@@ -65,6 +65,13 @@ public partial class EvCoOwnershipDbContext : DbContext
 
     public virtual DbSet<BookingReminderLog> BookingReminderLogs { get; set; }
 
+    // Ownership Change tables
+    public virtual DbSet<OwnershipChangeRequest> OwnershipChangeRequests { get; set; }
+
+    public virtual DbSet<OwnershipChangeDetail> OwnershipChangeDetails { get; set; }
+
+    public virtual DbSet<OwnershipChangeApproval> OwnershipChangeApprovals { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Booking>(entity =>
@@ -910,6 +917,136 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => new { e.BookingId, e.UserId });
+        });
+
+        // Ownership Change Request configuration
+        modelBuilder.Entity<OwnershipChangeRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.ToTable("ownership_change_requests");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.ProposedByUserId).HasColumnName("proposed_by_user_id");
+            entity.Property(e => e.Reason)
+                .IsRequired()
+                .HasMaxLength(1000)
+                .HasColumnName("reason");
+            entity.Property(e => e.StatusEnum)
+                .HasDefaultValue(EOwnershipChangeStatus.Pending)
+                .HasColumnName("status_enum")
+                .HasConversion<int>();
+            entity.Property(e => e.RequiredApprovals).HasColumnName("required_approvals");
+            entity.Property(e => e.CurrentApprovals).HasColumnName("current_approvals");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.FinalizedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("finalized_at");
+
+            entity.HasOne(d => d.Vehicle)
+                .WithMany()
+                .HasForeignKey(d => d.VehicleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.ProposedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.ProposedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.VehicleId);
+            entity.HasIndex(e => e.StatusEnum);
+        });
+
+        // Ownership Change Detail configuration
+        modelBuilder.Entity<OwnershipChangeDetail>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.ToTable("ownership_change_details");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.OwnershipChangeRequestId).HasColumnName("ownership_change_request_id");
+            entity.Property(e => e.CoOwnerId).HasColumnName("co_owner_id");
+            entity.Property(e => e.CurrentPercentage)
+                .HasPrecision(5, 2)
+                .HasColumnName("current_percentage");
+            entity.Property(e => e.ProposedPercentage)
+                .HasPrecision(5, 2)
+                .HasColumnName("proposed_percentage");
+            entity.Property(e => e.CurrentInvestment)
+                .HasPrecision(15, 2)
+                .HasColumnName("current_investment");
+            entity.Property(e => e.ProposedInvestment)
+                .HasPrecision(15, 2)
+                .HasColumnName("proposed_investment");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.OwnershipChangeRequest)
+                .WithMany(ocr => ocr.OwnershipChangeDetails)
+                .HasForeignKey(d => d.OwnershipChangeRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.CoOwner)
+                .WithMany()
+                .HasForeignKey(d => d.CoOwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.OwnershipChangeRequestId);
+        });
+
+        // Ownership Change Approval configuration
+        modelBuilder.Entity<OwnershipChangeApproval>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.ToTable("ownership_change_approvals");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.OwnershipChangeRequestId).HasColumnName("ownership_change_request_id");
+            entity.Property(e => e.CoOwnerId).HasColumnName("co_owner_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ApprovalStatusEnum)
+                .HasDefaultValue(EApprovalStatus.Pending)
+                .HasColumnName("approval_status_enum")
+                .HasConversion<int>();
+            entity.Property(e => e.Comments)
+                .HasMaxLength(500)
+                .HasColumnName("comments");
+            entity.Property(e => e.RespondedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("responded_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.OwnershipChangeRequest)
+                .WithMany(ocr => ocr.OwnershipChangeApprovals)
+                .HasForeignKey(d => d.OwnershipChangeRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.CoOwner)
+                .WithMany()
+                .HasForeignKey(d => d.CoOwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.OwnershipChangeRequestId);
+            entity.HasIndex(e => new { e.UserId, e.ApprovalStatusEnum });
         });
 
         ConfigureDateTimeConversions(modelBuilder);
