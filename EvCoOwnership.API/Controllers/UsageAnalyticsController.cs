@@ -509,5 +509,392 @@ namespace EvCoOwnership.API.Controllers
                 _ => StatusCode(500, response)
             };
         }
+
+        /// <summary>
+        /// **[CoOwner]** Compare usage across multiple co-owners over time
+        /// </summary>
+        /// <remarks>
+        /// **Description:**
+        /// Returns time-series comparison of co-owners' usage with trend analysis, rankings, 
+        /// and fairness insights. Shows who is using the vehicle more/less over time.
+        /// 
+        /// **Parameters:**
+        /// - `vehicleId` (query): Vehicle ID to analyze
+        /// - `startDate` (query, optional): Comparison start date (default: 3 months ago)
+        /// - `endDate` (query, optional): Comparison end date (default: current date)
+        /// - `granularity` (query): Time granularity - "Weekly" (default), "Daily", "Monthly"
+        /// - `metrics` (query): Metrics to compare - "All" (default), "Hours", "Distance", "BookingCount"
+        /// - `coOwnerIds` (query, optional): Specific co-owner IDs to compare (compares all if empty)
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/usageanalytics/compare/co-owners?vehicleId=1&amp;granularity=Weekly
+        /// Authorization: Bearer {token}
+        /// ```
+        /// 
+        /// **Sample Response (200 OK):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "Co-owners usage comparison retrieved successfully",
+        ///   "data": {
+        ///     "vehicleId": 1,
+        ///     "vehicleName": "Tesla Model 3",
+        ///     "coOwnersSeries": [
+        ///       {
+        ///         "coOwnerId": 1,
+        ///         "coOwnerName": "John Doe",
+        ///         "email": "john@example.com",
+        ///         "ownershipPercentage": 40.00,
+        ///         "dataPoints": [
+        ///           {
+        ///             "periodStart": "2024-01-01T00:00:00Z",
+        ///             "periodEnd": "2024-01-08T00:00:00Z",
+        ///             "periodLabel": "Week 1 (Jan 01)",
+        ///             "hours": 15.50,
+        ///             "distance": 120,
+        ///             "bookingCount": 3,
+        ///             "utilizationRate": 9.23,
+        ///             "hoursChange": 2.50,
+        ///             "distanceChange": 20,
+        ///             "bookingCountChange": 1
+        ///           }
+        ///         ],
+        ///         "trend": {
+        ///           "direction": "Increasing",
+        ///           "growthRate": 25.50,
+        ///           "averageChange": 1.20,
+        ///           "volatility": 3.40,
+        ///           "isConsistent": true,
+        ///           "pattern": "Linear"
+        ///         },
+        ///         "totalHours": 180.00,
+        ///         "totalDistance": 1500,
+        ///         "totalBookings": 30,
+        ///         "averagePerPeriod": 15.00,
+        ///         "peakUsage": 22.50,
+        ///         "peakPeriod": "Week 5 (Feb 01)"
+        ///       }
+        ///     ],
+        ///     "statistics": {
+        ///       "totalHoursAllCoOwners": 500.00,
+        ///       "usageDispersion": 45.20,
+        ///       "giniCoefficient": 0.285,
+        ///       "mostActiveCoOwner": "John Doe",
+        ///       "mostActiveHours": 200.00,
+        ///       "fastestGrowingCoOwner": "Jane Smith",
+        ///       "fastestGrowthRate": 35.50
+        ///     },
+        ///     "rankings": [
+        ///       {
+        ///         "metric": "Hours",
+        ///         "rankings": [
+        ///           {
+        ///             "rank": 1,
+        ///             "coOwnerId": 1,
+        ///             "coOwnerName": "John Doe",
+        ///             "value": 200.00,
+        ///             "percentageOfTotal": 40.00
+        ///           }
+        ///         ]
+        ///       }
+        ///     ],
+        ///     "insights": [
+        ///       {
+        ///         "type": "Imbalance",
+        ///         "severity": "Warning",
+        ///         "title": "Significant Usage Imbalance Detected",
+        ///         "description": "Usage distribution shows significant inequality (Gini: 0.450). Some co-owners may be using the vehicle much more than others relative to their ownership.",
+        ///         "affectedCoOwners": ["John Doe", "Jane Smith"]
+        ///       }
+        ///     ],
+        ///     "granularity": "Weekly",
+        ///     "totalPeriods": 12
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Co-owners usage comparison retrieved successfully</response>
+        /// <response code="403">ACCESS_DENIED_NOT_CO_OWNER - User is not a co-owner</response>
+        /// <response code="404">VEHICLE_NOT_FOUND or NO_CO_OWNERS_FOUND</response>
+        /// <response code="500">ERROR_COMPARING_CO_OWNERS_USAGE - Server error occurred</response>
+        [HttpGet("compare/co-owners")]
+        [ProducesResponseType(typeof(BaseResponse<CoOwnersUsageComparisonResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<CoOwnersUsageComparisonResponse>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<CoOwnersUsageComparisonResponse>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CompareCoOwnersUsage([FromQuery] CompareCoOwnersUsageRequest request)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var response = await _usageAnalyticsService.CompareCoOwnersUsageAsync(userId, request);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(500, response)
+            };
+        }
+
+        /// <summary>
+        /// **[CoOwner]** Compare usage across multiple vehicles over time
+        /// </summary>
+        /// <remarks>
+        /// **Description:**
+        /// Returns time-series comparison of multiple vehicles' usage with trend analysis, 
+        /// utilization rankings, and efficiency insights. Useful for comparing performance 
+        /// across different vehicles in user's portfolio.
+        /// 
+        /// **Parameters:**
+        /// - `vehicleIds` (query): List of vehicle IDs to compare (minimum 2, comma-separated)
+        /// - `startDate` (query, optional): Comparison start date (default: 3 months ago)
+        /// - `endDate` (query, optional): Comparison end date (default: current date)
+        /// - `granularity` (query): Time granularity - "Weekly" (default), "Daily", "Monthly"
+        /// - `metrics` (query): Metrics to compare - "All" (default), "Hours", "Distance", "BookingCount", "UtilizationRate"
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/usageanalytics/compare/vehicles?vehicleIds=1,2,3&amp;granularity=Monthly
+        /// Authorization: Bearer {token}
+        /// ```
+        /// 
+        /// **Sample Response (200 OK):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "Vehicles usage comparison retrieved successfully",
+        ///   "data": {
+        ///     "vehiclesSeries": [
+        ///       {
+        ///         "vehicleId": 1,
+        ///         "vehicleName": "Tesla Model 3",
+        ///         "licensePlate": "30A-12345",
+        ///         "dataPoints": [
+        ///           {
+        ///             "periodStart": "2024-01-01T00:00:00Z",
+        ///             "periodEnd": "2024-02-01T00:00:00Z",
+        ///             "periodLabel": "Jan 2024",
+        ///             "hours": 250.00,
+        ///             "distance": 2000,
+        ///             "bookingCount": 40,
+        ///             "utilizationRate": 33.60,
+        ///             "hoursChange": 20.00
+        ///           }
+        ///         ],
+        ///         "trend": {
+        ///           "direction": "Increasing",
+        ///           "growthRate": 15.50,
+        ///           "pattern": "Linear"
+        ///         },
+        ///         "totalHours": 800.00,
+        ///         "totalDistance": 6500,
+        ///         "totalBookings": 120,
+        ///         "averageUtilization": 35.20,
+        ///         "peakUtilization": 42.30,
+        ///         "peakPeriod": "Mar 2024"
+        ///       }
+        ///     ],
+        ///     "statistics": {
+        ///       "totalHoursAllVehicles": 1800.00,
+        ///       "averageUtilizationRate": 30.50,
+        ///       "mostUtilizedVehicle": "Tesla Model 3",
+        ///       "mostUtilizedHours": 800.00,
+        ///       "mostEfficientVehicle": "Nissan Leaf",
+        ///       "bestUtilizationRate": 38.70
+        ///     },
+        ///     "rankings": [
+        ///       {
+        ///         "metric": "Hours",
+        ///         "rankings": [
+        ///           {
+        ///             "rank": 1,
+        ///             "vehicleId": 1,
+        ///             "vehicleName": "Tesla Model 3",
+        ///             "value": 800.00,
+        ///             "percentageOfTotal": 44.44
+        ///           }
+        ///         ]
+        ///       },
+        ///       {
+        ///         "metric": "UtilizationRate",
+        ///         "rankings": [...]
+        ///       }
+        ///     ],
+        ///     "insights": [
+        ///       {
+        ///         "type": "Recommendation",
+        ///         "severity": "Warning",
+        ///         "title": "Underutilized Vehicles Detected",
+        ///         "description": "1 vehicle(s) have low utilization rates (&lt;20%). Consider promoting their usage or reviewing ownership structure.",
+        ///         "data": {
+        ///           "vehicleCount": 1,
+        ///           "avgUtilization": 18.50
+        ///         }
+        ///       }
+        ///     ],
+        ///     "granularity": "Monthly",
+        ///     "totalPeriods": 3
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicles usage comparison retrieved successfully</response>
+        /// <response code="403">ACCESS_DENIED_NOT_CO_OWNER_OF_VEHICLE_{id} - User not co-owner of all vehicles</response>
+        /// <response code="404">SOME_VEHICLES_NOT_FOUND - One or more vehicles not found</response>
+        /// <response code="500">ERROR_COMPARING_VEHICLES_USAGE - Server error occurred</response>
+        [HttpGet("compare/vehicles")]
+        [ProducesResponseType(typeof(BaseResponse<VehiclesUsageComparisonResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<VehiclesUsageComparisonResponse>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<VehiclesUsageComparisonResponse>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CompareVehiclesUsage([FromQuery] CompareVehiclesUsageRequest request)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var response = await _usageAnalyticsService.CompareVehiclesUsageAsync(userId, request);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(500, response)
+            };
+        }
+
+        /// <summary>
+        /// **[User]** Compare personal usage between two time periods
+        /// </summary>
+        /// <remarks>
+        /// **Description:**
+        /// Returns detailed comparison of user's usage between two time periods,
+        /// showing changes in usage patterns, metrics, and co-owner contributions.
+        /// Useful for month-over-month or quarter-over-quarter analysis.
+        /// 
+        /// **Parameters:**
+        /// - `vehicleId` (query, optional): Vehicle ID to analyze (analyzes all vehicles if null)
+        /// - `period1Start` (query): First period start date
+        /// - `period1End` (query): First period end date
+        /// - `period2Start` (query): Second period start date
+        /// - `period2End` (query): Second period end date
+        /// - `period1Label` (query, optional): Custom label for period 1 (e.g., "Q1 2024")
+        /// - `period2Label` (query, optional): Custom label for period 2 (e.g., "Q2 2024")
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/usageanalytics/compare/periods?period1Start=2024-01-01&amp;period1End=2024-01-31&amp;period2Start=2024-02-01&amp;period2End=2024-02-29&amp;period1Label=January&amp;period2Label=February
+        /// Authorization: Bearer {token}
+        /// ```
+        /// 
+        /// **Sample Response (200 OK):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "Period usage comparison retrieved successfully",
+        ///   "data": {
+        ///     "period1": {
+        ///       "startDate": "2024-01-01T00:00:00Z",
+        ///       "endDate": "2024-01-31T00:00:00Z",
+        ///       "label": "January",
+        ///       "durationDays": 31,
+        ///       "totalHours": 120.00,
+        ///       "totalDistance": 900,
+        ///       "totalBookings": 18,
+        ///       "averageBookingDuration": 6.67,
+        ///       "averageTripDistance": 50.00,
+        ///       "utilizationRate": 16.13,
+        ///       "mostActiveDay": "Saturday",
+        ///       "mostActiveTimeSlot": "Morning"
+        ///     },
+        ///     "period2": {
+        ///       "startDate": "2024-02-01T00:00:00Z",
+        ///       "endDate": "2024-02-29T00:00:00Z",
+        ///       "label": "February",
+        ///       "durationDays": 29,
+        ///       "totalHours": 150.00,
+        ///       "totalDistance": 1200,
+        ///       "totalBookings": 22,
+        ///       "averageBookingDuration": 6.82,
+        ///       "averageTripDistance": 54.55,
+        ///       "utilizationRate": 21.55,
+        ///       "mostActiveDay": "Sunday",
+        ///       "mostActiveTimeSlot": "Afternoon"
+        ///     },
+        ///     "comparison": {
+        ///       "hoursChange": 30.00,
+        ///       "distanceChange": 300,
+        ///       "bookingCountChange": 4,
+        ///       "utilizationRateChange": 5.42,
+        ///       "hoursChangePercentage": 25.00,
+        ///       "distanceChangePercentage": 33.33,
+        ///       "bookingCountChangePercentage": 22.22,
+        ///       "utilizationRateChangePercentage": 33.60,
+        ///       "hoursPerDayChange": 1.03,
+        ///       "distancePerDayChange": 10.34,
+        ///       "bookingsPerDayChange": 0.14,
+        ///       "overallTrend": "Increased",
+        ///       "trendStrength": "Moderate"
+        ///     },
+        ///     "vehicleComparison": {
+        ///       "vehicleId": 1,
+        ///       "vehicleName": "Tesla Model 3",
+        ///       "coOwnerChanges": [
+        ///         {
+        ///           "coOwnerId": 1,
+        ///           "coOwnerName": "John Doe",
+        ///           "period1Hours": 50.00,
+        ///           "period2Hours": 65.00,
+        ///           "hoursChange": 15.00,
+        ///           "hoursChangePercentage": 30.00,
+        ///           "changeDirection": "Increased"
+        ///         }
+        ///       ],
+        ///       "patternComparison": {
+        ///         "period1DayDistribution": {
+        ///           "Monday": 3,
+        ///           "Saturday": 5
+        ///         },
+        ///         "period2DayDistribution": {
+        ///           "Monday": 4,
+        ///           "Sunday": 6
+        ///         }
+        ///       }
+        ///     },
+        ///     "insights": [
+        ///       {
+        ///         "type": "Recommendation",
+        ///         "severity": "Warning",
+        ///         "title": "Significant Usage Increased",
+        ///         "description": "Usage has increased by 25.0% between periods. Monitor for potential booking conflicts.",
+        ///         "data": {
+        ///           "changePercentage": 25.00,
+        ///           "period1Hours": 120.00,
+        ///           "period2Hours": 150.00
+        ///         }
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Period usage comparison retrieved successfully</response>
+        /// <response code="404">USER_NOT_CO_OWNER - User is not a co-owner of any vehicle</response>
+        /// <response code="500">ERROR_COMPARING_PERIOD_USAGE - Server error occurred</response>
+        [HttpGet("compare/periods")]
+        [ProducesResponseType(typeof(BaseResponse<PeriodUsageComparisonResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<PeriodUsageComparisonResponse>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ComparePeriodUsage([FromQuery] ComparePeriodUsageRequest request)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var response = await _usageAnalyticsService.ComparePeriodUsageAsync(userId, request);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                404 => NotFound(response),
+                _ => StatusCode(500, response)
+            };
+        }
     }
 }
