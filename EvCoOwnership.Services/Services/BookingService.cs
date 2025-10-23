@@ -47,7 +47,7 @@ namespace EvCoOwnership.Services.Services
 
                 // Check if user is a co-owner of the vehicle
                 var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
-                    .AnyAsync(vco => vco.VehicleId == request.VehicleId && 
+                    .AnyAsync(vco => vco.VehicleId == request.VehicleId &&
                                     vco.CoOwnerId == coOwner.UserId &&
                                     vco.StatusEnum == EContractStatus.Active);
 
@@ -562,13 +562,241 @@ namespace EvCoOwnership.Services.Services
                 Purpose = booking.Purpose ?? "",
                 Status = booking.StatusEnum ?? EBookingStatus.Pending,
                 ApprovedBy = booking.ApprovedBy,
-                ApprovedByName = booking.ApprovedByNavigation != null 
-                    ? $"{booking.ApprovedByNavigation.FirstName} {booking.ApprovedByNavigation.LastName}".Trim() 
+                ApprovedByName = booking.ApprovedByNavigation != null
+                    ? $"{booking.ApprovedByNavigation.FirstName} {booking.ApprovedByNavigation.LastName}".Trim()
                     : null,
                 TotalCost = booking.TotalCost,
                 CreatedAt = booking.CreatedAt ?? DateTime.UtcNow,
                 UpdatedAt = booking.UpdatedAt
             };
+        }
+
+        public async Task<BaseResponse<BookingCalendarResponse>> GetBookingCalendarAsync(
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
+            int? vehicleId = null,
+            string? status = null)
+        {
+            try
+            {
+                // Validate date range
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse<BookingCalendarResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE",
+                        Errors = "Start date must be before end date"
+                    };
+                }
+
+                // Check if date range is too large (e.g., max 90 days)
+                if ((endDate - startDate).TotalDays > 90)
+                {
+                    return new BaseResponse<BookingCalendarResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "DATE_RANGE_TOO_LARGE",
+                        Errors = "Date range cannot exceed 90 days"
+                    };
+                }
+
+                // Get user info and determine role
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse<BookingCalendarResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Parse status filter if provided
+                EBookingStatus? statusFilter = null;
+                if (!string.IsNullOrWhiteSpace(status))
+                {
+                    if (Enum.TryParse<EBookingStatus>(status, true, out var parsedStatus))
+                    {
+                        statusFilter = parsedStatus;
+                    }
+                    else
+                    {
+                        return new BaseResponse<BookingCalendarResponse>
+                        {
+                            StatusCode = 400,
+                            Message = "INVALID_STATUS_FILTER",
+                            Errors = $"Invalid status: {status}. Valid values: Pending, Confirmed, Active, Completed, Cancelled"
+                        };
+                    }
+                }
+
+                // Get coOwnerId for role-based filtering
+                int? coOwnerIdFilter = null;
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                        .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse<BookingCalendarResponse>
+                        {
+                            StatusCode = 403,
+                            Message = "USER_NOT_CO_OWNER"
+                        };
+                    }
+                    coOwnerIdFilter = coOwner.UserId;
+                }
+                // Staff and Admin can see all bookings (coOwnerIdFilter remains null)
+
+                // Get bookings for calendar
+                var bookings = await _unitOfWork.BookingRepository.GetBookingsForCalendarAsync(
+                    startDate, endDate, coOwnerIdFilter, vehicleId, statusFilter);
+
+                // Map to calendar events
+                var events = bookings.Select(b => new BookingCalendarEvent
+                {
+                    BookingId = b.Id,
+                    VehicleId = b.VehicleId ?? 0,
+                    VehicleName = b.Vehicle?.Name ?? "",
+                    Brand = b.Vehicle?.Brand ?? "",
+                    Model = b.Vehicle?.Model ?? "",
+                    LicensePlate = b.Vehicle?.LicensePlate ?? "",
+                    CoOwnerId = b.CoOwnerId ?? 0,
+                    CoOwnerName = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim(),
+                    StartTime = b.StartTime,
+                    EndTime = b.EndTime,
+                    Purpose = b.Purpose ?? "",
+                    Status = b.StatusEnum ?? EBookingStatus.Pending,
+                    StatusDisplay = (b.StatusEnum ?? EBookingStatus.Pending).ToString(),
+                    DurationHours = (int)Math.Ceiling((b.EndTime - b.StartTime).TotalHours),
+                    IsCurrentUser = b.CoOwner?.UserId == userId
+                }).ToList();
+
+                // Calculate summary statistics
+                var summary = new BookingCalendarSummary
+                {
+                    TotalBookings = events.Count,
+                    PendingBookings = events.Count(e => e.Status == EBookingStatus.Pending),
+                    ConfirmedBookings = events.Count(e => e.Status == EBookingStatus.Confirmed),
+                    ActiveBookings = events.Count(e => e.Status == EBookingStatus.Active),
+                    CompletedBookings = events.Count(e => e.Status == EBookingStatus.Completed),
+                    CancelledBookings = events.Count(e => e.Status == EBookingStatus.Cancelled),
+                    TotalVehicles = events.Select(e => e.VehicleId).Distinct().Count(),
+                    MyBookings = events.Count(e => e.IsCurrentUser)
+                };
+
+                var response = new BookingCalendarResponse
+                {
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    Events = events,
+                    TotalEvents = events.Count,
+                    Summary = summary
+                };
+
+                return new BaseResponse<BookingCalendarResponse>
+                {
+                    StatusCode = 200,
+                    Message = "BOOKING_CALENDAR_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<BookingCalendarResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<VehicleAvailabilityResponse>> CheckVehicleAvailabilityAsync(
+            int vehicleId,
+            DateTime startTime,
+            DateTime endTime)
+        {
+            try
+            {
+                // Validate time range
+                if (startTime >= endTime)
+                {
+                    return new BaseResponse<VehicleAvailabilityResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_TIME_RANGE",
+                        Errors = "Start time must be before end time"
+                    };
+                }
+
+                // Check if vehicle exists
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse<VehicleAvailabilityResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                // Get conflicting bookings
+                var conflictingBookings = await _unitOfWork.BookingRepository
+                    .GetConflictingBookingsAsync(vehicleId, startTime, endTime);
+
+                bool isAvailable = !conflictingBookings.Any();
+                string message = isAvailable
+                    ? "VEHICLE_AVAILABLE"
+                    : "VEHICLE_NOT_AVAILABLE_TIME_CONFLICT";
+
+                var response = new VehicleAvailabilityResponse
+                {
+                    VehicleId = vehicleId,
+                    VehicleName = vehicle.Name,
+                    IsAvailable = isAvailable,
+                    Message = message,
+                    ConflictingBookings = conflictingBookings.Any()
+                        ? conflictingBookings.Select(b => new BookingCalendarEvent
+                        {
+                            BookingId = b.Id,
+                            VehicleId = b.VehicleId ?? 0,
+                            VehicleName = vehicle.Name,
+                            Brand = vehicle.Brand,
+                            Model = vehicle.Model,
+                            LicensePlate = vehicle.LicensePlate,
+                            CoOwnerId = b.CoOwnerId ?? 0,
+                            CoOwnerName = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim(),
+                            StartTime = b.StartTime,
+                            EndTime = b.EndTime,
+                            Purpose = b.Purpose ?? "",
+                            Status = b.StatusEnum ?? EBookingStatus.Pending,
+                            StatusDisplay = (b.StatusEnum ?? EBookingStatus.Pending).ToString(),
+                            DurationHours = (int)Math.Ceiling((b.EndTime - b.StartTime).TotalHours),
+                            IsCurrentUser = false
+                        }).ToList()
+                        : null
+                };
+
+                return new BaseResponse<VehicleAvailabilityResponse>
+                {
+                    StatusCode = 200,
+                    Message = message,
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<VehicleAvailabilityResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
         }
     }
 }

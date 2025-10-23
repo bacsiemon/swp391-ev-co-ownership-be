@@ -103,10 +103,10 @@ namespace EvCoOwnership.Services.Interfaces
         /// Staff/Admin: all vehicles
         /// </summary>
         Task<BaseResponse> GetAvailableVehiclesAsync(
-            int userId, 
-            int pageIndex = 1, 
-            int pageSize = 10, 
-            string? filterByStatus = null, 
+            int userId,
+            int pageIndex = 1,
+            int pageSize = 10,
+            string? filterByStatus = null,
             string? filterByVerificationStatus = null,
             string? brand = null,
             string? model = null,

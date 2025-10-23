@@ -259,5 +259,183 @@ namespace EvCoOwnership.API.Controllers
             var response = await _bookingService.GetBookingStatisticsAsync();
             return response.StatusCode == 200 ? Ok(response) : StatusCode(response.StatusCode, response);
         }
+
+        /// <summary>
+        /// Gets booking calendar for a date range
+        /// </summary>
+        /// <param name="startDate">Start date of calendar view (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">End date of calendar view (format: yyyy-MM-dd)</param>
+        /// <param name="vehicleId">Optional: Filter by specific vehicle</param>
+        /// <param name="status">Optional: Filter by status (Pending, Confirmed, Active, Completed, Cancelled)</param>
+        /// <response code="200">Calendar retrieved successfully</response>
+        /// <response code="400">Invalid date range or status filter</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        /// <response code="404">User not found</response>
+        /// <remarks>
+        /// **BOOKING CALENDAR - Role-Based Access**
+        /// 
+        /// **Access Control by Role:**
+        /// - **Co-owner**: Can see bookings for vehicles in their co-ownership groups only
+        /// - **Staff/Admin**: Can see ALL bookings in the system
+        /// 
+        /// **Purpose:**
+        /// This endpoint provides a shared calendar view of all bookings within a date range,
+        /// helping users coordinate vehicle usage and avoid scheduling conflicts.
+        /// 
+        /// **Use Cases:**
+        /// - View bookings for the next week/month
+        /// - Check when specific vehicles are available
+        /// - See who has booked vehicles and when
+        /// - Identify your own bookings vs others
+        /// - Filter by vehicle or booking status
+        /// 
+        /// **Date Range:**
+        /// - Maximum: 90 days
+        /// - Recommended: 7-30 days for typical calendar views
+        /// 
+        /// **Response Includes:**
+        /// - All booking events in the date range
+        /// - Vehicle details (name, brand, model, license plate)
+        /// - Co-owner information (who booked it)
+        /// - Booking duration in hours
+        /// - Status indicators
+        /// - Summary statistics (total bookings, status breakdown, your bookings)
+        /// 
+        /// **Example Requests:**
+        /// 
+        /// **1. View next 7 days:**
+        /// GET /api/booking/calendar?startDate=2025-01-17&amp;endDate=2025-01-24
+        /// 
+        /// **2. View specific vehicle for next month:**
+        /// GET /api/booking/calendar?startDate=2025-01-17&amp;endDate=2025-02-17&amp;vehicleId=5
+        /// 
+        /// **3. View only confirmed bookings:**
+        /// GET /api/booking/calendar?startDate=2025-01-17&amp;endDate=2025-01-24&amp;status=Confirmed
+        /// 
+        /// **4. View pending approvals (Staff/Admin):**
+        /// GET /api/booking/calendar?startDate=2025-01-17&amp;endDate=2025-01-24&amp;status=Pending
+        /// </remarks>
+        [HttpGet("calendar")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
+        public async Task<IActionResult> GetBookingCalendar(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            [FromQuery] int? vehicleId = null,
+            [FromQuery] string? status = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.GetBookingCalendarAsync(userId, startDate, endDate, vehicleId, status);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Checks if a vehicle is available for a specific time slot
+        /// </summary>
+        /// <param name="vehicleId">Vehicle ID to check</param>
+        /// <param name="startTime">Start time of desired booking (format: yyyy-MM-ddTHH:mm:ss)</param>
+        /// <param name="endTime">End time of desired booking (format: yyyy-MM-ddTHH:mm:ss)</param>
+        /// <response code="200">Availability check completed successfully</response>
+        /// <response code="400">Invalid time range</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <remarks>
+        /// **VEHICLE AVAILABILITY CHECK**
+        /// 
+        /// **Purpose:**
+        /// Check if a vehicle is available for booking during a specific time period.
+        /// This helps users know if they can book a vehicle before actually creating the booking.
+        /// 
+        /// **Use Cases:**
+        /// - Pre-validate booking availability before creating a booking
+        /// - Check for time conflicts with existing bookings
+        /// - See what other bookings overlap with desired time slot
+        /// - Plan alternative time slots if vehicle is busy
+        /// 
+        /// **Response:**
+        /// - `isAvailable: true` - Vehicle is free, you can create booking
+        /// - `isAvailable: false` - Vehicle has conflicting bookings
+        /// - `conflictingBookings` - List of overlapping bookings (if any)
+        /// 
+        /// **Conflict Detection:**
+        /// A booking conflicts if it overlaps with existing non-cancelled bookings:
+        /// - New booking starts during an existing booking
+        /// - New booking ends during an existing booking
+        /// - New booking completely contains an existing booking
+        /// 
+        /// **Example Requests:**
+        /// 
+        /// **1. Check availability for tomorrow 9 AM - 5 PM:**
+        /// GET /api/booking/availability?vehicleId=5&amp;startTime=2025-01-18T09:00:00&amp;endTime=2025-01-18T17:00:00
+        /// 
+        /// **2. Check weekend availability:**
+        /// GET /api/booking/availability?vehicleId=5&amp;startTime=2025-01-20T08:00:00&amp;endTime=2025-01-20T18:00:00
+        /// 
+        /// **Response Example (Available):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "VEHICLE_AVAILABLE",
+        ///   "data": {
+        ///     "vehicleId": 5,
+        ///     "vehicleName": "VinFast VF8",
+        ///     "isAvailable": true,
+        ///     "message": "VEHICLE_AVAILABLE",
+        ///     "conflictingBookings": null
+        ///   }
+        /// }
+        /// ```
+        /// 
+        /// **Response Example (Not Available):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "VEHICLE_NOT_AVAILABLE_TIME_CONFLICT",
+        ///   "data": {
+        ///     "vehicleId": 5,
+        ///     "vehicleName": "VinFast VF8",
+        ///     "isAvailable": false,
+        ///     "message": "VEHICLE_NOT_AVAILABLE_TIME_CONFLICT",
+        ///     "conflictingBookings": [
+        ///       {
+        ///         "bookingId": 123,
+        ///         "coOwnerName": "Nguyen Van A",
+        ///         "startTime": "2025-01-18T10:00:00",
+        ///         "endTime": "2025-01-18T15:00:00",
+        ///         "status": "Confirmed"
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        [HttpGet("availability")]
+        [AuthorizeRoles(EUserRole.CoOwner, EUserRole.Staff, EUserRole.Admin)]
+        public async Task<IActionResult> CheckVehicleAvailability(
+            [FromQuery] int vehicleId,
+            [FromQuery] DateTime startTime,
+            [FromQuery] DateTime endTime)
+        {
+            var response = await _bookingService.CheckVehicleAvailabilityAsync(vehicleId, startTime, endTime);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
     }
 }

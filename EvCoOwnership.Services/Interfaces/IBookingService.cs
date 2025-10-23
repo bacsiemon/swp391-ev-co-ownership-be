@@ -15,5 +15,9 @@ namespace EvCoOwnership.Services.Interfaces
         Task<BaseResponse<string>> CancelBookingAsync(int bookingId, int userId);
         Task<BaseResponse<string>> DeleteBookingAsync(int bookingId);
         Task<BaseResponse<BookingStatisticsResponse>> GetBookingStatisticsAsync();
+
+        // Calendar and availability
+        Task<BaseResponse<BookingCalendarResponse>> GetBookingCalendarAsync(int userId, DateTime startDate, DateTime endDate, int? vehicleId = null, string? status = null);
+        Task<BaseResponse<VehicleAvailabilityResponse>> CheckVehicleAvailabilityAsync(int vehicleId, DateTime startTime, DateTime endTime);
     }
 }
