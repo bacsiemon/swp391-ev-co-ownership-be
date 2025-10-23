@@ -512,6 +512,602 @@ namespace EvCoOwnership.Services.Services
             };
         }
 
+        /// <summary>
+        /// Creates a new fund usage record (expense)
+        /// </summary>
+        public async Task<BaseResponse<FundUsageResponse>> CreateFundUsageAsync(
+            CreateFundUsageRequest request, 
+            int requestingUserId)
+        {
+            try
+            {
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(request.VehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var hasAccess = await CheckUserAccessToVehicleAsync(request.VehicleId, requestingUserId);
+                if (!hasAccess)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER",
+                        Data = null
+                    };
+                }
+
+                if (!vehicle.FundId.HasValue)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_NOT_FOUND_FOR_VEHICLE",
+                        Data = null
+                    };
+                }
+
+                // Validate amount
+                if (request.Amount <= 0)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_AMOUNT",
+                        Data = null
+                    };
+                }
+
+                // Check if fund has sufficient balance
+                var fund = await _unitOfWork.FundRepository.GetByIdAsync(vehicle.FundId.Value);
+                if (fund == null)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                if ((fund.CurrentBalance ?? 0) < request.Amount)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "INSUFFICIENT_FUND_BALANCE",
+                        Data = null
+                    };
+                }
+
+                // Validate maintenance cost if provided
+                if (request.MaintenanceCostId.HasValue)
+                {
+                    var maintenance = await _unitOfWork.MaintenanceCostRepository.GetByIdAsync(request.MaintenanceCostId.Value);
+                    if (maintenance == null)
+                    {
+                        return new BaseResponse<FundUsageResponse>
+                        {
+                            StatusCode = 404,
+                            Message = "MAINTENANCE_COST_NOT_FOUND",
+                            Data = null
+                        };
+                    }
+                }
+
+                // Create fund usage
+                var fundUsage = new EvCoOwnership.Repositories.Models.FundUsage
+                {
+                    FundId = vehicle.FundId.Value,
+                    UsageTypeEnum = request.UsageType,
+                    Amount = request.Amount,
+                    Description = request.Description,
+                    ImageUrl = request.ImageUrl,
+                    MaintenanceCostId = request.MaintenanceCostId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.FundUsageRepository.AddAsync(fundUsage);
+
+                // Update fund balance
+                fund.CurrentBalance -= request.Amount;
+                fund.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.FundRepository.UpdateAsync(fund);
+
+                await _unitOfWork.SaveChangesAsync();
+
+                var response = new FundUsageResponse
+                {
+                    Id = fundUsage.Id,
+                    FundId = fundUsage.FundId ?? 0,
+                    UsageType = fundUsage.UsageTypeEnum?.ToString() ?? "Other",
+                    Amount = fundUsage.Amount,
+                    Description = fundUsage.Description ?? "",
+                    ImageUrl = fundUsage.ImageUrl,
+                    MaintenanceCostId = fundUsage.MaintenanceCostId,
+                    CreatedAt = fundUsage.CreatedAt
+                };
+
+                return new BaseResponse<FundUsageResponse>
+                {
+                    StatusCode = 201,
+                    Message = "FUND_USAGE_CREATED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating fund usage for vehicle {VehicleId}", request.VehicleId);
+                return new BaseResponse<FundUsageResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null
+                };
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing fund usage record
+        /// </summary>
+        public async Task<BaseResponse<FundUsageResponse>> UpdateFundUsageAsync(
+            int usageId, 
+            UpdateFundUsageRequest request, 
+            int requestingUserId)
+        {
+            try
+            {
+                var fundUsage = await _unitOfWork.FundUsageRepository.GetByIdAsync(usageId);
+                if (fundUsage == null)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_USAGE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var fund = await _unitOfWork.FundRepository.GetByIdAsync(fundUsage.FundId ?? 0);
+                if (fund == null)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                // Get vehicle from fund
+                var vehicle = await _unitOfWork.VehicleRepository
+                    .GetQueryable()
+                    .FirstOrDefaultAsync(v => v.FundId == fund.Id);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var hasAccess = await CheckUserAccessToVehicleAsync(vehicle.Id, requestingUserId);
+                if (!hasAccess)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER",
+                        Data = null
+                    };
+                }
+
+                var oldAmount = fundUsage.Amount;
+                var newAmount = request.Amount ?? oldAmount;
+
+                // Validate new amount
+                if (request.Amount.HasValue && request.Amount.Value <= 0)
+                {
+                    return new BaseResponse<FundUsageResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_AMOUNT",
+                        Data = null
+                    };
+                }
+
+                // Check if fund has sufficient balance for increased amount
+                if (newAmount > oldAmount)
+                {
+                    var difference = newAmount - oldAmount;
+                    if ((fund.CurrentBalance ?? 0) < difference)
+                    {
+                        return new BaseResponse<FundUsageResponse>
+                        {
+                            StatusCode = 400,
+                            Message = "INSUFFICIENT_FUND_BALANCE",
+                            Data = null
+                        };
+                    }
+                }
+
+                // Update fund usage
+                if (request.UsageType.HasValue)
+                    fundUsage.UsageTypeEnum = request.UsageType.Value;
+                
+                if (request.Amount.HasValue)
+                    fundUsage.Amount = request.Amount.Value;
+                
+                if (request.Description != null)
+                    fundUsage.Description = request.Description;
+                
+                if (request.ImageUrl != null)
+                    fundUsage.ImageUrl = request.ImageUrl;
+                
+                if (request.MaintenanceCostId.HasValue)
+                    fundUsage.MaintenanceCostId = request.MaintenanceCostId;
+
+                await _unitOfWork.FundUsageRepository.UpdateAsync(fundUsage);
+
+                // Update fund balance if amount changed
+                if (newAmount != oldAmount)
+                {
+                    fund.CurrentBalance += oldAmount; // Refund old amount
+                    fund.CurrentBalance -= newAmount; // Deduct new amount
+                    fund.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.FundRepository.UpdateAsync(fund);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                var response = new FundUsageResponse
+                {
+                    Id = fundUsage.Id,
+                    FundId = fundUsage.FundId ?? 0,
+                    UsageType = fundUsage.UsageTypeEnum?.ToString() ?? "Other",
+                    Amount = fundUsage.Amount,
+                    Description = fundUsage.Description ?? "",
+                    ImageUrl = fundUsage.ImageUrl,
+                    MaintenanceCostId = fundUsage.MaintenanceCostId,
+                    CreatedAt = fundUsage.CreatedAt
+                };
+
+                return new BaseResponse<FundUsageResponse>
+                {
+                    StatusCode = 200,
+                    Message = "FUND_USAGE_UPDATED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating fund usage {UsageId}", usageId);
+                return new BaseResponse<FundUsageResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null
+                };
+            }
+        }
+
+        /// <summary>
+        /// Deletes a fund usage record
+        /// </summary>
+        public async Task<BaseResponse<object>> DeleteFundUsageAsync(
+            int usageId, 
+            int requestingUserId)
+        {
+            try
+            {
+                var fundUsage = await _unitOfWork.FundUsageRepository.GetByIdAsync(usageId);
+                if (fundUsage == null)
+                {
+                    return new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_USAGE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var fund = await _unitOfWork.FundRepository.GetByIdAsync(fundUsage.FundId ?? 0);
+                if (fund == null)
+                {
+                    return new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                // Get vehicle from fund
+                var vehicle = await _unitOfWork.VehicleRepository
+                    .GetQueryable()
+                    .FirstOrDefaultAsync(v => v.FundId == fund.Id);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var hasAccess = await CheckUserAccessToVehicleAsync(vehicle.Id, requestingUserId);
+                if (!hasAccess)
+                {
+                    return new BaseResponse<object>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER",
+                        Data = null
+                    };
+                }
+
+                // Refund the amount back to fund
+                fund.CurrentBalance += fundUsage.Amount;
+                fund.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.FundRepository.UpdateAsync(fund);
+
+                // Delete the usage record
+                await _unitOfWork.FundUsageRepository.DeleteAsync(fundUsage);
+                await _unitOfWork.SaveChangesAsync();
+
+                return new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "FUND_USAGE_DELETED_SUCCESSFULLY",
+                    Data = new { deletedId = usageId, refundedAmount = fundUsage.Amount }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting fund usage {UsageId}", usageId);
+                return new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null
+                };
+            }
+        }
+
+        /// <summary>
+        /// Gets fund usages by category type
+        /// </summary>
+        public async Task<BaseResponse<List<FundUsageResponse>>> GetFundUsagesByCategoryAsync(
+            int vehicleId, 
+            EUsageType category, 
+            int requestingUserId, 
+            DateTime? startDate = null, 
+            DateTime? endDate = null)
+        {
+            try
+            {
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse<List<FundUsageResponse>>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var hasAccess = await CheckUserAccessToVehicleAsync(vehicleId, requestingUserId);
+                if (!hasAccess)
+                {
+                    return new BaseResponse<List<FundUsageResponse>>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER",
+                        Data = null
+                    };
+                }
+
+                if (!vehicle.FundId.HasValue)
+                {
+                    return new BaseResponse<List<FundUsageResponse>>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_NOT_FOUND_FOR_VEHICLE",
+                        Data = new List<FundUsageResponse>()
+                    };
+                }
+
+                var query = _unitOfWork.FundUsageRepository
+                    .GetQueryable()
+                    .Where(fu => fu.FundId == vehicle.FundId.Value && fu.UsageTypeEnum == category);
+
+                if (startDate.HasValue)
+                {
+                    query = query.Where(fu => fu.CreatedAt >= startDate.Value);
+                }
+
+                if (endDate.HasValue)
+                {
+                    query = query.Where(fu => fu.CreatedAt <= endDate.Value);
+                }
+
+                var fundUsages = await query
+                    .OrderByDescending(fu => fu.CreatedAt)
+                    .ToListAsync();
+
+                var response = fundUsages.Select(fu => new FundUsageResponse
+                {
+                    Id = fu.Id,
+                    FundId = fu.FundId ?? 0,
+                    UsageType = fu.UsageTypeEnum?.ToString() ?? "Other",
+                    Amount = fu.Amount,
+                    Description = fu.Description ?? "",
+                    ImageUrl = fu.ImageUrl,
+                    MaintenanceCostId = fu.MaintenanceCostId,
+                    CreatedAt = fu.CreatedAt
+                }).ToList();
+
+                return new BaseResponse<List<FundUsageResponse>>
+                {
+                    StatusCode = 200,
+                    Message = "FUND_USAGES_BY_CATEGORY_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving fund usages by category for vehicle {VehicleId}", vehicleId);
+                return new BaseResponse<List<FundUsageResponse>>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null
+                };
+            }
+        }
+
+        /// <summary>
+        /// Gets category-based budget analysis for current month
+        /// </summary>
+        public async Task<BaseResponse<FundCategoryAnalysisResponse>> GetCategoryBudgetAnalysisAsync(
+            int vehicleId, 
+            int requestingUserId)
+        {
+            try
+            {
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse<FundCategoryAnalysisResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND",
+                        Data = null
+                    };
+                }
+
+                var hasAccess = await CheckUserAccessToVehicleAsync(vehicleId, requestingUserId);
+                if (!hasAccess)
+                {
+                    return new BaseResponse<FundCategoryAnalysisResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER",
+                        Data = null
+                    };
+                }
+
+                if (!vehicle.FundId.HasValue)
+                {
+                    return new BaseResponse<FundCategoryAnalysisResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "FUND_NOT_FOUND_FOR_VEHICLE",
+                        Data = null
+                    };
+                }
+
+                var now = DateTime.UtcNow;
+                var monthStart = new DateTime(now.Year, now.Month, 1);
+                var monthEnd = monthStart.AddMonths(1);
+
+                // Get current month usages
+                var monthUsages = await _unitOfWork.FundUsageRepository
+                    .GetQueryable()
+                    .Where(fu => fu.FundId == vehicle.FundId.Value && 
+                                 fu.CreatedAt >= monthStart && 
+                                 fu.CreatedAt < monthEnd)
+                    .ToListAsync();
+
+                // Define default budget limits (can be customized per vehicle)
+                var defaultBudgets = new Dictionary<EUsageType, decimal>
+                {
+                    { EUsageType.Maintenance, 3000000 },  // 3M VND
+                    { EUsageType.Insurance, 1000000 },    // 1M VND
+                    { EUsageType.Fuel, 2000000 },         // 2M VND (charging)
+                    { EUsageType.Parking, 500000 },       // 500K VND
+                    { EUsageType.Other, 1000000 }         // 1M VND
+                };
+
+                var categoryBudgets = new List<FundCategoryBudget>();
+                decimal totalBudget = 0;
+                decimal totalSpending = 0;
+
+                foreach (var category in Enum.GetValues<EUsageType>())
+                {
+                    var categoryUsages = monthUsages.Where(u => u.UsageTypeEnum == category).ToList();
+                    var spending = categoryUsages.Sum(u => u.Amount);
+                    var budget = defaultBudgets[category];
+                    var remaining = budget - spending;
+                    var utilization = budget > 0 ? (spending / budget) * 100 : 0;
+
+                    string status;
+                    if (spending > budget)
+                        status = "Exceeded";
+                    else if (utilization >= 80)
+                        status = "Warning";
+                    else
+                        status = "OnTrack";
+
+                    categoryBudgets.Add(new FundCategoryBudget
+                    {
+                        Category = category,
+                        MonthlyBudgetLimit = budget,
+                        CurrentMonthSpending = spending,
+                        RemainingBudget = remaining,
+                        BudgetUtilizationPercent = utilization,
+                        BudgetStatus = status,
+                        TransactionCount = categoryUsages.Count,
+                        AverageTransactionAmount = categoryUsages.Any() ? spending / categoryUsages.Count : 0
+                    });
+
+                    totalBudget += budget;
+                    totalSpending += spending;
+                }
+
+                var analysis = new FundCategoryAnalysisResponse
+                {
+                    VehicleId = vehicleId,
+                    VehicleName = vehicle.Name,
+                    AnalysisMonth = now.Month,
+                    AnalysisYear = now.Year,
+                    CategoryBudgets = categoryBudgets,
+                    TotalBudget = totalBudget,
+                    TotalSpending = totalSpending,
+                    OverallUtilizationPercent = totalBudget > 0 ? (totalSpending / totalBudget) * 100 : 0
+                };
+
+                return new BaseResponse<FundCategoryAnalysisResponse>
+                {
+                    StatusCode = 200,
+                    Message = "CATEGORY_BUDGET_ANALYSIS_RETRIEVED_SUCCESSFULLY",
+                    Data = analysis
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving category budget analysis for vehicle {VehicleId}", vehicleId);
+                return new BaseResponse<FundCategoryAnalysisResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Data = null
+                };
+            }
+        }
+
         #endregion
     }
 }

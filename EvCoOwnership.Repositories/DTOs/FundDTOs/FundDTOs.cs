@@ -114,4 +114,69 @@ namespace EvCoOwnership.Repositories.DTOs.FundDTOs
         public string? ImageUrl { get; set; }
         public int? MaintenanceCostId { get; set; }
     }
+
+    /// <summary>
+    /// Request DTO for updating fund usage
+    /// </summary>
+    public class UpdateFundUsageRequest
+    {
+        public EUsageType? UsageType { get; set; }
+        public decimal? Amount { get; set; }
+        public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
+        public int? MaintenanceCostId { get; set; }
+    }
+
+    /// <summary>
+    /// Fund category budget information
+    /// </summary>
+    public class FundCategoryBudget
+    {
+        public EUsageType Category { get; set; }
+        public decimal MonthlyBudgetLimit { get; set; }
+        public decimal CurrentMonthSpending { get; set; }
+        public decimal RemainingBudget { get; set; }
+        public decimal BudgetUtilizationPercent { get; set; }
+        public string BudgetStatus { get; set; } = string.Empty; // OnTrack, Warning, Exceeded
+        public int TransactionCount { get; set; }
+        public decimal AverageTransactionAmount { get; set; }
+    }
+
+    /// <summary>
+    /// Response DTO for category-based fund analysis
+    /// </summary>
+    public class FundCategoryAnalysisResponse
+    {
+        public int VehicleId { get; set; }
+        public string VehicleName { get; set; } = string.Empty;
+        public int AnalysisMonth { get; set; }
+        public int AnalysisYear { get; set; }
+        public List<FundCategoryBudget> CategoryBudgets { get; set; } = new();
+        public decimal TotalBudget { get; set; }
+        public decimal TotalSpending { get; set; }
+        public decimal OverallUtilizationPercent { get; set; }
+    }
+
+    /// <summary>
+    /// Request DTO for setting category budget limit
+    /// </summary>
+    public class SetCategoryBudgetRequest
+    {
+        public int VehicleId { get; set; }
+        public EUsageType Category { get; set; }
+        public decimal MonthlyBudgetLimit { get; set; }
+    }
+
+    /// <summary>
+    /// Category budget limit configuration
+    /// </summary>
+    public class CategoryBudgetConfig
+    {
+        public int Id { get; set; }
+        public int VehicleId { get; set; }
+        public EUsageType Category { get; set; }
+        public decimal MonthlyBudgetLimit { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
 }

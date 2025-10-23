@@ -421,5 +421,405 @@ namespace EvCoOwnership.API.Controllers
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
+
+        /// <summary>
+        /// Creates a new fund usage record (expense)
+        /// </summary>
+        /// <param name="request">Fund usage creation request</param>
+        /// <response code="201">Fund usage created successfully. Possible messages:  
+        /// - FUND_USAGE_CREATED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="400">Bad request. Possible messages:  
+        /// - INVALID_AMOUNT  
+        /// - INSUFFICIENT_FUND_BALANCE  
+        /// </response>
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED_NOT_VEHICLE_CO_OWNER  
+        /// </response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - VEHICLE_NOT_FOUND  
+        /// - FUND_NOT_FOUND_FOR_VEHICLE  
+        /// - FUND_NOT_FOUND  
+        /// - MAINTENANCE_COST_NOT_FOUND  
+        /// </response>
+        /// <response code="500">Internal server error</response>
+        /// <remarks>
+        /// **CREATE FUND USAGE (EXPENSE) RECORD**
+        /// 
+        /// **Access Control:**
+        /// - Co-owners of the vehicle
+        /// - Admin/Staff
+        /// 
+        /// **Purpose:**
+        /// Record expenses from the vehicle fund with automatic balance deduction.
+        /// 
+        /// **Categories:**
+        /// - **Maintenance** (0): Regular or emergency maintenance
+        /// - **Insurance** (1): Insurance premium payments
+        /// - **Fuel** (2): Charging/fuel expenses
+        /// - **Parking** (3): Parking and storage fees
+        /// - **Other** (4): Miscellaneous expenses
+        /// 
+        /// **Validation:**
+        /// - Amount must be positive
+        /// - Fund balance must be sufficient
+        /// - Maintenance cost ID must exist if provided
+        /// 
+        /// **Sample Request:**  
+        /// ```json
+        /// {
+        ///   "vehicleId": 1,
+        ///   "usageType": 0,
+        ///   "amount": 1500000,
+        ///   "description": "Brake pad replacement",
+        ///   "imageUrl": "https://storage.example.com/receipts/receipt123.jpg",
+        ///   "maintenanceCostId": 45
+        /// }
+        /// ```
+        /// </remarks>
+        [HttpPost("usage")]
+        public async Task<IActionResult> CreateFundUsage([FromBody] CreateFundUsageRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _fundService.CreateFundUsageAsync(request, userId);
+
+                return response.StatusCode switch
+                {
+                    201 => CreatedAtAction(nameof(GetFundUsages), new { vehicleId = request.VehicleId }, response),
+                    400 => BadRequest(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CreateFundUsage");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing fund usage record
+        /// </summary>
+        /// <param name="usageId">ID of the fund usage to update</param>
+        /// <param name="request">Update request</param>
+        /// <response code="200">Fund usage updated successfully. Possible messages:  
+        /// - FUND_USAGE_UPDATED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="400">Bad request. Possible messages:  
+        /// - INVALID_AMOUNT  
+        /// - INSUFFICIENT_FUND_BALANCE  
+        /// </response>
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED_NOT_VEHICLE_CO_OWNER  
+        /// </response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - FUND_USAGE_NOT_FOUND  
+        /// - FUND_NOT_FOUND  
+        /// - VEHICLE_NOT_FOUND  
+        /// </response>
+        /// <response code="500">Internal server error</response>
+        /// <remarks>
+        /// **UPDATE FUND USAGE RECORD**
+        /// 
+        /// **Access Control:**
+        /// - Co-owners of the vehicle
+        /// - Admin/Staff
+        /// 
+        /// **Updatable Fields:**
+        /// - Usage type (category)
+        /// - Amount (fund balance auto-adjusted)
+        /// - Description
+        /// - Image URL
+        /// - Maintenance cost ID link
+        /// 
+        /// **Sample Request:**  
+        /// ```json
+        /// {
+        ///   "amount": 1800000,
+        ///   "description": "Brake pad and rotor replacement (updated)"
+        /// }
+        /// ```
+        /// </remarks>
+        [HttpPut("usage/{usageId}")]
+        public async Task<IActionResult> UpdateFundUsage(int usageId, [FromBody] UpdateFundUsageRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _fundService.UpdateFundUsageAsync(usageId, request, userId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UpdateFundUsage for usage {UsageId}", usageId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Deletes a fund usage record and refunds amount to fund
+        /// </summary>
+        /// <param name="usageId">ID of the fund usage to delete</param>
+        /// <response code="200">Fund usage deleted successfully. Possible messages:  
+        /// - FUND_USAGE_DELETED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED_NOT_VEHICLE_CO_OWNER  
+        /// </response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - FUND_USAGE_NOT_FOUND  
+        /// - FUND_NOT_FOUND  
+        /// - VEHICLE_NOT_FOUND  
+        /// </response>
+        /// <response code="500">Internal server error</response>
+        /// <remarks>
+        /// **DELETE FUND USAGE RECORD**
+        /// 
+        /// **Access Control:**
+        /// - Co-owners of the vehicle
+        /// - Admin/Staff
+        /// 
+        /// **Effects:**
+        /// - Deletes the usage record
+        /// - Refunds the amount back to fund balance
+        /// - Updates fund's UpdatedAt timestamp
+        /// 
+        /// **Use Cases:**
+        /// - Correcting mistaken entries
+        /// - Removing duplicate records
+        /// - Cancelling unverified expenses
+        /// 
+        /// **Sample Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "FUND_USAGE_DELETED_SUCCESSFULLY",
+        ///   "data": {
+        ///     "deletedId": 201,
+        ///     "refundedAmount": 1500000
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        [HttpDelete("usage/{usageId}")]
+        public async Task<IActionResult> DeleteFundUsage(int usageId)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _fundService.DeleteFundUsageAsync(usageId, userId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DeleteFundUsage for usage {UsageId}", usageId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Gets fund usages filtered by category type
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="category">Usage category (0=Maintenance, 1=Insurance, 2=Fuel, 3=Parking, 4=Other)</param>
+        /// <param name="startDate">Optional start date filter (ISO 8601)</param>
+        /// <param name="endDate">Optional end date filter (ISO 8601)</param>
+        /// <response code="200">Category usages retrieved successfully. Possible messages:  
+        /// - FUND_USAGES_BY_CATEGORY_RETRIEVED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED_NOT_VEHICLE_CO_OWNER  
+        /// </response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - VEHICLE_NOT_FOUND  
+        /// - FUND_NOT_FOUND_FOR_VEHICLE  
+        /// </response>
+        /// <response code="500">Internal server error</response>
+        /// <remarks>
+        /// **GET FUND USAGES BY CATEGORY**
+        /// 
+        /// **Access Control:**
+        /// - Co-owners of the vehicle
+        /// - Admin/Staff
+        /// 
+        /// **Category Enum Values:**
+        /// - **0**: Maintenance
+        /// - **1**: Insurance
+        /// - **2**: Fuel (Charging)
+        /// - **3**: Parking
+        /// - **4**: Other
+        /// 
+        /// **Optional Date Filtering:**
+        /// - Filter by date range using startDate and/or endDate
+        /// - Format: ISO 8601 (e.g., 2024-10-01T00:00:00Z)
+        /// 
+        /// **Sample Request:**  
+        /// ```
+        /// GET /api/fund/category/1/usages/0?startDate=2024-10-01&amp;endDate=2024-10-31
+        /// ```
+        /// 
+        /// **Use Cases:**
+        /// - View all maintenance expenses
+        /// - Analyze insurance payment history
+        /// - Track fuel/charging costs over time
+        /// </remarks>
+        [HttpGet("category/{vehicleId}/usages/{category}")]
+        public async Task<IActionResult> GetFundUsagesByCategory(
+            int vehicleId, 
+            int category,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                if (!Enum.IsDefined(typeof(EvCoOwnership.Repositories.Enums.EUsageType), category))
+                {
+                    return BadRequest(new { message = "INVALID_CATEGORY" });
+                }
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var usageType = (EvCoOwnership.Repositories.Enums.EUsageType)category;
+                var response = await _fundService.GetFundUsagesByCategoryAsync(vehicleId, usageType, userId, startDate, endDate);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetFundUsagesByCategory for vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Gets category-based budget analysis for current month
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <response code="200">Budget analysis retrieved successfully. Possible messages:  
+        /// - CATEGORY_BUDGET_ANALYSIS_RETRIEVED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="403">Access denied. Possible messages:  
+        /// - ACCESS_DENIED_NOT_VEHICLE_CO_OWNER  
+        /// </response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - VEHICLE_NOT_FOUND  
+        /// - FUND_NOT_FOUND_FOR_VEHICLE  
+        /// </response>
+        /// <response code="500">Internal server error</response>
+        /// <remarks>
+        /// **CATEGORY BUDGET ANALYSIS**
+        /// 
+        /// **Access Control:**
+        /// - Co-owners of the vehicle
+        /// - Admin/Staff
+        /// 
+        /// **Provides:**
+        /// - Per-category budget limits
+        /// - Current month spending by category
+        /// - Remaining budget per category
+        /// - Budget utilization percentage
+        /// - Budget status (OnTrack/Warning/Exceeded)
+        /// - Transaction count and average amount
+        /// - Overall monthly budget utilization
+        /// 
+        /// **Default Monthly Budget Limits:**
+        /// - Maintenance: 3,000,000 VND
+        /// - Insurance: 1,000,000 VND
+        /// - Fuel: 2,000,000 VND
+        /// - Parking: 500,000 VND
+        /// - Other: 1,000,000 VND
+        /// - **Total: 7,500,000 VND/month**
+        /// 
+        /// **Budget Status Logic:**
+        /// - **OnTrack**: Spending &lt; 80% of budget
+        /// - **Warning**: Spending 80-100% of budget
+        /// - **Exceeded**: Spending &gt; budget
+        /// 
+        /// **Sample Request:**  
+        /// ```
+        /// GET /api/fund/category/1/analysis
+        /// ```
+        /// 
+        /// **Sample Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "CATEGORY_BUDGET_ANALYSIS_RETRIEVED_SUCCESSFULLY",
+        ///   "data": {
+        ///     "vehicleId": 1,
+        ///     "vehicleName": "Tesla Model 3",
+        ///     "analysisMonth": 10,
+        ///     "analysisYear": 2024,
+        ///     "categoryBudgets": [
+        ///       {
+        ///         "category": "Maintenance",
+        ///         "monthlyBudgetLimit": 3000000,
+        ///         "currentMonthSpending": 2500000,
+        ///         "remainingBudget": 500000,
+        ///         "budgetUtilizationPercent": 83.33,
+        ///         "budgetStatus": "Warning",
+        ///         "transactionCount": 3,
+        ///         "averageTransactionAmount": 833333
+        ///       }
+        ///     ],
+        ///     "totalBudget": 7500000,
+        ///     "totalSpending": 5200000,
+        ///     "overallUtilizationPercent": 69.33
+        ///   }
+        /// }
+        /// ```
+        /// 
+        /// **Use Cases:**
+        /// - Monthly budget monitoring
+        /// - Expense category analysis
+        /// - Overspending detection
+        /// - Financial planning
+        /// </remarks>
+        [HttpGet("category/{vehicleId}/analysis")]
+        public async Task<IActionResult> GetCategoryBudgetAnalysis(int vehicleId)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _fundService.GetCategoryBudgetAnalysisAsync(vehicleId, userId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetCategoryBudgetAnalysis for vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
     }
 }

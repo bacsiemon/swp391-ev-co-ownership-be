@@ -1,5 +1,6 @@
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.DTOs.FundDTOs;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Services.Interfaces
 {
@@ -55,5 +56,63 @@ namespace EvCoOwnership.Services.Interfaces
             int vehicleId, 
             int requestingUserId, 
             int monthsToAnalyze = 6);
+
+        /// <summary>
+        /// Creates a new fund usage record (expense)
+        /// </summary>
+        /// <param name="request">Fund usage creation request</param>
+        /// <param name="requestingUserId">ID of the user making the request</param>
+        /// <returns>Created fund usage record</returns>
+        Task<BaseResponse<FundUsageResponse>> CreateFundUsageAsync(
+            CreateFundUsageRequest request, 
+            int requestingUserId);
+
+        /// <summary>
+        /// Updates an existing fund usage record
+        /// </summary>
+        /// <param name="usageId">ID of the fund usage to update</param>
+        /// <param name="request">Update request</param>
+        /// <param name="requestingUserId">ID of the user making the request</param>
+        /// <returns>Updated fund usage record</returns>
+        Task<BaseResponse<FundUsageResponse>> UpdateFundUsageAsync(
+            int usageId, 
+            UpdateFundUsageRequest request, 
+            int requestingUserId);
+
+        /// <summary>
+        /// Deletes a fund usage record
+        /// </summary>
+        /// <param name="usageId">ID of the fund usage to delete</param>
+        /// <param name="requestingUserId">ID of the user making the request</param>
+        /// <returns>Success response</returns>
+        Task<BaseResponse<object>> DeleteFundUsageAsync(
+            int usageId, 
+            int requestingUserId);
+
+        /// <summary>
+        /// Gets fund usages by category type
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="category">Usage category type</param>
+        /// <param name="requestingUserId">ID of the user making the request</param>
+        /// <param name="startDate">Optional start date filter</param>
+        /// <param name="endDate">Optional end date filter</param>
+        /// <returns>List of fund usages for the category</returns>
+        Task<BaseResponse<List<FundUsageResponse>>> GetFundUsagesByCategoryAsync(
+            int vehicleId, 
+            EUsageType category, 
+            int requestingUserId, 
+            DateTime? startDate = null, 
+            DateTime? endDate = null);
+
+        /// <summary>
+        /// Gets category-based budget analysis for current month
+        /// </summary>
+        /// <param name="vehicleId">ID of the vehicle</param>
+        /// <param name="requestingUserId">ID of the user making the request</param>
+        /// <returns>Category budget analysis</returns>
+        Task<BaseResponse<FundCategoryAnalysisResponse>> GetCategoryBudgetAnalysisAsync(
+            int vehicleId, 
+            int requestingUserId);
     }
 }
