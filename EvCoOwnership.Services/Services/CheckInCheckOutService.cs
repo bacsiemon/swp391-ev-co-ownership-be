@@ -1097,7 +1097,7 @@ namespace EvCoOwnership.Services.Services
 
             var odometerStart = checkInCondition?.OdometerReading;
             var batteryStart = checkInCondition?.FuelLevel.HasValue == true
-                ? (int?)Math.Round(checkInCondition.FuelLevel.Value) 
+                ? (int?)Math.Round(checkInCondition.FuelLevel.Value)
                 : null;
 
             var usageRecord = new VehicleUsageRecord
