@@ -2,6 +2,7 @@ using EvCoOwnership.API.Attributes;
 using EvCoOwnership.Repositories.DTOs.PaymentDTOs;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -156,7 +157,7 @@ namespace EvCoOwnership.API.Controllers
         }
 
         /// <summary>
-        /// Gets payment statistics (Admin/Staff only)
+        /// Gets payment statistics
         /// </summary>
         /// <response code="200">Statistics retrieved successfully</response>
         /// <response code="401">Unauthorized access</response>
@@ -167,6 +168,54 @@ namespace EvCoOwnership.API.Controllers
         {
             var response = await _paymentService.GetPaymentStatisticsAsync();
             return response.StatusCode == 200 ? Ok(response) : StatusCode(response.StatusCode, response);
+        }
+
+        /// <summary>
+        /// VNPay callback endpoint (return URL)
+        /// </summary>
+        /// <remarks>
+        /// This endpoint is called by VNPay after user completes payment.
+        /// **Do not require authentication** - VNPay cannot send JWT token.
+        /// </remarks>
+        /// <response code="200">Callback processed successfully</response>
+        /// <response code="400">Invalid callback data or signature</response>
+        [HttpGet("vnpay-callback")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VnPayCallback([FromQuery] VnPayCallbackRequest request)
+        {
+            var vnPayService = HttpContext.RequestServices.GetRequiredService<IVnPayService>();
+            var callbackResponse = vnPayService.ProcessCallback(request);
+
+            if (!callbackResponse.Success)
+            {
+                // Redirect to frontend payment failure page
+                return Redirect($"{GetFrontendUrl()}/payment/failure?message={callbackResponse.Message}");
+            }
+
+            // Update payment status
+            var processRequest = new ProcessPaymentRequest
+            {
+                PaymentId = callbackResponse.PaymentId,
+                TransactionId = callbackResponse.TransactionId,
+                IsSuccess = callbackResponse.Success
+            };
+
+            var response = await _paymentService.ProcessPaymentAsync(processRequest);
+
+            if (response.StatusCode == 200)
+            {
+                // Redirect to frontend payment success page
+                return Redirect($"{GetFrontendUrl()}/payment/success?paymentId={callbackResponse.PaymentId}&amount={callbackResponse.Amount}");
+            }
+
+            // Redirect to frontend payment failure page
+            return Redirect($"{GetFrontendUrl()}/payment/failure?message={response.Message}");
+        }
+
+        private string GetFrontendUrl()
+        {
+            // TODO: Get from configuration
+            return "http://localhost:3000"; // Default frontend URL
         }
     }
 }

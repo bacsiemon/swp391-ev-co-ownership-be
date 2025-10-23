@@ -34,6 +34,9 @@ try
     builder.Services.AddControllers();
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
+    
+    // Add HttpContextAccessor for VNPay IP address detection
+    builder.Services.AddHttpContextAccessor();
 
     // Add FluentValidation services
     builder.Services.AddFluentValidationServices();

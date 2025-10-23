@@ -4,6 +4,7 @@ using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace EvCoOwnership.Services.Services
@@ -11,10 +12,17 @@ namespace EvCoOwnership.Services.Services
     public class PaymentService : IPaymentService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IVnPayService _vnPayService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public PaymentService(IUnitOfWork unitOfWork)
+        public PaymentService(
+            IUnitOfWork unitOfWork, 
+            IVnPayService vnPayService,
+            IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
+            _vnPayService = vnPayService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<BaseResponse<PaymentUrlResponse>> CreatePaymentAsync(int userId, CreatePaymentRequest request)
@@ -35,9 +43,9 @@ namespace EvCoOwnership.Services.Services
                 await _unitOfWork.PaymentRepository.AddAsync(payment);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Generate payment URL (simplified - in real scenario, integrate with VNPay/MoMo API)
+                // Generate payment URL using VNPay service
                 var transactionRef = $"PAY_{payment.Id}_{DateTime.UtcNow.Ticks}";
-                var paymentUrl = GeneratePaymentUrl(payment, transactionRef);
+                var paymentUrl = GeneratePaymentUrl(payment, request.Description ?? "Thanh toán dịch vụ");
 
                 var response = new PaymentUrlResponse
                 {
@@ -89,6 +97,17 @@ namespace EvCoOwnership.Services.Services
                 payment.TransactionId = request.TransactionId;
                 payment.StatusEnum = request.IsSuccess ? EPaymentStatus.Completed : EPaymentStatus.Failed;
                 payment.PaidAt = request.IsSuccess ? DateTime.UtcNow : null;
+
+                // Update FundAddition status if payment is successful
+                if (request.IsSuccess && payment.FundAdditionId.HasValue)
+                {
+                    var fundAddition = await _unitOfWork.FundAdditionRepository.GetByIdAsync(payment.FundAdditionId.Value);
+                    if (fundAddition != null)
+                    {
+                        fundAddition.StatusEnum = EFundAdditionStatus.Completed;
+                        await _unitOfWork.FundAdditionRepository.UpdateAsync(fundAddition);
+                    }
+                }
 
                 await _unitOfWork.PaymentRepository.UpdateAsync(payment);
                 await _unitOfWork.SaveChangesAsync();
@@ -326,19 +345,26 @@ namespace EvCoOwnership.Services.Services
             };
         }
 
-        private string GeneratePaymentUrl(Payment payment, string transactionRef)
+        private string GeneratePaymentUrl(Payment payment, string orderInfo)
         {
-            // Simplified payment URL generation
-            // In production, integrate with actual payment gateway APIs (VNPay, MoMo, ZaloPay)
+            // Get client IP address
+            var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+            // Use VNPay service for VNPay gateway
+            if (payment.PaymentGateway?.ToLower() == "vnpay")
+            {
+                return _vnPayService.CreatePaymentUrl(payment.Id, payment.Amount, orderInfo, ipAddress);
+            }
+
+            // Fallback for other gateways (MoMo, ZaloPay, etc.)
             var baseUrl = payment.PaymentGateway?.ToLower() switch
             {
-                "vnpay" => "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
                 "momo" => "https://test-payment.momo.vn/v2/gateway/api/create",
                 "zalopay" => "https://sb-openapi.zalopay.vn/v2/create",
                 _ => "https://payment-gateway.example.com/pay"
             };
 
-            return $"{baseUrl}?amount={payment.Amount}&ref={transactionRef}&paymentId={payment.Id}";
+            return $"{baseUrl}?amount={payment.Amount}&paymentId={payment.Id}";
         }
     }
 }

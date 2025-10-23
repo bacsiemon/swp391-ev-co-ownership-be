@@ -1,4 +1,5 @@
-﻿using EvCoOwnership.Services.Interfaces;
+﻿using EvCoOwnership.Helpers.Configuration;
+using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Services.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,9 @@ namespace EvCoOwnership.Services
 
         public static void AddDependencies(this IServiceCollection services, IConfiguration configuration)
         {
+            // Configure VNPay settings
+            services.Configure<VnPayConfig>(configuration.GetSection("VnPayConfig"));
+
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ILicenseVerificationService, LicenseVerificationService>();
@@ -31,6 +35,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IMaintenanceService, MaintenanceService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
+            services.AddScoped<IVnPayService, VnPayService>();
         }
     }
 }
