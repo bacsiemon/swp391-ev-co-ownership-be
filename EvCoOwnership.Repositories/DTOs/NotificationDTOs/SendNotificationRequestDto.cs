@@ -8,8 +8,7 @@ namespace EvCoOwnership.DTOs.Notifications
     public class SendNotificationRequestDto
     {
         public int UserId { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public string NotificationType { get; set; } = string.Empty;
+        public string NotificationType { get; set; }
         public string? AdditionalData { get; set; }
     }
 
@@ -24,17 +23,11 @@ namespace EvCoOwnership.DTOs.Notifications
                 .GreaterThan(0)
                 .WithMessage("User ID must be greater than 0");
 
-            RuleFor(x => x.Message)
-                .NotEmpty()
-                .WithMessage("Message is required")
-                .MaximumLength(1000)
-                .WithMessage("Message must not exceed 1000 characters");
-
             RuleFor(x => x.NotificationType)
                 .NotEmpty()
                 .WithMessage("Notification type is required")
-                .MaximumLength(500)
-                .WithMessage("Notification type must not exceed 500 characters");
+                .MaximumLength(50)
+                .WithMessage("Notification type must not exceed 50 characters");
 
             RuleFor(x => x.AdditionalData)
                 .MaximumLength(2000)

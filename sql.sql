@@ -119,7 +119,7 @@ CREATE TABLE vehicle_verification_history (
 	staff_id INTEGER REFERENCES users(id), 
 	status_enum INTEGER NOT NULL,
 	notes TEXT, -- Detailed notes from the verification process
-	images JSONB, -- Array of image URLs from verification process
+	images_json TEXT, -- Array of image URLs from verification process
 	created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -264,7 +264,7 @@ CREATE TABLE file_uploads (
 CREATE TABLE notification_entities (
 	id SERIAL PRIMARY KEY,
 	notification_type TEXT NOT NULL,
-	additional_data JSONB, 
+	additional_data_json TEXT, 
 	created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -275,3 +275,20 @@ CREATE TABLE user_notifications (
 	read_at TIMESTAMP,
 	UNIQUE(notification_id, user_id)
 );
+
+-- ALTER scripts to change JSONB fields to TEXT with _json suffix
+-- Run these scripts if tables already exist
+
+-- Alter vehicle_verification_history table
+ALTER TABLE vehicle_verification_history 
+	RENAME COLUMN images TO images_json;
+
+ALTER TABLE vehicle_verification_history 
+	ALTER COLUMN images_json TYPE TEXT USING images_json::TEXT;
+
+-- Alter notification_entities table
+ALTER TABLE notification_entities 
+	RENAME COLUMN additional_data TO additional_data_json;
+
+ALTER TABLE notification_entities 
+	ALTER COLUMN additional_data_json TYPE TEXT USING additional_data_json::TEXT;

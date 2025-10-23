@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EvCoOwnership.Services\EvCoOwnership.Services.csproj" />
-    <ProjectReference Include="..\EvCoOwnership.DTOs\EvCoOwnership.DTOs.csproj" />
+    <ProjectReference Include="..\EvCoOwnership.Repositories\EvCoOwnership.Repositories.csproj" />
   </ItemGroup>
 
 </Project>

@@ -77,7 +77,7 @@ namespace EvCoOwnership.Services.Services
             }
 
             // Get user role
-            var roles = user.RoleEnum.HasValue ? new List<string> { user.RoleEnum.ToString() } : new List<string>();
+            var roles = new List<string> { user.RoleEnum.ToString() };
 
             // Generate tokens
             var userWrapper = new JwtUserDataWrapper(user);
@@ -213,7 +213,7 @@ namespace EvCoOwnership.Services.Services
             }
 
             // Get user role
-            var roles = user.RoleEnum.HasValue ? new List<string> { user.RoleEnum.Value.ToString() } : new List<string>();
+            var roles = new List<string> { user.RoleEnum.ToString() };
 
             // Generate new tokens
             var userWrapper = new JwtUserDataWrapper(user);

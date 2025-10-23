@@ -1,6 +1,5 @@
 using EvCoOwnership.API.Attributes;
 using EvCoOwnership.DTOs.Notifications;
-using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +36,7 @@ namespace EvCoOwnership.API.Controllers
         /// 
         /// **Sample Request:**
         /// ```
-        /// GET /api/notification/my-notifications?pageIndex=1&pageSize=10&includeRead=true
+        /// GET /api/notification/my-notifications?pageIndex=1&amp;pageSize=10&amp;includeRead=true
         /// Authorization: Bearer {token}
         /// ```
         /// 
@@ -164,12 +163,17 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <remarks>
         /// **Parameters:**
-        /// - userNotificationId: ID of the user notification to mark as read
+        /// - request: Request DTO containing the user notification ID to mark as read
         /// 
         /// **Sample Request:**
         /// ```
-        /// PUT /api/notification/mark-read/123
+        /// PUT /api/notification/mark-read
         /// Authorization: Bearer {token}
+        /// Content-Type: application/json
+        /// 
+        /// {
+        ///   "userNotificationId": 123
+        /// }
         /// ```
         /// 
         /// **Sample Response:**
@@ -185,8 +189,8 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="404">Notification not found or doesn't belong to user</response>
         /// <response code="500">Internal server error</response>
-        [HttpPut("mark-read/{userNotificationId}")]
-        public async Task<IActionResult> MarkNotificationAsRead(int userNotificationId)
+        [HttpPut("mark-read")]
+        public async Task<IActionResult> MarkNotificationAsRead([FromBody] MarkNotificationAsReadRequest request)
         {
             try
             {
@@ -196,7 +200,7 @@ namespace EvCoOwnership.API.Controllers
                     return Unauthorized();
                 }
 
-                var response = await _notificationService.MarkNotificationAsReadAsync(userId.Value, userNotificationId);
+                var response = await _notificationService.MarkNotificationAsReadAsync(userId.Value, request);
 
                 return response.StatusCode switch
                 {
@@ -218,7 +222,7 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <remarks>
         /// **Parameters:**
-        /// - request: List of user notification IDs to mark as read
+        /// - request: Request DTO containing list of user notification IDs to mark as read
         /// 
         /// **Sample Request:**
         /// ```
@@ -227,7 +231,7 @@ namespace EvCoOwnership.API.Controllers
         /// Content-Type: application/json
         /// 
         /// {
-        ///   "notificationIds": [1, 2, 3, 4, 5]
+        ///   "userNotificationIds": [1, 2, 3, 4, 5]
         /// }
         /// ```
         /// 
@@ -246,7 +250,7 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="404">No valid notifications found for this user</response>
         /// <response code="500">Internal server error</response>
         [HttpPut("mark-multiple-read")]
-        public async Task<IActionResult> MarkMultipleNotificationsAsRead([FromBody] MarkNotificationReadRequestDto request)
+        public async Task<IActionResult> MarkMultipleNotificationsAsRead([FromBody] MarkMultipleNotificationsAsReadRequest request)
         {
             try
             {
@@ -256,7 +260,7 @@ namespace EvCoOwnership.API.Controllers
                     return Unauthorized();
                 }
 
-                var response = await _notificationService.MarkMultipleNotificationsAsReadAsync(userId.Value, request.NotificationIds);
+                var response = await _notificationService.MarkMultipleNotificationsAsReadAsync(userId.Value, request);
 
                 return response.StatusCode switch
                 {
@@ -339,8 +343,7 @@ namespace EvCoOwnership.API.Controllers
         /// 
         /// {
         ///   "userId": 123,
-        ///   "message": "Your vehicle booking has been approved",
-        ///   "notificationType": "Booking Approval",
+        ///   "notificationType": "Booking",
         ///   "additionalData": "{\"bookingId\": 456, \"vehicleId\": 789}"
         /// }
         /// ```
@@ -366,11 +369,7 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                var response = await _notificationService.SendNotificationToUserAsync(
-                    request.UserId, 
-                    request.NotificationType, 
-                    ESeverityType.Medium, 
-                    request.AdditionalData);
+                var response = await _notificationService.SendNotificationToUserAsync(request);
 
                 return response.StatusCode switch
                 {
@@ -401,8 +400,7 @@ namespace EvCoOwnership.API.Controllers
         /// Content-Type: application/json
         /// 
         /// {
-        ///   "notificationType": "System Maintenance",
-        ///   "priority": 2,
+        ///   "notificationType": "System",
         ///   "userIds": [1, 2, 3, 4, 5],
         ///   "additionalData": "{\"maintenanceWindow\": \"2025-10-15T02:00:00Z\"}"
         /// }
@@ -424,15 +422,11 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="500">Internal server error</response>
         [HttpPost("create-notification")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationRequestDto request)
+        public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationRequest request)
         {
             try
             {
-                var response = await _notificationService.SendNotificationToUsersAsync(
-                    request.NotificationType, 
-                    request.Priority, 
-                    request.UserIds, 
-                    request.AdditionalData);
+                var response = await _notificationService.SendNotificationToUsersAsync(request);
 
                 return response.StatusCode switch
                 {

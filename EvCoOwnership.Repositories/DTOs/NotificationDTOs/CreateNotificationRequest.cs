@@ -1,4 +1,3 @@
-using EvCoOwnership.Repositories.Enums;
 using FluentValidation;
 
 namespace EvCoOwnership.DTOs.Notifications
@@ -8,8 +7,7 @@ namespace EvCoOwnership.DTOs.Notifications
     /// </summary>
     public class CreateNotificationRequest
     {
-        public string NotificationType { get; set; } = string.Empty;
-        public ESeverityType Priority { get; set; } = ESeverityType.Low;
+        public string NotificationType { get; set; }
         public string? AdditionalData { get; set; }
         public List<int> UserIds { get; set; } = new();
     }
@@ -24,12 +22,8 @@ namespace EvCoOwnership.DTOs.Notifications
             RuleFor(x => x.NotificationType)
                 .NotEmpty()
                 .WithMessage("Notification type is required")
-                .MaximumLength(500)
-                .WithMessage("Notification type must not exceed 500 characters");
-
-            RuleFor(x => x.Priority)
-                .IsInEnum()
-                .WithMessage("Priority must be a valid severity type");
+                .MaximumLength(50)
+                .WithMessage("Notification type must not exceed 50 characters");
 
             RuleFor(x => x.UserIds)
                 .NotEmpty()

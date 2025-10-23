@@ -58,7 +58,7 @@ namespace EvCoOwnership.Services.Mapping
             if (user == null)
                 throw new ArgumentNullException(nameof(user));
 
-            var roles = user.RoleEnum.HasValue ? new List<string> { user.RoleEnum.Value.ToString() } : new List<string>();
+            var roles = new List<string> { user.RoleEnum.ToString() };
 
             return new UserInfo
             {
@@ -70,7 +70,7 @@ namespace EvCoOwnership.Services.Mapping
                 DateOfBirth = user.DateOfBirth,
                 Address = user.Address,
                 ProfileImageUrl = user.ProfileImageUrl,
-                Status = user.StatusEnum?.ToString() ?? "Unknown",
+                Status = user.StatusEnum.ToString(),
                 Roles = roles
             };
         }

@@ -1,6 +1,6 @@
 using EvCoOwnership.DTOs.Notifications;
 
-namespace EvCoOwnership.API.Hubs
+namespace EvCoOwnership.API.Hubs.Clients
 {
     /// <summary>
     /// Strongly typed interface for NotificationHub client methods
@@ -11,7 +11,7 @@ namespace EvCoOwnership.API.Hubs
         /// Called when a new notification is received
         /// </summary>
         /// <param name="notification">Notification data</param>
-        Task ReceiveNotification(NotificationResponseDto notification);
+        Task ReceiveNotification(UserNotificationResponseDto notification);
 
         /// <summary>
         /// Called when notification read status is updated

@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EvCoOwnership.Repositories\EvCoOwnership.Repositories.csproj" />
-    <ProjectReference Include="..\EvCoOwnership.DTOs\EvCoOwnership.DTOs.csproj" />
   </ItemGroup>
 
 </Project>

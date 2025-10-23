@@ -1,4 +1,4 @@
-using EvCoOwnership.API.Hubs;
+using EvCoOwnership.API.Hubs.Clients;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -78,7 +78,12 @@ namespace EvCoOwnership.API.Hubs
 
             try
             {
-                var result = await _notificationService.MarkNotificationAsReadAsync(userId.Value, userNotificationId);
+                var request = new EvCoOwnership.DTOs.Notifications.MarkNotificationAsReadRequest
+                {
+                    UserNotificationId = userNotificationId
+                };
+
+                var result = await _notificationService.MarkNotificationAsReadAsync(userId.Value, request);
                 
                 if (result.StatusCode == 200 && result.Data)
                 {
@@ -123,7 +128,12 @@ namespace EvCoOwnership.API.Hubs
 
             try
             {
-                var result = await _notificationService.MarkMultipleNotificationsAsReadAsync(userId.Value, userNotificationIds);
+                var request = new EvCoOwnership.DTOs.Notifications.MarkMultipleNotificationsAsReadRequest
+                {
+                    UserNotificationIds = userNotificationIds
+                };
+
+                var result = await _notificationService.MarkMultipleNotificationsAsReadAsync(userId.Value, request);
                 
                 if (result.StatusCode == 200 && result.Data > 0)
                 {

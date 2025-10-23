@@ -141,8 +141,8 @@ namespace EvCoOwnership.Services.Services
                         PurchasePrice = vehicle.PurchasePrice,
                         WarrantyUntil = vehicle.WarrantyUntil,
                         DistanceTravelled = vehicle.DistanceTravelled,
-                        Status = vehicle.StatusEnum?.ToString(),
-                        VerificationStatus = vehicle.VerificationStatusEnum?.ToString(),
+                        Status = vehicle.StatusEnum.ToString(),
+                        VerificationStatus = vehicle.VerificationStatusEnum.ToString(),
                         LocationLatitude = vehicle.LocationLatitude,
                         LocationLongitude = vehicle.LocationLongitude,
                         CreatedAt = vehicle.CreatedAt
@@ -376,7 +376,7 @@ namespace EvCoOwnership.Services.Services
                     {
                         VehicleId = vehicleId,
                         UserId = userId,
-                        Status = invitation.StatusEnum?.ToString(),
+                        Status = invitation.StatusEnum.ToString(),
                         OwnershipPercentage = invitation.OwnershipPercentage,
                         InvestmentAmount = invitation.InvestmentAmount
                     }
@@ -527,7 +527,7 @@ namespace EvCoOwnership.Services.Services
                         LicensePlate = vehicle.LicensePlate,
                         OwnershipPercentage = invitation.OwnershipPercentage,
                         InvestmentAmount = invitation.InvestmentAmount,
-                        Status = invitation.StatusEnum?.ToString(),
+                        Status = invitation.StatusEnum.ToString(),
                         CreatedAt = invitation.CreatedAt,
                         Inviter = inviter != null ? new InviterInfo
                         {
@@ -875,7 +875,7 @@ namespace EvCoOwnership.Services.Services
                         Email = user.Email,
                         OwnershipPercentage = vco.OwnershipPercentage,
                         InvestmentAmount = vco.InvestmentAmount,
-                        Status = vco.StatusEnum?.ToString(),
+                        Status = vco.StatusEnum.ToString(),
                         CreatedAt = vco.CreatedAt
                     });
                 }
@@ -898,8 +898,8 @@ namespace EvCoOwnership.Services.Services
                 PurchasePrice = vehicle.PurchasePrice,
                 WarrantyUntil = vehicle.WarrantyUntil,
                 DistanceTravelled = vehicle.DistanceTravelled,
-                Status = vehicle.StatusEnum?.ToString(),
-                VerificationStatus = vehicle.VerificationStatusEnum?.ToString(),
+                Status = vehicle.StatusEnum.ToString(),
+                VerificationStatus = vehicle.VerificationStatusEnum.ToString(),
                 LocationLatitude = vehicle.LocationLatitude,
                 LocationLongitude = vehicle.LocationLongitude,
                 CreatedAt = vehicle.CreatedAt,

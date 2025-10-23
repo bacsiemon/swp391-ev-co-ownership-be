@@ -3,15 +3,18 @@ using EvCoOwnership.Repositories.Enums;
 namespace EvCoOwnership.DTOs.Notifications
 {
     /// <summary>
-    /// Response DTO for notification data
+    /// Response DTO for user-specific notification data (combines Notification and UserNotification)
     /// </summary>
-    public class NotificationResponseDto
+    public class UserNotificationResponseDto
     {
         public int Id { get; set; }
+        public int? NotificationId { get; set; }
+        public int? UserId { get; set; }
+        public DateTime? ReadAt { get; set; }
+        
+        // Notification details
         public string NotificationType { get; set; }
         public string? AdditionalData { get; set; }
         public DateTime? CreatedAt { get; set; }
-        // Note: IsRead and ReadAt belong to UserNotification, not Notification
-        // These should be included in a separate UserNotificationResponseDto if needed
     }
 }

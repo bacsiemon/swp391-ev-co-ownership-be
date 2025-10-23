@@ -11,7 +11,7 @@ public partial class NotificationEntity
 
     public string NotificationType { get; set; }
 
-    public string AdditionalData { get; set; }
+    public string AdditionalDataJson { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 

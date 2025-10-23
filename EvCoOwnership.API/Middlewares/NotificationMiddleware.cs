@@ -1,4 +1,5 @@
 using EvCoOwnership.API.Hubs;
+using EvCoOwnership.API.Hubs.Clients;
 using EvCoOwnership.DTOs.Notifications;
 using EvCoOwnership.Services.Events;
 using Microsoft.AspNetCore.SignalR;
@@ -48,16 +49,15 @@ namespace EvCoOwnership.API.Middlewares
 
                 var eventData = e.EventData;
                 
-                // Create notification response DTO
-                var notificationDto = new NotificationResponseDto
+                // Create user notification response DTO (since this is for a specific user)
+                var notificationDto = new UserNotificationResponseDto
                 {
-                    Id = eventData.NotificationId,
+                    NotificationId = eventData.NotificationId,
+                    UserId = eventData.UserId,
                     NotificationType = eventData.NotificationType,
-                    Priority = GetPriorityFromNotification(eventData),
                     AdditionalData = eventData.AdditionalData,
                     CreatedAt = eventData.CreatedAt,
-                    IsRead = false,
-                    ReadAt = null
+                    ReadAt = null // New notification, not read yet
                 };
 
                 // Send notification to the specific user's group
@@ -72,26 +72,6 @@ namespace EvCoOwnership.API.Middlewares
                 _logger.LogError(ex, "Error broadcasting notification {NotificationId} to user {UserId} via SignalR", 
                     e.EventData.NotificationId, e.EventData.UserId);
             }
-        }
-
-        /// <summary>
-        /// Gets priority enum from event data
-        /// Note: This is a simple approach. In a real scenario, you might want to store priority in the event data
-        /// </summary>
-        /// <param name="eventData">Event data</param>
-        /// <returns>Priority level</returns>
-        private static EvCoOwnership.Repositories.Enums.ESeverityType GetPriorityFromNotification(NotificationEventData eventData)
-        {
-            // Default to Medium priority
-            // In a real implementation, you might want to determine priority based on notification type
-            // or include priority in the event data
-            return eventData.NotificationType.ToLower() switch
-            {
-                var type when type.Contains("urgent") || type.Contains("critical") => EvCoOwnership.Repositories.Enums.ESeverityType.Critical,
-                var type when type.Contains("high") || type.Contains("important") => EvCoOwnership.Repositories.Enums.ESeverityType.High,
-                var type when type.Contains("low") || type.Contains("info") => EvCoOwnership.Repositories.Enums.ESeverityType.Low,
-                _ => EvCoOwnership.Repositories.Enums.ESeverityType.Medium
-            };
         }
     }
 

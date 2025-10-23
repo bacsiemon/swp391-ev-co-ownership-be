@@ -456,23 +456,22 @@ public partial class EvCoOwnershipDbContext : DbContext
 
         modelBuilder.Entity<NotificationEntity>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("notifications_pkey");
+            entity.HasKey(e => e.Id).HasName("notification_entities_pkey");
 
             entity.ToTable("notification_entities");
 
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("nextval('notifications_id_seq'::regclass)")
-                .HasColumnName("id");
-            entity.Property(e => e.AdditionalData)
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AdditionalDataJson)
                 .HasColumnType("jsonb")
-                .HasColumnName("additional_data");
+                .HasColumnName("additional_data_json");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.NotificationType)
                 .IsRequired()
-                .HasColumnName("notification_type");
+                .HasColumnName("notification_type")
+                .HasConversion<string>();
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -579,32 +578,6 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("updated_at");
 
             // User-Role many-to-many relationship configuration removed - roles are now tied directly to User entity
-        });
-
-        modelBuilder.Entity<UserNotification>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("user_notifications_pkey");
-
-            entity.ToTable("user_notifications");
-
-            entity.HasIndex(e => new { e.NotificationId, e.UserId }, "user_notifications_notification_id_user_id_key").IsUnique();
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
-            entity.Property(e => e.ReadAt)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("read_at");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.Notification).WithMany(p => p.UserNotifications)
-                .HasForeignKey(d => d.NotificationId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("user_notifications_notification_id_fkey");
-
-            entity.HasOne(d => d.User).WithMany(p => p.UserNotifications)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("user_notifications_user_id_fkey");
         });
 
         modelBuilder.Entity<UserNotification>(entity =>
@@ -740,7 +713,7 @@ public partial class EvCoOwnershipDbContext : DbContext
 
         modelBuilder.Entity<VehicleCoOwner>(entity =>
         {
-            entity.HasKey(e => new { e.CoOwnerId, e.VehicleId }).HasName("vehicle_contracts_pkey");
+            entity.HasKey(e => new { e.CoOwnerId, e.VehicleId }).HasName("vehicle_co_owners_pkey");
 
             entity.ToTable("vehicle_co_owners");
 
@@ -768,12 +741,12 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasOne(d => d.CoOwner).WithMany(p => p.VehicleCoOwners)
                 .HasForeignKey(d => d.CoOwnerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("vehicle_contracts_co_owner_id_fkey");
+                .HasConstraintName("vehicle_co_owners_co_owner_id_fkey");
 
             entity.HasOne(d => d.Vehicle).WithMany(p => p.VehicleCoOwners)
                 .HasForeignKey(d => d.VehicleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("vehicle_contracts_vehicle_id_fkey");
+                .HasConstraintName("vehicle_co_owners_vehicle_id_fkey");
         });
 
         modelBuilder.Entity<VehicleCondition>(entity =>
@@ -856,9 +829,9 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
-            entity.Property(e => e.Images)
+            entity.Property(e => e.ImagesJson)
                 .HasColumnType("jsonb")
-                .HasColumnName("images");
+                .HasColumnName("images_json");
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.StaffId).HasColumnName("staff_id");
             entity.Property(e => e.StatusEnum)

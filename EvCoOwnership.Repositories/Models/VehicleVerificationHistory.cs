@@ -18,7 +18,7 @@ public partial class VehicleVerificationHistory
 
     public string Notes { get; set; }
 
-    public string Images { get; set; }
+    public string ImagesJson { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
