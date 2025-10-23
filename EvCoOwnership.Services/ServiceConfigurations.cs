@@ -46,6 +46,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IMaintenanceVoteService, MaintenanceVoteService>();
             services.AddScoped<IVehicleUpgradeVoteService, VehicleUpgradeVoteService>();
             services.AddScoped<IVehicleReportService, VehicleReportService>();
+            services.AddScoped<IDisputeService, DisputeService>();
 
             // Register background services
             services.AddHostedService<BookingReminderBackgroundService>();
