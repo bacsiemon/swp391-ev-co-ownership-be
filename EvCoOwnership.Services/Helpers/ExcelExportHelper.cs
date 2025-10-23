@@ -17,16 +17,16 @@ namespace EvCoOwnership.Services.Helpers
         {
             // TODO: Implement with an Excel library like EPPlus, ClosedXML, or NPOI
             // This is a placeholder implementation that returns CSV-like data
-            
+
             var sb = new StringBuilder();
-            
+
             // Header information
             sb.AppendLine("EV Co-Ownership System - Monthly Report");
             sb.AppendLine($"Vehicle,{report.VehicleName}");
             sb.AppendLine($"Period,{report.PeriodDescription}");
             sb.AppendLine($"Generated,{report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine();
-            
+
             // Usage Summary
             sb.AppendLine("USAGE SUMMARY");
             sb.AppendLine("Metric,Value");
@@ -37,7 +37,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Total Distance (km),{report.UsageSummary.TotalDistanceTraveled:F2}");
             sb.AppendLine($"Average Usage per Booking,{report.UsageSummary.AverageUsagePerBooking:F2}");
             sb.AppendLine();
-            
+
             // Usage by Co-Owner
             if (report.UsageSummary.UsageByCoOwner.Any())
             {
@@ -50,7 +50,7 @@ namespace EvCoOwnership.Services.Helpers
                 }
                 sb.AppendLine();
             }
-            
+
             // Cost Summary
             sb.AppendLine("COST SUMMARY");
             sb.AppendLine("Metric,Amount");
@@ -60,7 +60,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Opening Balance,{report.CostSummary.OpeningBalance:F2}");
             sb.AppendLine($"Closing Balance,{report.CostSummary.ClosingBalance:F2}");
             sb.AppendLine();
-            
+
             // Expenses by Category
             if (report.CostSummary.ExpensesByCategory.Any())
             {
@@ -73,14 +73,14 @@ namespace EvCoOwnership.Services.Helpers
                 }
                 sb.AppendLine();
             }
-            
+
             // Maintenance Summary
             sb.AppendLine("MAINTENANCE SUMMARY");
             sb.AppendLine("Metric,Value");
             sb.AppendLine($"Total Events,{report.MaintenanceSummary.TotalMaintenanceEvents}");
             sb.AppendLine($"Total Cost,{report.MaintenanceSummary.TotalMaintenanceCost:F2}");
             sb.AppendLine();
-            
+
             // Maintenance by Type
             if (report.MaintenanceSummary.MaintenanceByType.Any())
             {
@@ -93,7 +93,7 @@ namespace EvCoOwnership.Services.Helpers
                 }
                 sb.AppendLine();
             }
-            
+
             // Fund Status
             sb.AppendLine("FUND STATUS");
             sb.AppendLine("Metric,Value");
@@ -103,7 +103,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Period Net Change,{report.FundStatus.PeriodNetChange:F2}");
             sb.AppendLine($"Total Co-Owners,{report.FundStatus.TotalCoOwners}");
             sb.AppendLine($"Average Contribution per Co-Owner,{report.FundStatus.AverageContributionPerCoOwner:F2}");
-            
+
             await Task.CompletedTask;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }
@@ -117,13 +117,13 @@ namespace EvCoOwnership.Services.Helpers
         {
             // TODO: Implement with an Excel library
             var sb = new StringBuilder();
-            
+
             sb.AppendLine("EV Co-Ownership System - Quarterly Report");
             sb.AppendLine($"Vehicle,{report.VehicleName}");
             sb.AppendLine($"Period,{report.PeriodDescription}");
             sb.AppendLine($"Generated,{report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine();
-            
+
             sb.AppendLine("QUARTERLY SUMMARY");
             sb.AppendLine("Metric,Value");
             sb.AppendLine($"Total Bookings,{report.UsageSummary.TotalBookings}");
@@ -133,7 +133,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Total Expenses,{report.CostSummary.TotalExpenses:F2}");
             sb.AppendLine($"Net Balance,{report.CostSummary.NetBalance:F2}");
             sb.AppendLine();
-            
+
             if (report.MonthlyBreakdown.Any())
             {
                 sb.AppendLine("MONTHLY BREAKDOWN");
@@ -145,11 +145,11 @@ namespace EvCoOwnership.Services.Helpers
                 }
                 sb.AppendLine();
             }
-            
+
             sb.AppendLine("FUND STATUS");
             sb.AppendLine("Current Balance,Total Co-Owners");
             sb.AppendLine($"{report.FundStatus.CurrentBalance:F2},{report.FundStatus.TotalCoOwners}");
-            
+
             await Task.CompletedTask;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }
@@ -163,13 +163,13 @@ namespace EvCoOwnership.Services.Helpers
         {
             // TODO: Implement with an Excel library
             var sb = new StringBuilder();
-            
+
             sb.AppendLine("EV Co-Ownership System - Yearly Report");
             sb.AppendLine($"Vehicle,{report.VehicleName}");
             sb.AppendLine($"Period,{report.PeriodDescription}");
             sb.AppendLine($"Generated,{report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine();
-            
+
             sb.AppendLine("YEARLY SUMMARY");
             sb.AppendLine("Metric,Value");
             sb.AppendLine($"Total Bookings,{report.UsageSummary.TotalBookings}");
@@ -179,7 +179,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Total Expenses,{report.CostSummary.TotalExpenses:F2}");
             sb.AppendLine($"Net Balance,{report.CostSummary.NetBalance:F2}");
             sb.AppendLine();
-            
+
             if (report.QuarterlyBreakdown.Any())
             {
                 sb.AppendLine("QUARTERLY BREAKDOWN");
@@ -191,7 +191,7 @@ namespace EvCoOwnership.Services.Helpers
                 }
                 sb.AppendLine();
             }
-            
+
             if (report.MonthlyBreakdown.Any())
             {
                 sb.AppendLine("MONTHLY BREAKDOWN");
@@ -203,12 +203,12 @@ namespace EvCoOwnership.Services.Helpers
                 }
                 sb.AppendLine();
             }
-            
+
             sb.AppendLine("FUND STATUS");
             sb.AppendLine("Current Balance,Total Co-Owners,Average Contribution");
             sb.AppendLine($"{report.FundStatus.CurrentBalance:F2},{report.FundStatus.TotalCoOwners}," +
                 $"{report.FundStatus.AverageContributionPerCoOwner:F2}");
-            
+
             await Task.CompletedTask;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }

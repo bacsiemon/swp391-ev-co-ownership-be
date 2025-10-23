@@ -521,7 +521,7 @@ namespace EvCoOwnership.Services.Services
                 var checkIn = booking.CheckIns.FirstOrDefault();
                 var checkOut = booking.CheckOuts.FirstOrDefault();
 
-                if (checkIn?.VehicleCondition != null && checkOut?.VehicleCondition != null && 
+                if (checkIn?.VehicleCondition != null && checkOut?.VehicleCondition != null &&
                     checkIn.VehicleCondition.OdometerReading.HasValue && checkOut.VehicleCondition.OdometerReading.HasValue)
                 {
                     totalDistance += checkOut.VehicleCondition.OdometerReading.Value - checkIn.VehicleCondition.OdometerReading.Value;
@@ -537,14 +537,14 @@ namespace EvCoOwnership.Services.Services
                 {
                     CoOwnerId = g.Key.CoOwnerId ?? 0,
                     UserId = g.Key.CoOwner?.UserId ?? 0,
-                    UserName = g.Key.CoOwner?.User != null 
-                        ? $"{g.Key.CoOwner.User.FirstName} {g.Key.CoOwner.User.LastName}".Trim() 
+                    UserName = g.Key.CoOwner?.User != null
+                        ? $"{g.Key.CoOwner.User.FirstName} {g.Key.CoOwner.User.LastName}".Trim()
                         : "Unknown",
                     UserEmail = g.Key.CoOwner?.User?.Email ?? "",
                     BookingCount = g.Count(),
                     TotalHours = (decimal)g.Sum(b => (b.EndTime - b.StartTime).TotalHours),
-                    UsagePercentage = totalHours > 0 
-                        ? (decimal)((decimal)g.Sum(b => (b.EndTime - b.StartTime).TotalHours) / totalHours * 100) 
+                    UsagePercentage = totalHours > 0
+                        ? (decimal)((decimal)g.Sum(b => (b.EndTime - b.StartTime).TotalHours) / totalHours * 100)
                         : 0,
                     TotalCost = g.Sum(b => b.TotalCost ?? 0)
                 })
@@ -887,7 +887,7 @@ namespace EvCoOwnership.Services.Services
             {
                 return await PdfExportHelper.ExportYearlyReportToPdfAsync(yearlyReport);
             }
-            
+
             throw new ArgumentException("Unsupported report type for PDF export");
         }
 
@@ -905,7 +905,7 @@ namespace EvCoOwnership.Services.Services
             {
                 return await ExcelExportHelper.ExportYearlyReportToExcelAsync(yearlyReport);
             }
-            
+
             throw new ArgumentException("Unsupported report type for Excel export");
         }
 

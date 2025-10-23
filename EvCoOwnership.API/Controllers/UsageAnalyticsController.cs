@@ -335,5 +335,179 @@ namespace EvCoOwnership.API.Controllers
                 _ => StatusCode(500, response)
             };
         }
+
+        /// <summary>
+        /// **[CoOwner/User]** Get personal usage history across all vehicles
+        /// </summary>
+        /// <remarks>
+        /// **Description:**
+        /// Returns comprehensive personal usage history for the current user across all vehicles they co-own.
+        /// Includes paginated booking list, statistics, vehicle breakdown, and period analysis.
+        /// 
+        /// **Parameters:**
+        /// - `startDate` (query, optional): History start date (default: 1 year ago)
+        /// - `endDate` (query, optional): History end date (default: current date)
+        /// - `vehicleId` (query, optional): Filter by specific vehicle ID (default: all vehicles)
+        /// - `status` (query, optional): Filter by status - "All" (default), "Completed", "Cancelled", "Pending"
+        /// - `pageNumber` (query): Page number for pagination (default: 1)
+        /// - `pageSize` (query): Items per page (default: 20, max: 100)
+        /// - `sortBy` (query): Sort field - "StartTime" (default), "EndTime", "DurationHours", "Distance"
+        /// - `sortOrder` (query): Sort direction - "desc" (default), "asc"
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/usageanalytics/my/usage-history?pageNumber=1&amp;pageSize=20&amp;status=Completed
+        /// Authorization: Bearer {token}
+        /// ```
+        /// 
+        /// **Sample Response (200 OK):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "Personal usage history retrieved successfully",
+        ///   "data": {
+        ///     "userId": 5,
+        ///     "userName": "John Doe",
+        ///     "email": "john@example.com",
+        ///     "summary": {
+        ///       "totalVehicles": 3,
+        ///       "totalBookings": 45,
+        ///       "completedBookings": 40,
+        ///       "cancelledBookings": 3,
+        ///       "pendingBookings": 2,
+        ///       "totalHoursUsed": 320.50,
+        ///       "totalDistanceTraveled": 2450,
+        ///       "averageBookingDuration": 8.01,
+        ///       "averageTripDistance": 61.25,
+        ///       "mostActiveDay": "Monday",
+        ///       "mostActiveTimeSlot": "Morning",
+        ///       "favoriteVehicleId": 1,
+        ///       "favoriteVehicleName": "Tesla Model 3",
+        ///       "favoriteVehicleBookingCount": 25
+        ///     },
+        ///     "bookings": [...],
+        ///     "pagination": {
+        ///       "currentPage": 1,
+        ///       "pageSize": 20,
+        ///       "totalPages": 3,
+        ///       "totalItems": 45,
+        ///       "hasPreviousPage": false,
+        ///       "hasNextPage": true
+        ///     }
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Personal usage history retrieved successfully</response>
+        /// <response code="404">USER_NOT_CO_OWNER - User is not a co-owner of any vehicle</response>
+        /// <response code="500">INTERNAL_SERVER_ERROR - Server error occurred</response>
+        [HttpGet("my/usage-history")]
+        [ProducesResponseType(typeof(BaseResponse<PersonalUsageHistoryResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<PersonalUsageHistoryResponse>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetPersonalUsageHistory([FromQuery] GetPersonalUsageHistoryRequest request)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var response = await _usageAnalyticsService.GetPersonalUsageHistoryAsync(userId, request);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                404 => NotFound(response),
+                _ => StatusCode(500, response)
+            };
+        }
+
+        /// <summary>
+        /// **[CoOwner]** Get comprehensive group usage summary for a vehicle
+        /// </summary>
+        /// <remarks>
+        /// **Description:**
+        /// Returns comprehensive group usage summary including all co-owners' contributions,
+        /// usage distribution patterns, popular time slots, and vehicle utilization metrics.
+        /// 
+        /// **Parameters:**
+        /// - `vehicleId` (query): Vehicle ID to analyze
+        /// - `startDate` (query, optional): Analysis start date (default: vehicle creation)
+        /// - `endDate` (query, optional): Analysis end date (default: current date)
+        /// - `includeTimeBreakdown` (query): Include time period breakdown (default: true)
+        /// - `granularity` (query): Time breakdown granularity - "Monthly" (default), "Weekly", "Daily"
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/usageanalytics/group-summary?vehicleId=1&amp;granularity=Monthly
+        /// Authorization: Bearer {token}
+        /// ```
+        /// 
+        /// **Sample Response (200 OK):**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "Group usage summary retrieved successfully",
+        ///   "data": {
+        ///     "vehicleId": 1,
+        ///     "vehicleName": "Tesla Model 3",
+        ///     "licensePlate": "30A-12345",
+        ///     "groupStats": {
+        ///       "totalCoOwners": 3,
+        ///       "totalBookings": 120,
+        ///       "completedBookings": 105,
+        ///       "cancelledBookings": 10,
+        ///       "activeCoOwners": 3,
+        ///       "totalHoursUsed": 840.50,
+        ///       "totalDistanceTraveled": 6300,
+        ///       "averageHoursPerBooking": 8.00,
+        ///       "averageDistancePerTrip": 60.00,
+        ///       "utilizationRate": 35.20,
+        ///       "averageBookingsPerCoOwner": 40.00,
+        ///       "fairnessScore": 85.50
+        ///     },
+        ///     "coOwners": [...],
+        ///     "distribution": {
+        ///       "distributionVariance": 12.50,
+        ///       "distributionPattern": "Varied",
+        ///       "mostActiveCoOwner": {...},
+        ///       "leastActiveCoOwner": {...}
+        ///     },
+        ///     "popularTimeSlots": [
+        ///       {
+        ///         "timeSlot": "Monday Morning",
+        ///         "bookingCount": 15,
+        ///         "percentageOfTotal": 12.50,
+        ///         "averageDuration": 8.5
+        ///       }
+        ///     ],
+        ///     "utilization": {
+        ///       "utilizationPercentage": 35.20,
+        ///       "averageBookingsPerDay": 0.50,
+        ///       "idleDays": 155,
+        ///       "idlePercentage": 64.80
+        ///     }
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Group usage summary retrieved successfully</response>
+        /// <response code="403">NOT_AUTHORIZED_TO_VIEW_VEHICLE_ANALYTICS - User is not a co-owner</response>
+        /// <response code="404">VEHICLE_NOT_FOUND - Vehicle not found</response>
+        /// <response code="500">INTERNAL_SERVER_ERROR - Server error occurred</response>
+        [HttpGet("group-summary")]
+        [ProducesResponseType(typeof(BaseResponse<GroupUsageSummaryResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<GroupUsageSummaryResponse>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<GroupUsageSummaryResponse>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetGroupUsageSummary([FromQuery] GetGroupUsageSummaryRequest request)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var response = await _usageAnalyticsService.GetGroupUsageSummaryAsync(userId, request);
+
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => StatusCode(403, response),
+                404 => NotFound(response),
+                _ => StatusCode(500, response)
+            };
+        }
     }
 }

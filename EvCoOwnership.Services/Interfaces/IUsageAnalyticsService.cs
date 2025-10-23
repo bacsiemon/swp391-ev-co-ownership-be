@@ -51,5 +51,25 @@ namespace EvCoOwnership.Services.Interfaces
             int userId,
             DateTime? startDate = null,
             DateTime? endDate = null);
+
+        /// <summary>
+        /// Get personal usage history for the current user across all vehicles
+        /// </summary>
+        /// <param name="userId">Current user ID</param>
+        /// <param name="request">Filter and pagination options</param>
+        /// <returns>Personal usage history with statistics</returns>
+        Task<BaseResponse<PersonalUsageHistoryResponse>> GetPersonalUsageHistoryAsync(
+            int userId,
+            GetPersonalUsageHistoryRequest request);
+
+        /// <summary>
+        /// Get comprehensive group usage summary for a vehicle
+        /// </summary>
+        /// <param name="userId">Requesting user ID (for authorization)</param>
+        /// <param name="request">Vehicle ID and analysis options</param>
+        /// <returns>Group usage summary with co-owner breakdown</returns>
+        Task<BaseResponse<GroupUsageSummaryResponse>> GetGroupUsageSummaryAsync(
+            int userId,
+            GetGroupUsageSummaryRequest request);
     }
 }

@@ -17,7 +17,7 @@ namespace EvCoOwnership.Services.Helpers
         {
             // TODO: Implement with a PDF library like iTextSharp, QuestPDF, or PdfSharp
             // This is a placeholder implementation
-            
+
             var sb = new StringBuilder();
             sb.AppendLine($"EV Co-Ownership System - Monthly Report");
             sb.AppendLine($"========================================");
@@ -26,7 +26,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Period: {report.PeriodDescription}");
             sb.AppendLine($"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine();
-            
+
             sb.AppendLine("USAGE SUMMARY");
             sb.AppendLine("-------------");
             sb.AppendLine($"Total Bookings: {report.UsageSummary.TotalBookings}");
@@ -35,7 +35,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Total Hours: {report.UsageSummary.TotalHoursUsed:F2}");
             sb.AppendLine($"Total Distance: {report.UsageSummary.TotalDistanceTraveled:F2} km");
             sb.AppendLine();
-            
+
             sb.AppendLine("COST SUMMARY");
             sb.AppendLine("------------");
             sb.AppendLine($"Total Income: ${report.CostSummary.TotalIncome:F2}");
@@ -44,22 +44,22 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Opening Balance: ${report.CostSummary.OpeningBalance:F2}");
             sb.AppendLine($"Closing Balance: ${report.CostSummary.ClosingBalance:F2}");
             sb.AppendLine();
-            
+
             sb.AppendLine("MAINTENANCE SUMMARY");
             sb.AppendLine("-------------------");
             sb.AppendLine($"Total Events: {report.MaintenanceSummary.TotalMaintenanceEvents}");
             sb.AppendLine($"Total Cost: ${report.MaintenanceSummary.TotalMaintenanceCost:F2}");
             sb.AppendLine();
-            
+
             sb.AppendLine("FUND STATUS");
             sb.AppendLine("-----------");
             sb.AppendLine($"Current Balance: ${report.FundStatus.CurrentBalance:F2}");
             sb.AppendLine($"Total Co-Owners: {report.FundStatus.TotalCoOwners}");
             sb.AppendLine();
-            
+
             sb.AppendLine("========================================");
             sb.AppendLine("End of Report");
-            
+
             await Task.CompletedTask;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }
@@ -80,7 +80,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Period: {report.PeriodDescription}");
             sb.AppendLine($"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine();
-            
+
             sb.AppendLine("QUARTERLY SUMMARY");
             sb.AppendLine("-----------------");
             sb.AppendLine($"Total Bookings: {report.UsageSummary.TotalBookings}");
@@ -89,7 +89,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Total Expenses: ${report.CostSummary.TotalExpenses:F2}");
             sb.AppendLine($"Net Balance: ${report.CostSummary.NetBalance:F2}");
             sb.AppendLine();
-            
+
             sb.AppendLine("MONTHLY BREAKDOWN");
             sb.AppendLine("-----------------");
             foreach (var month in report.MonthlyBreakdown)
@@ -98,10 +98,10 @@ namespace EvCoOwnership.Services.Helpers
                     $"Income=${month.TotalIncome:F2}, Expenses=${month.TotalExpenses:F2}");
             }
             sb.AppendLine();
-            
+
             sb.AppendLine("==========================================");
             sb.AppendLine("End of Report");
-            
+
             await Task.CompletedTask;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }
@@ -122,7 +122,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Period: {report.PeriodDescription}");
             sb.AppendLine($"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine();
-            
+
             sb.AppendLine("YEARLY SUMMARY");
             sb.AppendLine("--------------");
             sb.AppendLine($"Total Bookings: {report.UsageSummary.TotalBookings}");
@@ -131,7 +131,7 @@ namespace EvCoOwnership.Services.Helpers
             sb.AppendLine($"Total Expenses: ${report.CostSummary.TotalExpenses:F2}");
             sb.AppendLine($"Net Balance: ${report.CostSummary.NetBalance:F2}");
             sb.AppendLine();
-            
+
             sb.AppendLine("QUARTERLY BREAKDOWN");
             sb.AppendLine("-------------------");
             foreach (var quarter in report.QuarterlyBreakdown)
@@ -140,10 +140,10 @@ namespace EvCoOwnership.Services.Helpers
                     $"Income=${quarter.TotalIncome:F2}, Expenses=${quarter.TotalExpenses:F2}");
             }
             sb.AppendLine();
-            
+
             sb.AppendLine("=======================================");
             sb.AppendLine("End of Report");
-            
+
             await Task.CompletedTask;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }

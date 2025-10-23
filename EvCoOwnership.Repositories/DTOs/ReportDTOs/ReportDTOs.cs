@@ -154,16 +154,16 @@ namespace EvCoOwnership.Repositories.DTOs.ReportDTOs
         public string MonthName { get; set; } = string.Empty;
         public string PeriodDescription { get; set; } = string.Empty; // "January 2025"
         public DateTime GeneratedAt { get; set; }
-        
+
         // Usage section
         public UsageSummary UsageSummary { get; set; } = new();
-        
+
         // Cost section
         public CostSummary CostSummary { get; set; } = new();
-        
+
         // Maintenance section
         public MaintenanceSummary MaintenanceSummary { get; set; } = new();
-        
+
         // Fund status
         public FundStatus FundStatus { get; set; } = new();
     }
@@ -180,19 +180,19 @@ namespace EvCoOwnership.Repositories.DTOs.ReportDTOs
         public string QuarterName { get; set; } = string.Empty; // "Q1", "Q2", etc.
         public string PeriodDescription { get; set; } = string.Empty; // "Q1 2025 (Jan-Mar)"
         public DateTime GeneratedAt { get; set; }
-        
+
         // Usage section
         public UsageSummary UsageSummary { get; set; } = new();
-        
+
         // Cost section
         public CostSummary CostSummary { get; set; } = new();
-        
+
         // Maintenance section
         public MaintenanceSummary MaintenanceSummary { get; set; } = new();
-        
+
         // Fund status
         public FundStatus FundStatus { get; set; } = new();
-        
+
         // Monthly breakdown within quarter
         public List<MonthlyReportSummary> MonthlyBreakdown { get; set; } = new();
     }
@@ -207,22 +207,22 @@ namespace EvCoOwnership.Repositories.DTOs.ReportDTOs
         public int Year { get; set; }
         public string PeriodDescription { get; set; } = string.Empty; // "Year 2025"
         public DateTime GeneratedAt { get; set; }
-        
+
         // Usage section
         public UsageSummary UsageSummary { get; set; } = new();
-        
+
         // Cost section
         public CostSummary CostSummary { get; set; } = new();
-        
+
         // Maintenance section
         public MaintenanceSummary MaintenanceSummary { get; set; } = new();
-        
+
         // Fund status
         public FundStatus FundStatus { get; set; } = new();
-        
+
         // Quarterly breakdown
         public List<QuarterlyReportSummary> QuarterlyBreakdown { get; set; } = new();
-        
+
         // Monthly breakdown
         public List<MonthlyReportSummary> MonthlyBreakdown { get; set; } = new();
     }
