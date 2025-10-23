@@ -127,19 +127,19 @@ namespace EvCoOwnership.Services.Services
                 }
 
                 // Create vehicle condition record if not exists
-            VehicleCondition? condition = null;
-            if (request.ConditionReport != null)
-            {
-                condition = new VehicleCondition
+                VehicleCondition? condition = null;
+                if (request.ConditionReport != null)
                 {
-                    VehicleId = booking.VehicleId,
-                    ConditionTypeEnum = request.ConditionReport.ConditionType,
-                    Description = request.ConditionReport.Notes,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _unitOfWork.VehicleConditionRepository.AddAsync(condition);
-                await _unitOfWork.SaveChangesAsync();
-            }                // Create check-in record
+                    condition = new VehicleCondition
+                    {
+                        VehicleId = booking.VehicleId,
+                        ConditionTypeEnum = request.ConditionReport.ConditionType,
+                        Description = request.ConditionReport.Notes,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.VehicleConditionRepository.AddAsync(condition);
+                    await _unitOfWork.SaveChangesAsync();
+                }                // Create check-in record
                 var checkIn = new CheckIn
                 {
                     BookingId = booking.Id,
@@ -314,9 +314,21 @@ namespace EvCoOwnership.Services.Services
 
                 // Update booking
                 booking.StatusEnum = EBookingStatus.Completed;
-                booking.TotalCost = usage.TotalCost;
+                booking.TotalCost = usage.TotalCost + damageCharges;
                 booking.UpdatedAt = now;
                 await _unitOfWork.BookingRepository.UpdateAsync(booking);
+
+                // Create usage record
+                await CreateUsageRecordAsync(
+                    booking,
+                    checkIn,
+                    checkOut,
+                    usage,
+                    damageCharges,
+                    request.OdometerReading,
+                    request.BatteryLevel,
+                    null, // No staff for QR scan
+                    true); // Was QR scanned
 
                 await _unitOfWork.SaveChangesAsync();
 
@@ -699,6 +711,18 @@ namespace EvCoOwnership.Services.Services
                 booking.UpdatedAt = DateTime.UtcNow;
                 await _unitOfWork.BookingRepository.UpdateAsync(booking);
 
+                // Create usage record
+                await CreateUsageRecordAsync(
+                    booking,
+                    checkIn,
+                    checkOut,
+                    usage,
+                    damageCharges,
+                    request.OdometerReading,
+                    request.BatteryLevel,
+                    staffId,
+                    false); // Manual check-out
+
                 await _unitOfWork.SaveChangesAsync();
 
                 var status = hasNewDamages
@@ -1050,6 +1074,60 @@ namespace EvCoOwnership.Services.Services
                     $"Vehicle returned late - late fee: {usage.LateFee:N0} VND",
                 _ => "Check-out processed"
             };
+        }
+
+        /// <summary>
+        /// Create a vehicle usage record after successful check-out
+        /// </summary>
+        private async Task CreateUsageRecordAsync(
+            Booking booking,
+            CheckIn checkIn,
+            CheckOut checkOut,
+            UsageSummary usage,
+            decimal damageCharges,
+            int? odometerEnd,
+            int? batteryEnd,
+            int? staffId,
+            bool wasQRScanned)
+        {
+            // Get odometer and battery start values from check-in condition
+            var checkInCondition = checkIn.VehicleConditionId.HasValue
+                ? await _unitOfWork.VehicleConditionRepository.GetByIdAsync(checkIn.VehicleConditionId.Value)
+                : null;
+
+            var odometerStart = checkInCondition?.OdometerReading;
+            var batteryStart = checkInCondition?.FuelLevel.HasValue == true
+                ? (int?)Math.Round(checkInCondition.FuelLevel.Value) 
+                : null;
+
+            var usageRecord = new VehicleUsageRecord
+            {
+                BookingId = booking.Id,
+                VehicleId = booking.VehicleId,
+                CoOwnerId = booking.CoOwnerId,
+                CheckInId = checkIn.Id,
+                CheckOutId = checkOut.Id,
+                StartTime = checkIn.CheckTime,
+                EndTime = checkOut.CheckTime,
+                DurationHours = (decimal)usage.TotalDuration.TotalHours,
+                DistanceKm = usage.DistanceTraveled,
+                BatteryUsedPercent = usage.BatteryUsed,
+                OdometerStart = odometerStart,
+                OdometerEnd = odometerEnd,
+                BatteryLevelStart = batteryStart,
+                BatteryLevelEnd = batteryEnd,
+                BookingCost = usage.BookingCost,
+                LateFee = usage.LateFee,
+                DamageFee = damageCharges > 0 ? damageCharges : null,
+                TotalCost = usage.TotalCost + damageCharges,
+                Purpose = booking.Purpose,
+                Notes = null,
+                WasQRScanned = wasQRScanned,
+                AssistingStaffId = staffId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.VehicleUsageRecordRepository.AddAsync(usageRecord);
         }
 
         #endregion

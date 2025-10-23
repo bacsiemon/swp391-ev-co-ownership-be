@@ -28,6 +28,7 @@ namespace EvCoOwnership.Repositories.UoW
         IVehicleCoOwnerRepository VehicleCoOwnerRepository { get; }
         IVehicleConditionRepository VehicleConditionRepository { get; }
         IVehicleStationRepository VehicleStationRepository { get; }
+        IVehicleUsageRecordRepository VehicleUsageRecordRepository { get; }
         INotificationRepository NotificationRepository { get; }
         IUserNotificationRepository UserNotificationRepository { get; }
 

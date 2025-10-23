@@ -60,6 +60,8 @@ public partial class EvCoOwnershipDbContext : DbContext
 
     public virtual DbSet<VehicleVerificationHistory> VehicleVerificationHistories { get; set; }
 
+    public virtual DbSet<VehicleUsageRecord> VehicleUsageRecords { get; set; }
+
     // Booking Reminder tables
     public virtual DbSet<UserReminderPreference> UserReminderPreferences { get; set; }
 
