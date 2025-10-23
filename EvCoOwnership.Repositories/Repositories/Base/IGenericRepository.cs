@@ -13,6 +13,7 @@ namespace EvCoOwnership.Repositories.Repositories.Base
         List<T> GetAll();
         Task<List<T>> GetAllAsync();
         Task<List<T>> GetAllAsync(params string[] includeProperties);
+        IQueryable<T> GetQueryable();
         T GetById(Guid code);
         T GetById(int id);
         T GetById(string code);
