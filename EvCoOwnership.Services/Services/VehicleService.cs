@@ -1068,8 +1068,8 @@ namespace EvCoOwnership.Services.Services
                         };
                     }
 
-                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco => 
-                        vco.CoOwnerId == coOwner.UserId && 
+                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
+                        vco.CoOwnerId == coOwner.UserId &&
                         vco.StatusEnum == EContractStatus.Active);
 
                     if (!isCoOwner)

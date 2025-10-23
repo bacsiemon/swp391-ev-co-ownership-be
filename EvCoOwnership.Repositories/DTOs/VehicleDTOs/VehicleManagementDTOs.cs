@@ -88,7 +88,7 @@ namespace EvCoOwnership.DTOs.VehicleDTOs
         public int Id { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
-        
+
         // Vehicle Specifications
         public string Brand { get; set; } = null!;
         public string Model { get; set; } = null!;
@@ -98,33 +98,33 @@ namespace EvCoOwnership.DTOs.VehicleDTOs
         public string Color { get; set; } = null!;
         public decimal? BatteryCapacity { get; set; }
         public int? RangeKm { get; set; }
-        
+
         // Purchase & Financial Info
         public DateOnly PurchaseDate { get; set; }
         public decimal PurchasePrice { get; set; }
         public DateOnly? WarrantyUntil { get; set; }
-        
+
         // Current Status
         public int? DistanceTravelled { get; set; }
         public string? Status { get; set; }
         public string? VerificationStatus { get; set; }
-        
+
         // Location
         public decimal? LocationLatitude { get; set; }
         public decimal? LocationLongitude { get; set; }
-        
+
         // Timestamps
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-        
+
         // Co-ownership Information
         public List<VehicleCoOwnerResponse> CoOwners { get; set; } = new List<VehicleCoOwnerResponse>();
         public decimal TotalOwnershipPercentage { get; set; }
         public decimal AvailableOwnershipPercentage { get; set; }
-        
+
         // Fund Information
         public VehicleFundInfo? Fund { get; set; }
-        
+
         // Creator Information
         public CreatorInfo? CreatedBy { get; set; }
     }
