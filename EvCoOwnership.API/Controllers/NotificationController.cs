@@ -24,52 +24,23 @@ namespace EvCoOwnership.API.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Admin: Gets all notifications for the current user with pagination
-        /// User: Gets all notifications for the current user with pagination
-        /// </summary>
+        /// <summary>User</summary>
         /// <remarks>
-        /// **Parameters:**
+        /// Gets all notifications for the current user with pagination.
+        /// 
+        /// Parameters:
         /// - pageIndex: Page number (starts from 1, default: 1)
         /// - pageSize: Items per page (default: 10, max: 50)
         /// - includeRead: Include read notifications (default: true)
         /// 
-        /// **Sample Request:**
-        /// ```
-        /// GET /api/notification/my-notifications?pageIndex=1&amp;pageSize=10&amp;includeRead=true
-        /// Authorization: Bearer {token}
-        /// ```
+        /// Sample request:
         /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "Notifications retrieved successfully",
-        ///   "data": {
-        ///     "items": [
-        ///       {
-        ///         "id": 1,
-        ///         "notificationType": "Vehicle Booking Approved",
-        ///         "priority": 1,
-        ///         "additionalData": "{\"vehicleId\": 123, \"bookingId\": 456}",
-        ///         "createdAt": "2025-10-13T10:30:00Z",
-        ///         "isRead": false,
-        ///         "readAt": null
-        ///       }
-        ///     ],
-        ///     "pageIndex": 1,
-        ///     "pageSize": 10,
-        ///     "totalCount": 25,
-        ///     "totalPages": 3,
-        ///     "hasPreviousPage": false,
-        ///     "hasNextPage": true
-        ///   }
-        /// }
-        /// ```
+        /// GET /api/notification/my-notifications?pageIndex=1&pageSize=10&includeRead=true
+        /// Authorization: Bearer {token}
         /// </remarks>
         /// <response code="200">Notifications retrieved successfully</response>
-        /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="400">Bad request - Invalid parameters</response>
+        /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("my-notifications")]
         public async Task<IActionResult> GetMyNotifications(
@@ -106,25 +77,14 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Admin: Gets unread notification count for the current user
-        /// User: Gets unread notification count for the current user
-        /// </summary>
+        /// <summary>User</summary>
         /// <remarks>
-        /// **Sample Request:**
-        /// ```
+        /// Gets unread notification count for the current user.
+        /// 
+        /// Sample request:
+        /// 
         /// GET /api/notification/unread-count
         /// Authorization: Bearer {token}
-        /// ```
-        /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "Unread count retrieved successfully",
-        ///   "data": 5
-        /// }
-        /// ```
         /// </remarks>
         /// <response code="200">Unread count retrieved successfully</response>
         /// <response code="401">Unauthorized - Invalid or missing token</response>
@@ -157,16 +117,15 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
-        /// <summary>
-        /// User: Marks a single notification as read
-        /// Admin: Marks a single notification as read
-        /// </summary>
+        /// <summary>User</summary>
         /// <remarks>
-        /// **Parameters:**
+        /// Marks a single notification as read.
+        /// 
+        /// Parameters:
         /// - request: Request DTO containing the user notification ID to mark as read
         /// 
-        /// **Sample Request:**
-        /// ```
+        /// Sample request:
+        /// 
         /// PUT /api/notification/mark-read
         /// Authorization: Bearer {token}
         /// Content-Type: application/json
@@ -174,16 +133,6 @@ namespace EvCoOwnership.API.Controllers
         /// {
         ///   "userNotificationId": 123
         /// }
-        /// ```
-        /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "Notification marked as read successfully",
-        ///   "data": true
-        /// }
-        /// ```
         /// </remarks>
         /// <response code="200">Notification marked as read successfully</response>
         /// <response code="401">Unauthorized - Invalid or missing token</response>
@@ -216,16 +165,15 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
-        /// <summary>
-        /// User: Marks multiple notifications as read
-        /// Admin: Marks multiple notifications as read
-        /// </summary>
+        /// <summary>User</summary>
         /// <remarks>
-        /// **Parameters:**
+        /// Marks multiple notifications as read.
+        /// 
+        /// Parameters:
         /// - request: Request DTO containing list of user notification IDs to mark as read
         /// 
-        /// **Sample Request:**
-        /// ```
+        /// Sample request:
+        /// 
         /// PUT /api/notification/mark-multiple-read
         /// Authorization: Bearer {token}
         /// Content-Type: application/json
@@ -233,20 +181,10 @@ namespace EvCoOwnership.API.Controllers
         /// {
         ///   "userNotificationIds": [1, 2, 3, 4, 5]
         /// }
-        /// ```
-        /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "3 notifications marked as read successfully",
-        ///   "data": 3
-        /// }
-        /// ```
         /// </remarks>
         /// <response code="200">Notifications marked as read successfully</response>
-        /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="400">Bad request - Invalid notification IDs</response>
+        /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="404">No valid notifications found for this user</response>
         /// <response code="500">Internal server error</response>
         [HttpPut("mark-multiple-read")]
@@ -277,25 +215,14 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
-        /// <summary>
-        /// User: Marks all unread notifications as read
-        /// Admin: Marks all unread notifications as read
-        /// </summary>
+        /// <summary>User</summary>
         /// <remarks>
-        /// **Sample Request:**
-        /// ```
+        /// Marks all unread notifications as read.
+        /// 
+        /// Sample request:
+        /// 
         /// PUT /api/notification/mark-all-read
         /// Authorization: Bearer {token}
-        /// ```
-        /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "12 notifications marked as read successfully",
-        ///   "data": 12
-        /// }
-        /// ```
         /// </remarks>
         /// <response code="200">All notifications marked as read successfully</response>
         /// <response code="401">Unauthorized - Invalid or missing token</response>
@@ -328,15 +255,15 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Admin: Manually sends a notification to a specific user
-        /// </summary>
+        /// <summary>Admin</summary>
         /// <remarks>
-        /// **Parameters:**
+        /// Manually sends a notification to a specific user.
+        /// 
+        /// Parameters:
         /// - request: Notification data including user ID, message, and type
         /// 
-        /// **Sample Request:**
-        /// ```
+        /// Sample request:
+        /// 
         /// POST /api/notification/send-to-user
         /// Authorization: Bearer {token}
         /// Content-Type: application/json
@@ -346,21 +273,11 @@ namespace EvCoOwnership.API.Controllers
         ///   "notificationType": "Booking",
         ///   "additionalData": "{\"bookingId\": 456, \"vehicleId\": 789}"
         /// }
-        /// ```
-        /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "Notification sent successfully to 1 users",
-        ///   "data": 25
-        /// }
-        /// ```
         /// </remarks>
         /// <response code="200">Notification sent successfully</response>
+        /// <response code="400">Bad request - Invalid user ID or missing data</response>
         /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="403">Forbidden - Admin role required</response>
-        /// <response code="400">Bad request - Invalid user ID or missing data</response>
         /// <response code="404">User not found</response>
         /// <response code="500">Internal server error</response>
         [HttpPost("send-to-user")]
@@ -386,15 +303,15 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Admin: Manually creates and sends a notification to multiple users
-        /// </summary>
+        /// <summary>Admin</summary>
         /// <remarks>
-        /// **Parameters:**
+        /// Manually creates and sends a notification to multiple users.
+        /// 
+        /// Parameters:
         /// - request: Notification data including user IDs, type, and priority
         /// 
-        /// **Sample Request:**
-        /// ```
+        /// Sample request:
+        /// 
         /// POST /api/notification/create-notification
         /// Authorization: Bearer {token}
         /// Content-Type: application/json
@@ -404,21 +321,11 @@ namespace EvCoOwnership.API.Controllers
         ///   "userIds": [1, 2, 3, 4, 5],
         ///   "additionalData": "{\"maintenanceWindow\": \"2025-10-15T02:00:00Z\"}"
         /// }
-        /// ```
-        /// 
-        /// **Sample Response:**
-        /// ```json
-        /// {
-        ///   "statusCode": 200,
-        ///   "message": "Notification sent successfully to 5 users",
-        ///   "data": 26
-        /// }
-        /// ```
         /// </remarks>
         /// <response code="200">Notification created and sent successfully</response>
+        /// <response code="400">Bad request - Invalid user IDs or missing data</response>
         /// <response code="401">Unauthorized - Invalid or missing token</response>
         /// <response code="403">Forbidden - Admin role required</response>
-        /// <response code="400">Bad request - Invalid user IDs or missing data</response>
         /// <response code="500">Internal server error</response>
         [HttpPost("create-notification")]
         [Authorize(Roles = "Admin")]

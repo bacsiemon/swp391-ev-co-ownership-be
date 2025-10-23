@@ -77,6 +77,13 @@ try
         });
     }
 
+    app.UseCors(options =>
+    {
+        options.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+
     app.UseHttpsRedirection();
 
     // Custom authorization middleware (must be before UseAuthentication and UseAuthorization)
