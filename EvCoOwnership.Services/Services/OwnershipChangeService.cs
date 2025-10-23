@@ -1277,8 +1277,8 @@ namespace EvCoOwnership.Services.Services
                 ChangeType = history.ChangeTypeEnum?.ToString() ?? "Unknown",
                 Reason = history.Reason,
                 ChangedByUserId = history.ChangedByUserId,
-                ChangedByName = history.ChangedByUser != null 
-                    ? $"{history.ChangedByUser.FirstName} {history.ChangedByUser.LastName}" 
+                ChangedByName = history.ChangedByUser != null
+                    ? $"{history.ChangedByUser.FirstName} {history.ChangedByUser.LastName}"
                     : null,
                 CreatedAt = history.CreatedAt
             };
