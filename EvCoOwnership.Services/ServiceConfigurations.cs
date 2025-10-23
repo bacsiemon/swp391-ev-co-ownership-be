@@ -40,6 +40,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IBookingReminderService, BookingReminderService>();
             services.AddScoped<IOwnershipChangeService, OwnershipChangeService>();
             services.AddScoped<IUsageAnalyticsService, UsageAnalyticsService>();
+            services.AddScoped<IFairnessOptimizationService, FairnessOptimizationService>();
 
             // Register background services
             services.AddHostedService<BookingReminderBackgroundService>();
