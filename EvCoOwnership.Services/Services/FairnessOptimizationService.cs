@@ -22,8 +22,8 @@ namespace EvCoOwnership.Services.Services
         #region Fairness Report
 
         public async Task<BaseResponse<FairnessReportResponse>> GetFairnessReportAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetFairnessReportRequest request)
         {
             try
@@ -80,7 +80,7 @@ namespace EvCoOwnership.Services.Services
                 foreach (var vco in vehicle.VehicleCoOwners)
                 {
                     var coOwnerBookings = bookings.Where(b => b.CoOwnerId == vco.CoOwnerId).ToList();
-                    
+
                     var hours = coOwnerBookings.Sum(b => (b.EndTime - b.StartTime).TotalHours);
                     var distance = coOwnerBookings.Sum(b => CalculateBookingDistance(b));
                     var bookingCount = coOwnerBookings.Count;
@@ -103,7 +103,7 @@ namespace EvCoOwnership.Services.Services
                 foreach (var detail in coOwnerDetails)
                 {
                     var coOwnerBookings = bookings.Where(b => b.CoOwnerId == detail.CoOwnerId).ToList();
-                    
+
                     var hours = coOwnerBookings.Sum(b => (b.EndTime - b.StartTime).TotalHours);
                     var distance = coOwnerBookings.Sum(b => CalculateBookingDistance(b));
                     var bookingCount = coOwnerBookings.Count;
@@ -111,9 +111,9 @@ namespace EvCoOwnership.Services.Services
                     detail.UsageHoursPercentage = totalHours > 0 ? (decimal)hours / totalHours * 100 : 0;
                     detail.UsageDistancePercentage = totalDistance > 0 ? distance / totalDistance * 100 : 0;
                     detail.UsageBookingsPercentage = totalBookings > 0 ? (decimal)bookingCount / totalBookings * 100 : 0;
-                    
-                    detail.AverageUsagePercentage = (detail.UsageHoursPercentage + 
-                                                     detail.UsageDistancePercentage + 
+
+                    detail.AverageUsagePercentage = (detail.UsageHoursPercentage +
+                                                     detail.UsageDistancePercentage +
                                                      detail.UsageBookingsPercentage) / 3;
 
                     detail.UsageVsOwnershipDelta = detail.AverageUsagePercentage - detail.OwnershipPercentage;
@@ -124,7 +124,7 @@ namespace EvCoOwnership.Services.Services
                     var totalMaintenanceCost = vehicle.MaintenanceCosts
                         .Where(mc => mc.CreatedAt >= startDate && mc.CreatedAt <= endDate)
                         .Sum(mc => mc.Cost);
-                    
+
                     detail.ExpectedCostShare = totalMaintenanceCost * (detail.OwnershipPercentage / 100);
                     detail.ActualCostShare = totalMaintenanceCost * (detail.AverageUsagePercentage / 100);
                     detail.CostAdjustmentNeeded = detail.ActualCostShare - detail.ExpectedCostShare;
@@ -136,7 +136,7 @@ namespace EvCoOwnership.Services.Services
                 // Calculate overall metrics
                 var overview = CalculateFairnessOverview(coOwnerDetails);
                 var metrics = CalculateFairnessMetrics(vehicle, bookings, startDate, endDate);
-                var recommendations = request.IncludeRecommendations 
+                var recommendations = request.IncludeRecommendations
                     ? GenerateFairnessRecommendations(coOwnerDetails, overview, metrics)
                     : new List<FairnessRecommendation>();
 
@@ -177,8 +177,8 @@ namespace EvCoOwnership.Services.Services
         #region Fair Schedule Suggestions
 
         public async Task<BaseResponse<FairScheduleSuggestionsResponse>> GetFairScheduleSuggestionsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetFairScheduleSuggestionsRequest request)
         {
             try
@@ -211,7 +211,7 @@ namespace EvCoOwnership.Services.Services
 
                 // Analyze historical usage patterns
                 var historicalBookings = vehicle.Bookings
-                    .Where(b => b.StartTime < request.StartDate && 
+                    .Where(b => b.StartTime < request.StartDate &&
                                b.StatusEnum != EBookingStatus.Cancelled)
                     .ToList();
 
@@ -242,8 +242,8 @@ namespace EvCoOwnership.Services.Services
                     var suggestedBookings = (int)Math.Ceiling(suggestedHours / (request.PreferredDurationHours ?? 4));
 
                     var slots = GenerateSuggestedSlots(
-                        request.StartDate, 
-                        request.EndDate, 
+                        request.StartDate,
+                        request.EndDate,
                         suggestedBookings,
                         request.PreferredDurationHours ?? 4,
                         historicalBookings,
@@ -305,8 +305,8 @@ namespace EvCoOwnership.Services.Services
         #region Maintenance Suggestions
 
         public async Task<BaseResponse<MaintenanceSuggestionsResponse>> GetMaintenanceSuggestionsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetMaintenanceSuggestionsRequest request)
         {
             try
@@ -351,8 +351,8 @@ namespace EvCoOwnership.Services.Services
                 if (request.IncludePredictive)
                 {
                     suggestions.AddRange(GeneratePredictiveMaintenanceSuggestions(
-                        vehicle, 
-                        currentOdometer, 
+                        vehicle,
+                        currentOdometer,
                         healthStatus,
                         request.LookaheadDays
                     ));
@@ -360,7 +360,7 @@ namespace EvCoOwnership.Services.Services
 
                 // Add rule-based suggestions
                 suggestions.AddRange(GenerateRuleBasedMaintenanceSuggestions(
-                    vehicle, 
+                    vehicle,
                     currentOdometer
                 ));
 
@@ -369,8 +369,8 @@ namespace EvCoOwnership.Services.Services
 
                 // Generate cost forecast
                 var costForecast = GenerateMaintenanceCostForecast(
-                    vehicle, 
-                    suggestions, 
+                    vehicle,
+                    suggestions,
                     request.LookaheadDays
                 );
 
@@ -409,8 +409,8 @@ namespace EvCoOwnership.Services.Services
         #region Cost-Saving Recommendations
 
         public async Task<BaseResponse<CostSavingRecommendationsResponse>> GetCostSavingRecommendationsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetCostSavingRecommendationsRequest request)
         {
             try
@@ -450,7 +450,7 @@ namespace EvCoOwnership.Services.Services
                 }
 
                 var analysisStartDate = DateTime.UtcNow.AddDays(-request.AnalysisPeriodDays);
-                
+
                 // Generate cost analysis summary
                 var summary = GenerateCostAnalysisSummary(vehicle, analysisStartDate, request.AnalysisPeriodDays);
 
@@ -517,7 +517,7 @@ namespace EvCoOwnership.Services.Services
             if (coOwner == null) return false;
 
             return await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
-                .AnyAsync(vco => vco.VehicleId == vehicleId && 
+                .AnyAsync(vco => vco.VehicleId == vehicleId &&
                                 vco.CoOwnerId == coOwner.UserId &&
                                 vco.StatusEnum == EContractStatus.Active);
         }
@@ -530,7 +530,7 @@ namespace EvCoOwnership.Services.Services
             if (checkIn?.VehicleCondition?.OdometerReading != null &&
                 checkOut?.VehicleCondition?.OdometerReading != null)
             {
-                return checkOut.VehicleCondition.OdometerReading.Value - 
+                return checkOut.VehicleCondition.OdometerReading.Value -
                        checkIn.VehicleCondition.OdometerReading.Value;
             }
 
@@ -759,10 +759,10 @@ namespace EvCoOwnership.Services.Services
             for (int i = 0; i < bookingCount; i++)
             {
                 var slotDate = startDate.AddDays(i * interval);
-                
+
                 // Analyze best time based on historical data
                 var preferredHour = AnalyzeBestBookingTime(historicalBookings, slotDate.DayOfWeek, usageType);
-                
+
                 var slotStart = new DateTime(slotDate.Year, slotDate.Month, slotDate.Day, preferredHour, 0, 0);
                 var slotEnd = slotStart.AddHours(durationHours);
 
@@ -831,8 +831,8 @@ namespace EvCoOwnership.Services.Services
             var totalSimilarPeriods = historicalBookings
                 .Count(b => b.StartTime.DayOfWeek == start.DayOfWeek);
 
-            return totalSimilarPeriods > 0 
-                ? (decimal)similarBookings / totalSimilarPeriods 
+            return totalSimilarPeriods > 0
+                ? (decimal)similarBookings / totalSimilarPeriods
                 : 0.2m;
         }
 
@@ -870,7 +870,7 @@ namespace EvCoOwnership.Services.Services
             foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
             {
                 var dayBookings = bookings.Where(b => b.StartTime.DayOfWeek == day).ToList();
-                
+
                 // Morning slot (6-12)
                 var morningBookings = dayBookings.Count(b => b.StartTime.Hour >= 6 && b.StartTime.Hour < 12);
                 slots.Add(new OptimalTimeSlot
@@ -904,8 +904,8 @@ namespace EvCoOwnership.Services.Services
             double totalAvailableHours)
         {
             var totalUsedHours = bookings.Sum(b => (b.EndTime - b.StartTime).TotalHours);
-            var currentUtilization = totalAvailableHours > 0 
-                ? (decimal)(totalUsedHours / totalAvailableHours * 100) 
+            var currentUtilization = totalAvailableHours > 0
+                ? (decimal)(totalUsedHours / totalAvailableHours * 100)
                 : 0;
 
             var conflicts = bookings
@@ -1401,7 +1401,7 @@ namespace EvCoOwnership.Services.Services
 
             var avgCost = maintenanceCosts.Any() ? maintenanceCosts.Average(mc => mc.Cost) : 0;
 
-            var preventive = maintenanceCosts.Count(mc => 
+            var preventive = maintenanceCosts.Count(mc =>
                 mc.MaintenanceTypeEnum == EMaintenanceType.Routine ||
                 mc.MaintenanceTypeEnum == EMaintenanceType.Upgrade);
 

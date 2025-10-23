@@ -19,5 +19,12 @@ namespace EvCoOwnership.Services.Interfaces
         // Calendar and availability
         Task<BaseResponse<BookingCalendarResponse>> GetBookingCalendarAsync(int userId, DateTime startDate, DateTime endDate, int? vehicleId = null, string? status = null);
         Task<BaseResponse<VehicleAvailabilityResponse>> CheckVehicleAvailabilityAsync(int vehicleId, DateTime startTime, DateTime endTime);
+
+        // Booking slot requests
+        Task<BaseResponse<BookingSlotRequestResponse>> RequestBookingSlotAsync(int vehicleId, int userId, RequestBookingSlotRequest request);
+        Task<BaseResponse<BookingSlotRequestResponse>> RespondToSlotRequestAsync(int requestId, int userId, RespondToSlotRequestRequest request);
+        Task<BaseResponse<string>> CancelSlotRequestAsync(int requestId, int userId, CancelSlotRequestRequest request);
+        Task<BaseResponse<PendingSlotRequestsResponse>> GetPendingSlotRequestsAsync(int vehicleId, int userId);
+        Task<BaseResponse<SlotRequestAnalytics>> GetSlotRequestAnalyticsAsync(int vehicleId, int userId, DateTime? startDate = null, DateTime? endDate = null);
     }
 }

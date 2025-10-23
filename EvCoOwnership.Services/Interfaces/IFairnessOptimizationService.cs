@@ -16,8 +16,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="request">Report generation parameters</param>
         /// <returns>Detailed fairness report with recommendations</returns>
         Task<BaseResponse<FairnessReportResponse>> GetFairnessReportAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetFairnessReportRequest request);
 
         /// <summary>
@@ -28,8 +28,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="request">Schedule suggestion parameters</param>
         /// <returns>Recommended booking slots for each co-owner</returns>
         Task<BaseResponse<FairScheduleSuggestionsResponse>> GetFairScheduleSuggestionsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetFairScheduleSuggestionsRequest request);
 
         /// <summary>
@@ -40,8 +40,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="request">Maintenance suggestion parameters</param>
         /// <returns>Maintenance recommendations with cost forecasts</returns>
         Task<BaseResponse<MaintenanceSuggestionsResponse>> GetMaintenanceSuggestionsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetMaintenanceSuggestionsRequest request);
 
         /// <summary>
@@ -52,8 +52,8 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="request">Cost analysis parameters</param>
         /// <returns>Cost-saving recommendations with estimated savings</returns>
         Task<BaseResponse<CostSavingRecommendationsResponse>> GetCostSavingRecommendationsAsync(
-            int vehicleId, 
-            int userId, 
+            int vehicleId,
+            int userId,
             GetCostSavingRecommendationsRequest request);
     }
 }

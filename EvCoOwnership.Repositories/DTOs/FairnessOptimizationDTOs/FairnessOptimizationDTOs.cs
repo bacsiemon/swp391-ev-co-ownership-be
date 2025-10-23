@@ -64,7 +64,7 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public List<CoOwnerFairnessDetail> CoOwnersDetails { get; set; } = new();
         public List<FairnessRecommendation> Recommendations { get; set; } = new();
         public FairnessMetrics Metrics { get; set; } = new();
-        
+
         public DateTime GeneratedAt { get; set; }
     }
 
@@ -126,7 +126,7 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public int TotalBookings { get; set; }
         public decimal TotalMaintenanceCost { get; set; }
         public decimal TotalFundBalance { get; set; }
-        
+
         public decimal UsageVariance { get; set; }
         public decimal CostVariance { get; set; }
         public decimal OptimalRebalanceFrequencyDays { get; set; }
@@ -174,15 +174,15 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
     {
         public int CoOwnerId { get; set; }
         public string CoOwnerName { get; set; } = string.Empty;
-        
+
         public decimal OwnershipPercentage { get; set; }
         public decimal CurrentUsagePercentage { get; set; }
         public decimal RecommendedUsagePercentage { get; set; }
-        
+
         public int SuggestedBookingsCount { get; set; }
         public decimal SuggestedTotalHours { get; set; }
         public List<SuggestedBookingSlot> SuggestedSlots { get; set; } = new();
-        
+
         public string Rationale { get; set; } = string.Empty;
     }
 
@@ -255,7 +255,7 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public decimal AverageDailyDistance { get; set; }
         public int DaysSinceLastMaintenance { get; set; }
         public int DistanceSinceLastMaintenance { get; set; }
-        
+
         public string OverallHealth { get; set; } = string.Empty; // "Excellent", "Good", "Fair", "Poor"
         public int HealthScore { get; set; } // 0-100
         public List<string> HealthIssues { get; set; } = new();
@@ -271,14 +271,14 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public string Description { get; set; } = string.Empty;
         public string Urgency { get; set; } = string.Empty; // "Critical", "High", "Medium", "Low"
         public string Reason { get; set; } = string.Empty;
-        
+
         public int? RecommendedOdometerReading { get; set; }
         public DateTime? RecommendedDate { get; set; }
         public int DaysUntilRecommended { get; set; }
-        
+
         public decimal EstimatedCost { get; set; }
         public decimal CostSavingIfDoneNow { get; set; }
-        
+
         public List<string> Consequences { get; set; } = new();
         public List<string> Benefits { get; set; } = new();
     }
@@ -305,7 +305,7 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public decimal EstimatedTotalCost { get; set; }
         public decimal AverageMonthlyCost { get; set; }
         public decimal CostPerCoOwnerAverage { get; set; }
-        
+
         public List<MonthlyMaintenanceForecast> MonthlyForecasts { get; set; } = new();
         public List<string> CostDrivers { get; set; } = new();
     }
@@ -331,7 +331,7 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
     {
         public int VehicleId { get; set; }
         public string VehicleName { get; set; } = string.Empty;
-        
+
         public CostAnalysisSummary Summary { get; set; } = new();
         public List<CostSavingRecommendation> Recommendations { get; set; } = new();
         public FundOptimizationInsights FundInsights { get; set; } = new();
@@ -350,10 +350,10 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public decimal AverageMonthlyCost { get; set; }
         public decimal CostPerKm { get; set; }
         public decimal CostPerBooking { get; set; }
-        
+
         public decimal PotentialSavings { get; set; }
         public decimal SavingsPercentage { get; set; }
-        
+
         public List<CostBreakdown> CostBreakdowns { get; set; } = new();
     }
 
@@ -377,11 +377,11 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public string Priority { get; set; } = string.Empty; // "High", "Medium", "Low"
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        
+
         public decimal PotentialSavingsAmount { get; set; }
         public decimal PotentialSavingsPercentage { get; set; }
         public string TimeframeForSavings { get; set; } = string.Empty;
-        
+
         public List<string> ActionSteps { get; set; } = new();
         public string Difficulty { get; set; } = string.Empty; // "Easy", "Medium", "Hard"
         public decimal ImplementationCost { get; set; }
@@ -396,13 +396,13 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public decimal CurrentFundBalance { get; set; }
         public decimal RecommendedMinimumBalance { get; set; }
         public decimal RecommendedOptimalBalance { get; set; }
-        
+
         public bool IsUnderfunded { get; set; }
         public bool IsOverfunded { get; set; }
-        
+
         public decimal AverageMonthlyExpenses { get; set; }
         public int MonthsCovered { get; set; }
-        
+
         public List<string> FundHealthIssues { get; set; } = new();
         public List<string> FundOptimizationTips { get; set; } = new();
     }
@@ -415,10 +415,10 @@ namespace EvCoOwnership.Repositories.DTOs.FairnessOptimizationDTOs
         public decimal AverageMaintenanceCost { get; set; }
         public decimal PreventiveMaintenanceRatio { get; set; }
         public decimal ReactiveMaintenanceRatio { get; set; }
-        
+
         public decimal PotentialSavingsFromPreventive { get; set; }
         public List<string> HighCostMaintenanceTypes { get; set; } = new();
-        
+
         public bool HasMaintenanceSchedule { get; set; }
         public List<string> OptimizationOpportunities { get; set; } = new();
     }

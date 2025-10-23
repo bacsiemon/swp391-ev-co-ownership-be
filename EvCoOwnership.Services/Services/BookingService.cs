@@ -798,5 +798,744 @@ namespace EvCoOwnership.Services.Services
                 };
             }
         }
+
+        #region Booking Slot Request Methods
+
+        public async Task<BaseResponse<BookingSlotRequestResponse>> RequestBookingSlotAsync(
+            int vehicleId,
+            int userId,
+            RequestBookingSlotRequest request)
+        {
+            try
+            {
+                var startTime = DateTime.Now;
+
+                // Validate user is co-owner
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                    .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                if (coOwner == null)
+                {
+                    return new BaseResponse<BookingSlotRequestResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "USER_NOT_CO_OWNER"
+                    };
+                }
+
+                // Check if vehicle exists and user is co-owner
+                var vehicle = await _unitOfWork.VehicleRepository.GetQueryable()
+                    .Include(v => v.VehicleCoOwners)
+                    .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse<BookingSlotRequestResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
+                    vco.CoOwnerId == userId && vco.StatusEnum == EContractStatus.Active);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<BookingSlotRequestResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                    };
+                }
+
+                // Check for conflicting bookings
+                var conflictingBookings = await _unitOfWork.BookingRepository.GetConflictingBookingsAsync(
+                    vehicleId,
+                    request.PreferredStartTime,
+                    request.PreferredEndTime);
+
+                var conflicts = conflictingBookings
+                    .Where(b => b.StatusEnum != EBookingStatus.Cancelled)
+                    .Select(b => new ConflictingBookingInfo
+                    {
+                        BookingId = b.Id,
+                        CoOwnerName = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim(),
+                        StartTime = b.StartTime,
+                        EndTime = b.EndTime,
+                        Status = b.StatusEnum ?? EBookingStatus.Pending,
+                        Purpose = b.Purpose ?? "",
+                        OverlapHours = CalculateOverlapHours(
+                            request.PreferredStartTime, request.PreferredEndTime,
+                            b.StartTime, b.EndTime)
+                    })
+                    .ToList();
+
+                // Determine availability status
+                SlotAvailabilityStatus availabilityStatus;
+                SlotRequestStatus requestStatus;
+                Booking? createdBooking = null;
+                string? autoConfirmMessage = null;
+
+                if (!conflicts.Any())
+                {
+                    availabilityStatus = SlotAvailabilityStatus.Available;
+
+                    if (request.AutoConfirmIfAvailable)
+                    {
+                        // Auto-confirm: Create booking directly
+                        createdBooking = new Booking
+                        {
+                            CoOwnerId = userId,
+                            VehicleId = vehicleId,
+                            StartTime = request.PreferredStartTime,
+                            EndTime = request.PreferredEndTime,
+                            Purpose = request.Purpose,
+                            StatusEnum = EBookingStatus.Confirmed,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        await _unitOfWork.BookingRepository.AddAsync(createdBooking);
+                        await _unitOfWork.SaveChangesAsync();
+
+                        requestStatus = SlotRequestStatus.AutoConfirmed;
+                        autoConfirmMessage = "Slot was automatically confirmed as it's available with no conflicts";
+                    }
+                    else
+                    {
+                        // Create as pending for manual approval
+                        createdBooking = new Booking
+                        {
+                            CoOwnerId = userId,
+                            VehicleId = vehicleId,
+                            StartTime = request.PreferredStartTime,
+                            EndTime = request.PreferredEndTime,
+                            Purpose = request.Purpose,
+                            StatusEnum = EBookingStatus.Pending,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        await _unitOfWork.BookingRepository.AddAsync(createdBooking);
+                        await _unitOfWork.SaveChangesAsync();
+
+                        requestStatus = SlotRequestStatus.Pending;
+                    }
+                }
+                else
+                {
+                    // Has conflicts
+                    var hasHardConflict = conflicts.Any(c =>
+                        c.Status == EBookingStatus.Confirmed || c.Status == EBookingStatus.Active);
+
+                    if (hasHardConflict)
+                    {
+                        availabilityStatus = SlotAvailabilityStatus.Unavailable;
+                    }
+                    else
+                    {
+                        availabilityStatus = SlotAvailabilityStatus.PartiallyAvailable;
+                    }
+
+                    availabilityStatus = SlotAvailabilityStatus.RequiresApproval;
+
+                    // Create booking with Pending status requiring approval
+                    createdBooking = new Booking
+                    {
+                        CoOwnerId = userId,
+                        VehicleId = vehicleId,
+                        StartTime = request.PreferredStartTime,
+                        EndTime = request.PreferredEndTime,
+                        Purpose = request.Purpose,
+                        StatusEnum = EBookingStatus.Pending,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.BookingRepository.AddAsync(createdBooking);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    requestStatus = SlotRequestStatus.Pending;
+                }
+
+                // Generate alternative suggestions if slot has conflicts or user wants flexibility
+                var alternativeSuggestions = new List<AlternativeSlotSuggestion>();
+                if (conflicts.Any() || request.IsFlexible)
+                {
+                    alternativeSuggestions = await GenerateAlternativeSlotSuggestionsAsync(
+                        vehicleId,
+                        request.PreferredStartTime,
+                        request.PreferredEndTime,
+                        request.AlternativeSlots);
+                }
+
+                // Get co-owners who need to approve (if conflicts exist)
+                var approvalPendingFrom = new List<string>();
+                if (conflicts.Any())
+                {
+                    approvalPendingFrom = conflicts
+                        .Select(c => c.CoOwnerName)
+                        .Distinct()
+                        .ToList();
+                }
+
+                // Calculate processing time
+                var processingTime = (int)(DateTime.Now - startTime).TotalSeconds;
+
+                // Build response
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                var response = new BookingSlotRequestResponse
+                {
+                    RequestId = createdBooking!.Id,
+                    BookingId = createdBooking.Id,
+                    VehicleId = vehicleId,
+                    VehicleName = vehicle.Name,
+                    LicensePlate = vehicle.LicensePlate,
+                    RequesterId = userId,
+                    RequesterName = $"{user?.FirstName} {user?.LastName}".Trim(),
+                    PreferredStartTime = request.PreferredStartTime,
+                    PreferredEndTime = request.PreferredEndTime,
+                    Purpose = request.Purpose,
+                    Priority = request.Priority,
+                    Status = requestStatus,
+                    IsFlexible = request.IsFlexible,
+                    EstimatedDistance = request.EstimatedDistance,
+                    UsageType = request.UsageType,
+                    RequestedAt = createdBooking.CreatedAt ?? DateTime.UtcNow,
+                    AvailabilityStatus = availabilityStatus,
+                    ConflictingBookings = conflicts.Any() ? conflicts : null,
+                    AlternativeSuggestions = alternativeSuggestions.Any() ? alternativeSuggestions : null,
+                    AutoConfirmationMessage = autoConfirmMessage,
+                    Metadata = new BookingSlotRequestMetadata
+                    {
+                        TotalAlternativesProvided = request.AlternativeSlots?.Count ?? 0,
+                        ProcessingTimeSeconds = processingTime,
+                        RequiresCoOwnerApproval = conflicts.Any(),
+                        ApprovalPendingFrom = approvalPendingFrom,
+                        SystemRecommendation = GenerateSystemRecommendation(
+                            availabilityStatus, conflicts.Count, alternativeSuggestions.Count)
+                    }
+                };
+
+                return new BaseResponse<BookingSlotRequestResponse>
+                {
+                    StatusCode = 201,
+                    Message = requestStatus == SlotRequestStatus.AutoConfirmed
+                        ? "BOOKING_SLOT_AUTO_CONFIRMED"
+                        : "BOOKING_SLOT_REQUEST_CREATED",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<BookingSlotRequestResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<BookingSlotRequestResponse>> RespondToSlotRequestAsync(
+            int requestId,
+            int userId,
+            RespondToSlotRequestRequest request)
+        {
+            try
+            {
+                // Get the booking/request
+                var booking = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner).ThenInclude(co => co!.User)
+                    .Include(b => b.Vehicle)
+                    .FirstOrDefaultAsync(b => b.Id == requestId);
+
+                if (booking == null)
+                {
+                    return new BaseResponse<BookingSlotRequestResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "BOOKING_REQUEST_NOT_FOUND"
+                    };
+                }
+
+                // Validate that user is a co-owner of this vehicle
+                var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                    .AnyAsync(vco => vco.VehicleId == booking.VehicleId &&
+                                    vco.CoOwnerId == userId &&
+                                    vco.StatusEnum == EContractStatus.Active);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<BookingSlotRequestResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                    };
+                }
+
+                // Check if already processed
+                if (booking.StatusEnum != EBookingStatus.Pending)
+                {
+                    return new BaseResponse<BookingSlotRequestResponse>
+                    {
+                        StatusCode = 400,
+                        Message = "BOOKING_REQUEST_ALREADY_PROCESSED"
+                    };
+                }
+
+                // Process the response
+                if (request.IsApproved)
+                {
+                    booking.StatusEnum = EBookingStatus.Confirmed;
+                    booking.ApprovedBy = userId;
+                    booking.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    booking.StatusEnum = EBookingStatus.Cancelled;
+                    booking.ApprovedBy = userId;
+                    booking.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Build response
+                var response = new BookingSlotRequestResponse
+                {
+                    RequestId = booking.Id,
+                    BookingId = booking.Id,
+                    VehicleId = booking.VehicleId ?? 0,
+                    VehicleName = booking.Vehicle?.Name ?? "",
+                    LicensePlate = booking.Vehicle?.LicensePlate ?? "",
+                    RequesterId = booking.CoOwnerId ?? 0,
+                    RequesterName = $"{booking.CoOwner?.User?.FirstName} {booking.CoOwner?.User?.LastName}".Trim(),
+                    PreferredStartTime = booking.StartTime,
+                    PreferredEndTime = booking.EndTime,
+                    Purpose = booking.Purpose ?? "",
+                    Priority = BookingPriority.Medium,
+                    Status = request.IsApproved ? SlotRequestStatus.Approved : SlotRequestStatus.Rejected,
+                    IsFlexible = false,
+                    RequestedAt = booking.CreatedAt ?? DateTime.UtcNow,
+                    ProcessedAt = DateTime.UtcNow,
+                    ProcessedBy = (await _unitOfWork.UserRepository.GetByIdAsync(userId))?.FirstName,
+                    AvailabilityStatus = request.IsApproved
+                        ? SlotAvailabilityStatus.Available
+                        : SlotAvailabilityStatus.Unavailable,
+                    Metadata = new BookingSlotRequestMetadata
+                    {
+                        SystemRecommendation = request.IsApproved
+                            ? "Request approved successfully"
+                            : $"Request rejected: {request.RejectionReason}"
+                    }
+                };
+
+                return new BaseResponse<BookingSlotRequestResponse>
+                {
+                    StatusCode = 200,
+                    Message = request.IsApproved
+                        ? "BOOKING_REQUEST_APPROVED"
+                        : "BOOKING_REQUEST_REJECTED",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<BookingSlotRequestResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<string>> CancelSlotRequestAsync(
+            int requestId,
+            int userId,
+            CancelSlotRequestRequest request)
+        {
+            try
+            {
+                var booking = await _unitOfWork.BookingRepository.GetQueryable()
+                    .FirstOrDefaultAsync(b => b.Id == requestId);
+
+                if (booking == null)
+                {
+                    return new BaseResponse<string>
+                    {
+                        StatusCode = 404,
+                        Message = "BOOKING_REQUEST_NOT_FOUND"
+                    };
+                }
+
+                // Validate ownership
+                if (booking.CoOwnerId != userId)
+                {
+                    return new BaseResponse<string>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_REQUEST_OWNER"
+                    };
+                }
+
+                // Can only cancel pending requests
+                if (booking.StatusEnum != EBookingStatus.Pending)
+                {
+                    return new BaseResponse<string>
+                    {
+                        StatusCode = 400,
+                        Message = "CAN_ONLY_CANCEL_PENDING_REQUESTS"
+                    };
+                }
+
+                booking.StatusEnum = EBookingStatus.Cancelled;
+                booking.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.BookingRepository.UpdateAsync(booking);
+                await _unitOfWork.SaveChangesAsync();
+
+                return new BaseResponse<string>
+                {
+                    StatusCode = 200,
+                    Message = "BOOKING_REQUEST_CANCELLED",
+                    Data = $"Request #{requestId} cancelled: {request.Reason}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<string>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<PendingSlotRequestsResponse>> GetPendingSlotRequestsAsync(
+            int vehicleId,
+            int userId)
+        {
+            try
+            {
+                // Validate user is co-owner
+                var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId &&
+                                    vco.CoOwnerId == userId &&
+                                    vco.StatusEnum == EContractStatus.Active);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<PendingSlotRequestsResponse>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                    };
+                }
+
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse<PendingSlotRequestsResponse>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                // Get all pending requests for this vehicle
+                var pendingBookings = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner).ThenInclude(co => co!.User)
+                    .Include(b => b.Vehicle)
+                    .Where(b => b.VehicleId == vehicleId && b.StatusEnum == EBookingStatus.Pending)
+                    .OrderBy(b => b.CreatedAt)
+                    .ToListAsync();
+
+                var pendingRequests = pendingBookings.Select(b => new BookingSlotRequestResponse
+                {
+                    RequestId = b.Id,
+                    BookingId = b.Id,
+                    VehicleId = vehicleId,
+                    VehicleName = vehicle.Name,
+                    LicensePlate = vehicle.LicensePlate,
+                    RequesterId = b.CoOwnerId ?? 0,
+                    RequesterName = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim(),
+                    PreferredStartTime = b.StartTime,
+                    PreferredEndTime = b.EndTime,
+                    Purpose = b.Purpose ?? "",
+                    Priority = BookingPriority.Medium,
+                    Status = SlotRequestStatus.Pending,
+                    IsFlexible = false,
+                    RequestedAt = b.CreatedAt ?? DateTime.UtcNow,
+                    AvailabilityStatus = SlotAvailabilityStatus.RequiresApproval,
+                    Metadata = new BookingSlotRequestMetadata
+                    {
+                        RequiresCoOwnerApproval = true
+                    }
+                }).ToList();
+
+                var response = new PendingSlotRequestsResponse
+                {
+                    VehicleId = vehicleId,
+                    VehicleName = vehicle.Name,
+                    PendingRequests = pendingRequests,
+                    TotalPendingCount = pendingRequests.Count,
+                    OldestRequestDate = pendingRequests.Any()
+                        ? pendingRequests.Min(r => r.RequestedAt)
+                        : DateTime.UtcNow
+                };
+
+                return new BaseResponse<PendingSlotRequestsResponse>
+                {
+                    StatusCode = 200,
+                    Message = "PENDING_REQUESTS_RETRIEVED",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<PendingSlotRequestsResponse>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse<SlotRequestAnalytics>> GetSlotRequestAnalyticsAsync(
+            int vehicleId,
+            int userId,
+            DateTime? startDate = null,
+            DateTime? endDate = null)
+        {
+            try
+            {
+                // Validate user is co-owner
+                var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
+                    .AnyAsync(vco => vco.VehicleId == vehicleId &&
+                                    vco.CoOwnerId == userId &&
+                                    vco.StatusEnum == EContractStatus.Active);
+
+                if (!isCoOwner)
+                {
+                    return new BaseResponse<SlotRequestAnalytics>
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                    };
+                }
+
+                // Default to last 90 days
+                startDate ??= DateTime.UtcNow.AddDays(-90);
+                endDate ??= DateTime.UtcNow;
+
+                var bookings = await _unitOfWork.BookingRepository.GetQueryable()
+                    .Include(b => b.CoOwner).ThenInclude(co => co!.User)
+                    .Where(b => b.VehicleId == vehicleId &&
+                               b.CreatedAt >= startDate &&
+                               b.CreatedAt <= endDate)
+                    .ToListAsync();
+
+                var totalRequests = bookings.Count;
+                var approvedCount = bookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed);
+                var rejectedCount = bookings.Count(b => b.StatusEnum == EBookingStatus.Cancelled);
+                var autoConfirmedCount = bookings.Count(b =>
+                    b.StatusEnum == EBookingStatus.Confirmed && b.ApprovedBy == null);
+
+                var approvalRate = totalRequests > 0
+                    ? (decimal)approvedCount / totalRequests * 100
+                    : 0;
+
+                // Calculate average processing time
+                var processedBookings = bookings
+                    .Where(b => b.UpdatedAt.HasValue && b.StatusEnum != EBookingStatus.Pending)
+                    .ToList();
+
+                var avgProcessingTime = processedBookings.Any()
+                    ? (decimal)processedBookings
+                        .Average(b => (b.UpdatedAt!.Value - b.CreatedAt!.Value).TotalHours)
+                    : 0;
+
+                // Most requested time slots
+                var timeSlotGroups = bookings
+                    .GroupBy(b => new { b.StartTime.DayOfWeek, b.StartTime.Hour })
+                    .Select(g => new PopularTimeSlot
+                    {
+                        DayOfWeek = g.Key.DayOfWeek,
+                        HourOfDay = g.Key.Hour,
+                        RequestCount = g.Count(),
+                        ApprovalRate = g.Count(b => b.StatusEnum == EBookingStatus.Confirmed) * 100m / g.Count()
+                    })
+                    .OrderByDescending(t => t.RequestCount)
+                    .Take(10)
+                    .ToList();
+
+                // Requests by co-owner
+                var coOwnerStats = bookings
+                    .GroupBy(b => new { b.CoOwnerId, CoOwnerName = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim() })
+                    .Select(g => new CoOwnerRequestStats
+                    {
+                        CoOwnerId = g.Key.CoOwnerId ?? 0,
+                        CoOwnerName = g.Key.CoOwnerName,
+                        TotalRequests = g.Count(),
+                        ApprovedRequests = g.Count(b => b.StatusEnum == EBookingStatus.Confirmed),
+                        RejectedRequests = g.Count(b => b.StatusEnum == EBookingStatus.Cancelled),
+                        ApprovalRate = g.Count() > 0
+                            ? g.Count(b => b.StatusEnum == EBookingStatus.Confirmed) * 100m / g.Count()
+                            : 0
+                    })
+                    .OrderByDescending(s => s.TotalRequests)
+                    .ToList();
+
+                var analytics = new SlotRequestAnalytics
+                {
+                    TotalRequests = totalRequests,
+                    ApprovedCount = approvedCount,
+                    RejectedCount = rejectedCount,
+                    AutoConfirmedCount = autoConfirmedCount,
+                    CancelledCount = rejectedCount,
+                    AverageProcessingTimeHours = avgProcessingTime,
+                    ApprovalRate = approvalRate,
+                    MostRequestedTimeSlots = timeSlotGroups,
+                    RequestsByCoOwner = coOwnerStats
+                };
+
+                return new BaseResponse<SlotRequestAnalytics>
+                {
+                    StatusCode = 200,
+                    Message = "ANALYTICS_RETRIEVED",
+                    Data = analytics
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<SlotRequestAnalytics>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        private decimal CalculateOverlapHours(DateTime start1, DateTime end1, DateTime start2, DateTime end2)
+        {
+            var overlapStart = start1 > start2 ? start1 : start2;
+            var overlapEnd = end1 < end2 ? end1 : end2;
+
+            if (overlapEnd <= overlapStart)
+                return 0;
+
+            return (decimal)(overlapEnd - overlapStart).TotalHours;
+        }
+
+        private async Task<List<AlternativeSlotSuggestion>> GenerateAlternativeSlotSuggestionsAsync(
+            int vehicleId,
+            DateTime preferredStart,
+            DateTime preferredEnd,
+            List<AlternativeTimeSlot>? userProvidedAlternatives)
+        {
+            var suggestions = new List<AlternativeSlotSuggestion>();
+            var duration = (preferredEnd - preferredStart).TotalHours;
+
+            // Check user-provided alternatives first
+            if (userProvidedAlternatives != null && userProvidedAlternatives.Any())
+            {
+                foreach (var alt in userProvidedAlternatives.OrderBy(a => a.PreferenceRank).Take(3))
+                {
+                    var conflicts = await _unitOfWork.BookingRepository.GetConflictingBookingsAsync(
+                        vehicleId, alt.StartTime, alt.EndTime);
+
+                    var isAvailable = !conflicts.Any(b => b.StatusEnum != EBookingStatus.Cancelled);
+
+                    suggestions.Add(new AlternativeSlotSuggestion
+                    {
+                        StartTime = alt.StartTime,
+                        EndTime = alt.EndTime,
+                        DurationHours = (decimal)(alt.EndTime - alt.StartTime).TotalHours,
+                        IsAvailable = isAvailable,
+                        Reason = isAvailable ? "User-provided alternative slot" : "Has conflicts",
+                        ConflictProbability = isAvailable ? 0 : 1,
+                        RecommendationScore = isAvailable ? 90 - (alt.PreferenceRank * 10) : 30
+                    });
+                }
+            }
+
+            // Generate system suggestions (nearby times)
+            var systemSuggestions = new[]
+            {
+                preferredStart.AddHours(-duration * 1.5),  // Before
+                preferredStart.AddHours(duration * 1.5),   // After
+                preferredStart.AddDays(1),                 // Next day same time
+                preferredStart.AddDays(-1)                 // Previous day same time
+            };
+
+            foreach (var suggestedStart in systemSuggestions.Where(s => s > DateTime.Now))
+            {
+                var suggestedEnd = suggestedStart.AddHours(duration);
+                var conflicts = await _unitOfWork.BookingRepository.GetConflictingBookingsAsync(
+                    vehicleId, suggestedStart, suggestedEnd);
+
+                var isAvailable = !conflicts.Any(b => b.StatusEnum != EBookingStatus.Cancelled);
+                var conflictProbability = conflicts.Count * 0.2m;
+
+                if (suggestions.Count < 5)
+                {
+                    suggestions.Add(new AlternativeSlotSuggestion
+                    {
+                        StartTime = suggestedStart,
+                        EndTime = suggestedEnd,
+                        DurationHours = (decimal)duration,
+                        IsAvailable = isAvailable,
+                        Reason = GenerateAlternativeReason(suggestedStart, preferredStart),
+                        ConflictProbability = Math.Min(conflictProbability, 1m),
+                        RecommendationScore = isAvailable ? 70 : 40
+                    });
+                }
+            }
+
+            return suggestions.OrderByDescending(s => s.RecommendationScore).ToList();
+        }
+
+        private string GenerateAlternativeReason(DateTime suggested, DateTime preferred)
+        {
+            var diff = (suggested - preferred).TotalHours;
+
+            if (Math.Abs(diff) < 3)
+                return "Similar time, just shifted slightly";
+            else if (diff > 0 && diff < 24)
+                return "Later the same day";
+            else if (diff < 0 && diff > -24)
+                return "Earlier the same day";
+            else if (diff >= 24)
+                return "Next day at same time";
+            else
+                return "Previous day at same time";
+        }
+
+        private string GenerateSystemRecommendation(
+            SlotAvailabilityStatus status,
+            int conflictCount,
+            int alternativeCount)
+        {
+            return status switch
+            {
+                SlotAvailabilityStatus.Available => "Your preferred slot is available and can be confirmed",
+                SlotAvailabilityStatus.RequiresApproval =>
+                    $"Your slot conflicts with {conflictCount} booking(s). Co-owner approval required.",
+                SlotAvailabilityStatus.Unavailable =>
+                    $"Slot unavailable due to {conflictCount} confirmed booking(s). Please choose an alternative.",
+                SlotAvailabilityStatus.PartiallyAvailable =>
+                    $"Partial overlap detected. {alternativeCount} alternatives suggested.",
+                _ => "Please review the booking details"
+            };
+        }
+
+        #endregion
     }
 }

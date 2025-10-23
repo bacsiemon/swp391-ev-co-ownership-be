@@ -437,5 +437,423 @@ namespace EvCoOwnership.API.Controllers
                 _ => StatusCode(response.StatusCode, response)
             };
         }
+
+        #region Booking Slot Request Endpoints
+
+        /// <summary>
+        /// Request a booking slot with intelligent conflict detection and alternatives (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **This feature allows co-owners to request time slots with smart handling:**
+        /// 
+        /// **Key Features:**
+        /// - **Auto-confirmation**: If slot is available and no conflicts, booking is confirmed automatically
+        /// - **Conflict detection**: Checks for overlapping bookings with other co-owners
+        /// - **Alternative suggestions**: System generates alternative time slots if preferred slot has conflicts
+        /// - **Flexible booking**: Option to provide your own alternative slots
+        /// - **Priority levels**: Low, Medium, High, Urgent
+        /// 
+        /// **Request Body:**
+        /// ```json
+        /// {
+        ///   "preferredStartTime": "2025-01-25T09:00:00",
+        ///   "preferredEndTime": "2025-01-25T17:00:00",
+        ///   "purpose": "Business trip to downtown",
+        ///   "priority": 2,
+        ///   "isFlexible": true,
+        ///   "autoConfirmIfAvailable": true,
+        ///   "estimatedDistance": 150,
+        ///   "usageType": 0,
+        ///   "alternativeSlots": [
+        ///     {
+        ///       "startTime": "2025-01-25T10:00:00",
+        ///       "endTime": "2025-01-25T18:00:00",
+        ///       "preferenceRank": 1
+        ///     },
+        ///     {
+        ///       "startTime": "2025-01-26T09:00:00",
+        ///       "endTime": "2025-01-26T17:00:00",
+        ///       "preferenceRank": 2
+        ///     }
+        ///   ]
+        /// }
+        /// ```
+        /// 
+        /// **Response (Auto-Confirmed):**
+        /// ```json
+        /// {
+        ///   "statusCode": 201,
+        ///   "message": "BOOKING_SLOT_AUTO_CONFIRMED",
+        ///   "data": {
+        ///     "requestId": 123,
+        ///     "bookingId": 123,
+        ///     "status": 1,
+        ///     "availabilityStatus": 0,
+        ///     "autoConfirmationMessage": "Slot was automatically confirmed as it's available with no conflicts",
+        ///     "conflictingBookings": null,
+        ///     "alternativeSuggestions": null,
+        ///     "metadata": {
+        ///       "requiresCoOwnerApproval": false,
+        ///       "systemRecommendation": "Your preferred slot is available and can be confirmed"
+        ///     }
+        ///   }
+        /// }
+        /// ```
+        /// 
+        /// **Response (Has Conflicts):**
+        /// ```json
+        /// {
+        ///   "statusCode": 201,
+        ///   "message": "BOOKING_SLOT_REQUEST_CREATED",
+        ///   "data": {
+        ///     "requestId": 124,
+        ///     "bookingId": 124,
+        ///     "status": 0,
+        ///     "availabilityStatus": 3,
+        ///     "conflictingBookings": [
+        ///       {
+        ///         "bookingId": 120,
+        ///         "coOwnerName": "John Smith",
+        ///         "startTime": "2025-01-25T14:00:00",
+        ///         "endTime": "2025-01-25T19:00:00",
+        ///         "status": 1,
+        ///         "overlapHours": 3.0
+        ///       }
+        ///     ],
+        ///     "alternativeSuggestions": [
+        ///       {
+        ///         "startTime": "2025-01-25T06:00:00",
+        ///         "endTime": "2025-01-25T14:00:00",
+        ///         "isAvailable": true,
+        ///         "reason": "Earlier the same day",
+        ///         "recommendationScore": 70
+        ///       }
+        ///     ],
+        ///     "metadata": {
+        ///       "requiresCoOwnerApproval": true,
+        ///       "approvalPendingFrom": ["John Smith"],
+        ///       "systemRecommendation": "Your slot conflicts with 1 booking(s). Co-owner approval required."
+        ///     }
+        ///   }
+        /// }
+        /// ```
+        /// 
+        /// **Priority Levels:**
+        /// - 0: Low - Regular personal use
+        /// - 1: Medium - Standard commute/errands
+        /// - 2: High - Important appointments
+        /// - 3: Urgent - Emergency situations
+        /// 
+        /// **SlotRequestStatus:**
+        /// - 0: Pending - Awaiting approval
+        /// - 1: AutoConfirmed - Automatically confirmed (no conflicts)
+        /// - 2: Approved - Manually approved
+        /// - 3: Rejected - Rejected by co-owner
+        /// 
+        /// **AvailabilityStatus:**
+        /// - 0: Available - Fully available
+        /// - 1: PartiallyAvailable - Some overlap
+        /// - 2: Unavailable - Fully booked
+        /// - 3: RequiresApproval - Available but needs approval
+        /// </remarks>
+        /// <param name="vehicleId">Vehicle ID to book</param>
+        /// <param name="request">Booking slot request details</param>
+        /// <response code="201">Booking slot request created (or auto-confirmed)</response>
+        /// <response code="400">Validation error</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied - must be co-owner of vehicle</response>
+        /// <response code="404">Vehicle not found</response>
+        [HttpPost("vehicle/{vehicleId:int}/request-slot")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> RequestBookingSlot(
+            int vehicleId,
+            [FromBody] RequestBookingSlotRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.RequestBookingSlotAsync(vehicleId, userId, request);
+            return response.StatusCode switch
+            {
+                201 => StatusCode(201, response),
+                400 => BadRequest(response),
+                403 => Forbid(response.Message),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Respond to a pending booking slot request (Approve/Reject) (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Allows co-owners to approve or reject pending booking slot requests from other co-owners.**
+        /// 
+        /// **Use Cases:**
+        /// - Approve a pending request if you don't need the vehicle at that time
+        /// - Reject with reason and optionally suggest alternative time
+        /// - Coordinate vehicle usage among co-owners
+        /// 
+        /// **Request Body (Approve):**
+        /// ```json
+        /// {
+        ///   "isApproved": true,
+        ///   "notes": "Approved - have a safe trip!"
+        /// }
+        /// ```
+        /// 
+        /// **Request Body (Reject with Alternative):**
+        /// ```json
+        /// {
+        ///   "isApproved": false,
+        ///   "rejectionReason": "I need the vehicle that day for medical appointment",
+        ///   "suggestedStartTime": "2025-01-26T09:00:00",
+        ///   "suggestedEndTime": "2025-01-26T17:00:00",
+        ///   "notes": "Can you use it the next day instead?"
+        /// }
+        /// ```
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "BOOKING_REQUEST_APPROVED",
+        ///   "data": {
+        ///     "requestId": 124,
+        ///     "status": 2,
+        ///     "processedAt": "2025-01-17T10:30:00",
+        ///     "processedBy": "Alice"
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="requestId">Booking request ID</param>
+        /// <param name="request">Response details (approve/reject)</param>
+        /// <response code="200">Request processed successfully</response>
+        /// <response code="400">Request already processed</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied - must be co-owner of vehicle</response>
+        /// <response code="404">Request not found</response>
+        [HttpPost("slot-request/{requestId:int}/respond")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> RespondToSlotRequest(
+            int requestId,
+            [FromBody] RespondToSlotRequestRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.RespondToSlotRequestAsync(requestId, userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => Forbid(response.Message),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Cancel a pending booking slot request (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Allows the requester to cancel their own pending slot request.**
+        /// 
+        /// **Request Body:**
+        /// ```json
+        /// {
+        ///   "reason": "Plans changed, no longer need the vehicle"
+        /// }
+        /// ```
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "BOOKING_REQUEST_CANCELLED",
+        ///   "data": "Request #124 cancelled: Plans changed, no longer need the vehicle"
+        /// }
+        /// ```
+        /// 
+        /// **Note:** Can only cancel requests with Pending status
+        /// </remarks>
+        /// <param name="requestId">Booking request ID</param>
+        /// <param name="request">Cancellation details</param>
+        /// <response code="200">Request cancelled successfully</response>
+        /// <response code="400">Can only cancel pending requests</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied - must be request owner</response>
+        /// <response code="404">Request not found</response>
+        [HttpPost("slot-request/{requestId:int}/cancel")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> CancelSlotRequest(
+            int requestId,
+            [FromBody] CancelSlotRequestRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.CancelSlotRequestAsync(requestId, userId, request);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                400 => BadRequest(response),
+                403 => Forbid(response.Message),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Get all pending booking slot requests for a vehicle (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Retrieves all pending booking slot requests that require approval.**
+        /// 
+        /// **Use Cases:**
+        /// - View pending requests from other co-owners
+        /// - Check what approvals are needed
+        /// - Monitor booking request queue
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "PENDING_REQUESTS_RETRIEVED",
+        ///   "data": {
+        ///     "vehicleId": 5,
+        ///     "vehicleName": "Tesla Model 3",
+        ///     "totalPendingCount": 3,
+        ///     "oldestRequestDate": "2025-01-15T10:00:00",
+        ///     "pendingRequests": [
+        ///       {
+        ///         "requestId": 125,
+        ///         "requesterName": "John Smith",
+        ///         "preferredStartTime": "2025-01-25T09:00:00",
+        ///         "preferredEndTime": "2025-01-25T17:00:00",
+        ///         "purpose": "Business trip",
+        ///         "priority": 2,
+        ///         "requestedAt": "2025-01-15T10:00:00"
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <response code="200">Pending requests retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied - must be co-owner of vehicle</response>
+        /// <response code="404">Vehicle not found</response>
+        [HttpGet("vehicle/{vehicleId:int}/pending-slot-requests")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> GetPendingSlotRequests(int vehicleId)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.GetPendingSlotRequestsAsync(vehicleId, userId);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => Forbid(response.Message),
+                404 => NotFound(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Get analytics for booking slot requests (CoOwner only)
+        /// </summary>
+        /// <remarks>
+        /// **Provides insights into booking request patterns and approval rates.**
+        /// 
+        /// **Query Parameters:**
+        /// - `startDate` (optional): Start date for analysis (default: 90 days ago)
+        /// - `endDate` (optional): End date for analysis (default: today)
+        /// 
+        /// **Response:**
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "ANALYTICS_RETRIEVED",
+        ///   "data": {
+        ///     "totalRequests": 45,
+        ///     "approvedCount": 38,
+        ///     "rejectedCount": 5,
+        ///     "autoConfirmedCount": 25,
+        ///     "approvalRate": 84.4,
+        ///     "averageProcessingTimeHours": 4.5,
+        ///     "mostRequestedTimeSlots": [
+        ///       {
+        ///         "dayOfWeek": 1,
+        ///         "hourOfDay": 9,
+        ///         "requestCount": 12,
+        ///         "approvalRate": 91.7
+        ///       }
+        ///     ],
+        ///     "requestsByCoOwner": [
+        ///       {
+        ///         "coOwnerId": 5,
+        ///         "coOwnerName": "John Smith",
+        ///         "totalRequests": 18,
+        ///         "approvedRequests": 16,
+        ///         "approvalRate": 88.9
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// 
+        /// **Insights Provided:**
+        /// - Total requests and approval/rejection counts
+        /// - Auto-confirmation rate
+        /// - Average time to process requests
+        /// - Most popular time slots
+        /// - Request statistics by co-owner
+        /// </remarks>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="startDate">Optional: Analysis start date</param>
+        /// <param name="endDate">Optional: Analysis end date</param>
+        /// <response code="200">Analytics retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied - must be co-owner of vehicle</response>
+        [HttpGet("vehicle/{vehicleId:int}/slot-request-analytics")]
+        [AuthorizeRoles(EUserRole.CoOwner)]
+        public async Task<IActionResult> GetSlotRequestAnalytics(
+            int vehicleId,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _bookingService.GetSlotRequestAnalyticsAsync(vehicleId, userId, startDate, endDate);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                403 => Forbid(response.Message),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        #endregion
     }
 }
+
