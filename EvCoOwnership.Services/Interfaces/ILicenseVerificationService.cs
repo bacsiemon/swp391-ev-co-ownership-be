@@ -62,5 +62,13 @@ namespace EvCoOwnership.Services.Interfaces
         /// <param name="currentUserId">ID of the user making the request</param>
         /// <returns>BaseResponse with deletion result</returns>
         Task<BaseResponse> DeleteLicenseAsync(int licenseId, int currentUserId);
+
+        /// <summary>
+        /// Registers a verified license to the system
+        /// </summary>
+        /// <param name="request">License registration request</param>
+        /// <param name="userId">ID of the user registering the license</param>
+        /// <returns>BaseResponse with registration result</returns>
+        Task<BaseResponse> RegisterLicenseAsync(VerifyLicenseRequest request, int userId);
     }
 }

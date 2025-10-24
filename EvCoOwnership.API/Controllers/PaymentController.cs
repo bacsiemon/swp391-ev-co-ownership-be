@@ -2,6 +2,7 @@ using EvCoOwnership.API.Attributes;
 using EvCoOwnership.Repositories.DTOs.PaymentDTOs;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -29,10 +30,65 @@ namespace EvCoOwnership.API.Controllers
         /// <summary>
         /// Creates a new payment and returns payment URL
         /// </summary>
+        /// <remarks>
+        /// Sample request for **VNPay with Credit Card**:
+        /// ```json
+        /// {
+        ///   "amount": 500000,
+        ///   "paymentGateway": 0,
+        ///   "paymentMethod": 1,
+        ///   "paymentType": 0,
+        ///   "bookingId": 123,
+        ///   "description": "Payment for vehicle booking"
+        /// }
+        /// ```
+        /// 
+        /// Sample request for **Momo E-Wallet**:
+        /// ```json
+        /// {
+        ///   "amount": 200000,
+        ///   "paymentGateway": 1,
+        ///   "paymentType": 2,
+        ///   "fundAdditionId": 456,
+        ///   "description": "Fund addition via Momo"
+        /// }
+        /// ```
+        /// 
+        /// Sample request for **Online Banking via VNPay**:
+        /// ```json
+        /// {
+        ///   "amount": 1000000,
+        ///   "paymentGateway": 0,
+        ///   "paymentMethod": 0,
+        ///   "bankCode": "VIETCOMBANK",
+        ///   "paymentType": 1,
+        ///   "maintenanceId": 789,
+        ///   "description": "Maintenance payment via banking"
+        /// }
+        /// ```
+        /// 
+        /// **Payment Gateways:**
+        /// - 0 = VNPay (supports all methods)
+        /// - 1 = Momo
+        /// - 2 = ZaloPay
+        /// - 3 = ShopeePay
+        /// - 4 = ViettelPay
+        /// - 5 = BankTransfer
+        /// 
+        /// **Payment Methods (for VNPay):**
+        /// - 0 = BankTransfer
+        /// - 1 = CreditCard
+        /// - 2 = DebitCard
+        /// - 3 = Cash (not applicable for online)
+        /// 
+        /// **Payment Types:**
+        /// - 0 = Booking, 1 = Maintenance, 2 = FundAddition, 3 = Fuel, 4 = Insurance, 5 = Parking, 6 = Toll, 7 = Upgrade, 8 = Dispute, 9 = Contract, 99 = Other
+        /// </remarks>
         /// <param name="request">Create payment request</param>
         /// <response code="201">Payment created successfully, payment URL returned</response>
         /// <response code="400">Validation error</response>
         /// <response code="401">Unauthorized access</response>
+        /// <response code="404">User not found</response>
         [HttpPost]
         public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentRequest request)
         {
@@ -156,7 +212,7 @@ namespace EvCoOwnership.API.Controllers
         }
 
         /// <summary>
-        /// Gets payment statistics (Admin/Staff only)
+        /// Gets payment statistics
         /// </summary>
         /// <response code="200">Statistics retrieved successfully</response>
         /// <response code="401">Unauthorized access</response>
@@ -167,6 +223,81 @@ namespace EvCoOwnership.API.Controllers
         {
             var response = await _paymentService.GetPaymentStatisticsAsync();
             return response.StatusCode == 200 ? Ok(response) : StatusCode(response.StatusCode, response);
+        }
+
+        /// <summary>
+        /// Gets available payment gateways information
+        /// </summary>
+        /// <remarks>
+        /// Returns list of supported payment gateways with:
+        /// - Gateway name and description
+        /// - Availability status
+        /// - Min/max payment amounts
+        /// - Supported methods (cards, banking, e-wallets)
+        /// - Supported banks list
+        /// 
+        /// **No authentication required** - public endpoint.
+        /// </remarks>
+        /// <response code="200">Payment gateways retrieved successfully</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("gateways")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAvailableGateways()
+        {
+            var response = await _paymentService.GetAvailableGatewaysAsync();
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// VNPay callback endpoint (return URL)
+        /// </summary>
+        /// <remarks>
+        /// This endpoint is called by VNPay after user completes payment.
+        /// **Do not require authentication** - VNPay cannot send JWT token.
+        /// </remarks>
+        /// <response code="200">Callback processed successfully</response>
+        /// <response code="400">Invalid callback data or signature</response>
+        [HttpGet("vnpay-callback")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VnPayCallback([FromQuery] VnPayCallbackRequest request)
+        {
+            var vnPayService = HttpContext.RequestServices.GetRequiredService<IVnPayService>();
+            var callbackResponse = vnPayService.ProcessCallback(request);
+
+            if (!callbackResponse.Success)
+            {
+                // Redirect to frontend payment failure page
+                return Redirect($"{GetFrontendUrl()}/payment/failure?message={callbackResponse.Message}");
+            }
+
+            // Update payment status
+            var processRequest = new ProcessPaymentRequest
+            {
+                PaymentId = callbackResponse.PaymentId,
+                TransactionId = callbackResponse.TransactionId,
+                IsSuccess = callbackResponse.Success
+            };
+
+            var response = await _paymentService.ProcessPaymentAsync(processRequest);
+
+            if (response.StatusCode == 200)
+            {
+                // Redirect to frontend payment success page
+                return Redirect($"{GetFrontendUrl()}/payment/success?paymentId={callbackResponse.PaymentId}&amount={callbackResponse.Amount}");
+            }
+
+            // Redirect to frontend payment failure page
+            return Redirect($"{GetFrontendUrl()}/payment/failure?message={response.Message}");
+        }
+
+        private string GetFrontendUrl()
+        {
+            // TODO: Get from configuration
+            return "http://localhost:3000"; // Default frontend URL
         }
     }
 }

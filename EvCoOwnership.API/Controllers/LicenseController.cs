@@ -361,5 +361,90 @@ namespace EvCoOwnership.API.Controllers
             };
         }
 
+        /// <summary>
+        /// Registers a verified license to the system (requires authentication)
+        /// </summary>
+        /// <param name="request">License registration request</param>
+        /// <response code="201">License registered successfully. Possible messages:  
+        /// - LICENSE_REGISTERED_SUCCESSFULLY  
+        /// </response>
+        /// <response code="400">License verification failed. Possible messages:  
+        /// - LICENSE_VERIFICATION_FAILED  
+        /// - LICENSE_NUMBER_REQUIRED  
+        /// - ISSUE_DATE_REQUIRED  
+        /// - ISSUED_BY_REQUIRED  
+        /// - FIRST_NAME_REQUIRED  
+        /// - LAST_NAME_REQUIRED  
+        /// - DATE_OF_BIRTH_REQUIRED  
+        /// </response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="409">License already registered. Possible messages:  
+        /// - LICENSE_ALREADY_REGISTERED  
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
+        /// </response>
+        /// <remarks>
+        /// Verifies and registers a driving license to the authenticated user's account.  
+        /// The license must pass verification before it can be registered.
+        /// </remarks>
+        [HttpPost("register")]
+        [AuthorizeRoles]
+        public async Task<IActionResult> RegisterLicense([FromForm] VerifyLicenseRequest request)
+        {
+            // Get current user ID from JWT token
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _licenseVerificationService.RegisterLicenseAsync(request, currentUserId);
+            return response.StatusCode switch
+            {
+                201 => Created($"/api/license/user/{currentUserId}", response),
+                400 => BadRequest(response),
+                409 => Conflict(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
+
+        /// <summary>
+        /// Gets the authenticated user's license information
+        /// </summary>
+        /// <response code="200">License information retrieved successfully. Possible messages:  
+        /// - SUCCESS  
+        /// </response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="404">Not found. Possible messages:  
+        /// - LICENSE_NOT_FOUND  
+        /// </response>
+        /// <response code="500">Internal server error. Possible messages:  
+        /// - INTERNAL_SERVER_ERROR  
+        /// </response>
+        /// <remarks>
+        /// Retrieves the driving license information for the currently authenticated user.
+        /// </remarks>
+        [HttpGet("my-license")]
+        [AuthorizeRoles]
+        public async Task<IActionResult> GetMyLicense()
+        {
+            // Get current user ID from JWT token
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+            {
+                return Unauthorized(new { Message = "INVALID_TOKEN" });
+            }
+
+            var response = await _licenseVerificationService.GetUserLicenseAsync(currentUserId);
+            return response.StatusCode switch
+            {
+                200 => Ok(response),
+                404 => NotFound(response),
+                500 => StatusCode(500, response),
+                _ => StatusCode(response.StatusCode, response)
+            };
+        }
     }
 }

@@ -1,10 +1,14 @@
-﻿using EvCoOwnership.Repositories.Interfaces;
+﻿using EvCoOwnership.Repositories.Context;
+using EvCoOwnership.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EvCoOwnership.Repositories.UoW
 {
     public interface IUnitOfWork
     {
+        // DbContext access
+        EvCoOwnershipDbContext DbContext { get; }
+
         // Repository properties
         IUserRepository UserRepository { get; }
         IBookingRepository BookingRepository { get; }
@@ -24,8 +28,11 @@ namespace EvCoOwnership.Repositories.UoW
         IVehicleCoOwnerRepository VehicleCoOwnerRepository { get; }
         IVehicleConditionRepository VehicleConditionRepository { get; }
         IVehicleStationRepository VehicleStationRepository { get; }
+        IVehicleUsageRecordRepository VehicleUsageRecordRepository { get; }
         INotificationRepository NotificationRepository { get; }
         IUserNotificationRepository UserNotificationRepository { get; }
+        IVehicleUpgradeProposalRepository VehicleUpgradeProposalRepository { get; }
+        IVehicleUpgradeVoteRepository VehicleUpgradeVoteRepository { get; }
 
         Task<int> SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();

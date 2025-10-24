@@ -12,5 +12,6 @@ namespace EvCoOwnership.Services.Interfaces
         Task<BaseResponse<PagedResult<PaymentResponse>>> GetAllPaymentsAsync(int pageIndex, int pageSize);
         Task<BaseResponse<string>> CancelPaymentAsync(int paymentId, int userId);
         Task<BaseResponse<PaymentStatisticsResponse>> GetPaymentStatisticsAsync();
+        Task<BaseResponse<PaymentGatewaysResponse>> GetAvailableGatewaysAsync();
     }
 }

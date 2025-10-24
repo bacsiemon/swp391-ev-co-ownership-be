@@ -1,4 +1,6 @@
-﻿using EvCoOwnership.Services.Interfaces;
+﻿using EvCoOwnership.Helpers.Configuration;
+using EvCoOwnership.Services.BackgroundServices;
+using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Services.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,9 @@ namespace EvCoOwnership.Services
 
         public static void AddDependencies(this IServiceCollection services, IConfiguration configuration)
         {
+            // Configure VNPay settings
+            services.Configure<VnPayConfig>(configuration.GetSection("VnPayConfig"));
+
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ILicenseVerificationService, LicenseVerificationService>();
@@ -31,6 +36,22 @@ namespace EvCoOwnership.Services
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IMaintenanceService, MaintenanceService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
+            services.AddScoped<IVnPayService, VnPayService>();
+            services.AddScoped<IBookingReminderService, BookingReminderService>();
+            services.AddScoped<IOwnershipChangeService, OwnershipChangeService>();
+            services.AddScoped<IUsageAnalyticsService, UsageAnalyticsService>();
+            services.AddScoped<IFairnessOptimizationService, FairnessOptimizationService>();
+            services.AddScoped<ICheckInCheckOutService, CheckInCheckOutService>();
+            services.AddScoped<IFundService, FundService>();
+            services.AddScoped<IMaintenanceVoteService, MaintenanceVoteService>();
+            services.AddScoped<IVehicleUpgradeVoteService, VehicleUpgradeVoteService>();
+            services.AddScoped<IVehicleReportService, VehicleReportService>();
+            services.AddScoped<IDisputeService, DisputeService>();
+            services.AddScoped<IContractService, ContractService>();
+            services.AddScoped<IDepositService, DepositService>();
+
+            // Register background services
+            services.AddHostedService<BookingReminderBackgroundService>();
         }
     }
 }

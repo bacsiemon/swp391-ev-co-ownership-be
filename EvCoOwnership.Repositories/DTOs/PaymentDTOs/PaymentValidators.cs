@@ -1,3 +1,4 @@
+using EvCoOwnership.Repositories.Enums;
 using FluentValidation;
 
 namespace EvCoOwnership.Repositories.DTOs.PaymentDTOs
@@ -11,9 +12,26 @@ namespace EvCoOwnership.Repositories.DTOs.PaymentDTOs
                 .LessThanOrEqualTo(1000000000).WithMessage("AMOUNT_EXCEEDS_MAXIMUM_LIMIT");
 
             RuleFor(x => x.PaymentGateway)
-                .NotEmpty().WithMessage("PAYMENT_GATEWAY_REQUIRED")
-                .Must(x => new[] { "VNPay", "MoMo", "ZaloPay", "Banking" }.Contains(x))
-                .WithMessage("INVALID_PAYMENT_GATEWAY");
+                .IsInEnum().WithMessage("INVALID_PAYMENT_GATEWAY");
+
+            RuleFor(x => x.PaymentType)
+                .IsInEnum().WithMessage("INVALID_PAYMENT_TYPE");
+
+            RuleFor(x => x.PaymentMethod)
+                .IsInEnum().WithMessage("INVALID_PAYMENT_METHOD")
+                .When(x => x.PaymentMethod.HasValue);
+
+            RuleFor(x => x.BankCode)
+                .MaximumLength(50).WithMessage("BANK_CODE_TOO_LONG")
+                .When(x => !string.IsNullOrEmpty(x.BankCode));
+
+            RuleFor(x => x.EWalletProvider)
+                .MaximumLength(50).WithMessage("EWALLET_PROVIDER_TOO_LONG")
+                .When(x => !string.IsNullOrEmpty(x.EWalletProvider));
+
+            RuleFor(x => x.Description)
+                .MaximumLength(500).WithMessage("DESCRIPTION_TOO_LONG")
+                .When(x => !string.IsNullOrEmpty(x.Description));
         }
     }
 

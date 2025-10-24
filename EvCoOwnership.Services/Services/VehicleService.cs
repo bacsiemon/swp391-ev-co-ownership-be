@@ -4,6 +4,7 @@ using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
+using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -853,6 +854,145 @@ namespace EvCoOwnership.Services.Services
         }
 
         /// <summary>
+        /// Gets all available vehicles for co-ownership or booking
+        /// </summary>
+        /// <remarks>
+        /// BUSINESS LOGIC - ROLE-BASED ACCESS:
+        /// - **Co-owner**: Can only see vehicles in their co-ownership groups (vehicles they are part of)
+        /// - **Staff/Admin**: Can see ALL vehicles in the system
+        /// 
+        /// This ensures privacy - co-owners only discover vehicles within their existing groups,
+        /// while staff/admin have full visibility for management purposes.
+        /// 
+        /// SECURITY CONSIDERATIONS:
+        /// - Only shows verified vehicles by default (safety)
+        /// - Co-owner contact info is included for legitimate inquiries
+        /// - Role-based filtering prevents unauthorized vehicle discovery
+        /// </remarks>
+        public async Task<BaseResponse> GetAvailableVehiclesAsync(
+            int userId,
+            int pageIndex = 1,
+            int pageSize = 10,
+            string? filterByStatus = null,
+            string? filterByVerificationStatus = null,
+            string? brand = null,
+            string? model = null,
+            int? minYear = null,
+            int? maxYear = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? search = null,
+            string? sortBy = null,
+            bool sortDescending = true)
+        {
+            try
+            {
+                _logger.LogInformation("Getting available vehicles for userId: {UserId} - pageIndex: {PageIndex}, pageSize: {PageSize}",
+                    userId, pageIndex, pageSize);
+
+                // Get user to check role
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Determine filtering based on role
+                int? coOwnerIdFilter = null;
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    // Co-owner: only show vehicles in their groups
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "CO_OWNER_PROFILE_NOT_FOUND"
+                        };
+                    }
+                    coOwnerIdFilter = coOwner.UserId;
+                    _logger.LogInformation("Co-owner access: filtering by coOwnerId {CoOwnerId}", coOwner.UserId);
+                }
+                else if (user.RoleEnum == EUserRole.Staff || user.RoleEnum == EUserRole.Admin)
+                {
+                    // Staff/Admin: show all vehicles (coOwnerIdFilter remains null)
+                    _logger.LogInformation("{Role} access: showing all vehicles", user.RoleEnum);
+                }
+                else
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_INSUFFICIENT_PERMISSIONS"
+                    };
+                }
+
+                // Parse filter parameters
+                EVehicleStatus? statusFilter = null;
+                if (!string.IsNullOrEmpty(filterByStatus) && Enum.TryParse<EVehicleStatus>(filterByStatus, true, out var parsedStatus))
+                {
+                    statusFilter = parsedStatus;
+                }
+
+                EVehicleVerificationStatus? verificationFilter = null;
+                if (!string.IsNullOrEmpty(filterByVerificationStatus) && Enum.TryParse<EVehicleVerificationStatus>(filterByVerificationStatus, true, out var parsedVerification))
+                {
+                    verificationFilter = parsedVerification;
+                }
+
+                // Get vehicles from repository with role-based filtering
+                var (vehicles, totalCount) = await _unitOfWork.VehicleRepository.GetAllAvailableVehiclesAsync(
+                    pageIndex,
+                    pageSize,
+                    coOwnerIdFilter, // null for Staff/Admin, coOwnerId for Co-owner
+                    statusFilter,
+                    verificationFilter,
+                    brand,
+                    model,
+                    minYear,
+                    maxYear,
+                    minPrice,
+                    maxPrice,
+                    search,
+                    sortBy,
+                    sortDescending);
+
+                // Map to response DTOs
+                var vehicleResponses = new List<VehicleResponse>();
+                foreach (var vehicle in vehicles)
+                {
+                    var response = await MapVehicleToResponseAsync(vehicle);
+                    vehicleResponses.Add(response);
+                }
+
+                var pagedResult = new PagedResult<VehicleResponse>(vehicleResponses, totalCount, pageIndex, pageSize);
+
+                _logger.LogInformation("Retrieved {Count} available vehicles out of {Total} total", vehicles.Count, totalCount);
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "AVAILABLE_VEHICLES_RETRIEVED_SUCCESSFULLY",
+                    Data = pagedResult
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available vehicles");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
+
+        /// <summary>
         /// Maps Vehicle model to VehicleResponse DTO
         /// </summary>
         private async Task<VehicleResponse> MapVehicleToResponseAsync(Vehicle vehicle)
@@ -905,6 +1045,720 @@ namespace EvCoOwnership.Services.Services
                 CreatedAt = vehicle.CreatedAt,
                 CoOwners = coOwners
             };
+        }
+
+        /// <summary>
+        /// Gets detailed vehicle information including fund, co-owners, and creator
+        /// </summary>
+        public async Task<BaseResponse> GetVehicleDetailAsync(int vehicleId, int userId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting vehicle detail for vehicleId: {VehicleId}, userId: {UserId}", vehicleId, userId);
+
+                // Get user to check role
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Get vehicle with related data
+                var vehicle = await _unitOfWork.VehicleRepository.GetVehicleWithCoOwnersAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                // Role-based access control
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    // Co-owner can only view vehicles they are part of
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "CO_OWNER_PROFILE_NOT_FOUND"
+                        };
+                    }
+
+                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
+                        vco.CoOwnerId == coOwner.UserId &&
+                        vco.StatusEnum == EContractStatus.Active);
+
+                    if (!isCoOwner)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                        };
+                    }
+                }
+                else if (user.RoleEnum != EUserRole.Staff && user.RoleEnum != EUserRole.Admin)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 403,
+                        Message = "ACCESS_DENIED_INSUFFICIENT_PERMISSIONS"
+                    };
+                }
+
+                // Map vehicle to detailed response
+                var response = await MapVehicleToDetailResponseAsync(vehicle);
+
+                _logger.LogInformation("Vehicle detail retrieved successfully for vehicleId: {VehicleId}", vehicleId);
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_DETAIL_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vehicle detail for vehicleId: {VehicleId}", vehicleId);
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Maps Vehicle model to VehicleDetailResponse DTO with fund information
+        /// </summary>
+        private async Task<VehicleDetailResponse> MapVehicleToDetailResponseAsync(Vehicle vehicle)
+        {
+            // Map co-owners
+            var coOwners = new List<VehicleCoOwnerResponse>();
+            decimal totalOwnershipPercentage = 0;
+
+            foreach (var vco in vehicle.VehicleCoOwners)
+            {
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(vco.CoOwnerId);
+                var user = coOwner != null ? await _unitOfWork.UserRepository.GetByIdAsync(coOwner.UserId) : null;
+
+                if (user != null)
+                {
+                    coOwners.Add(new VehicleCoOwnerResponse
+                    {
+                        CoOwnerId = vco.CoOwnerId,
+                        UserId = user.Id,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        Email = user.Email,
+                        OwnershipPercentage = vco.OwnershipPercentage,
+                        InvestmentAmount = vco.InvestmentAmount,
+                        Status = vco.StatusEnum.ToString(),
+                        CreatedAt = vco.CreatedAt
+                    });
+
+                    // Sum up active ownership percentages
+                    if (vco.StatusEnum == EContractStatus.Active)
+                    {
+                        totalOwnershipPercentage += vco.OwnershipPercentage;
+                    }
+                }
+            }
+
+            // Get fund information if exists
+            VehicleFundInfo? fundInfo = null;
+            if (vehicle.FundId.HasValue)
+            {
+                var fund = await _unitOfWork.FundRepository.GetByIdAsync(vehicle.FundId.Value);
+                if (fund != null)
+                {
+                    var fundAdditions = await _unitOfWork.FundAdditionRepository
+                        .GetAllAsync()
+                        .ContinueWith(task => task.Result.Where(fa => fa.FundId == fund.Id).ToList());
+
+                    var fundUsages = await _unitOfWork.FundUsageRepository
+                        .GetAllAsync()
+                        .ContinueWith(task => task.Result.Where(fu => fu.FundId == fund.Id).ToList());
+
+                    fundInfo = new VehicleFundInfo
+                    {
+                        FundId = fund.Id,
+                        CurrentBalance = fund.CurrentBalance ?? 0,
+                        CreatedAt = fund.CreatedAt,
+                        UpdatedAt = fund.UpdatedAt,
+                        TotalAdditions = fundAdditions.Count,
+                        TotalUsages = fundUsages.Count,
+                        TotalAddedAmount = fundAdditions.Sum(fa => fa.Amount),
+                        TotalUsedAmount = fundUsages.Sum(fu => fu.Amount)
+                    };
+                }
+            }
+
+            // Get creator information
+            CreatorInfo? creatorInfo = null;
+            if (vehicle.CreatedBy.HasValue)
+            {
+                var creator = await _unitOfWork.UserRepository.GetByIdAsync(vehicle.CreatedBy.Value);
+                if (creator != null)
+                {
+                    creatorInfo = new CreatorInfo
+                    {
+                        UserId = creator.Id,
+                        FirstName = creator.FirstName,
+                        LastName = creator.LastName,
+                        Email = creator.Email
+                    };
+                }
+            }
+
+            return new VehicleDetailResponse
+            {
+                Id = vehicle.Id,
+                Name = vehicle.Name,
+                Description = vehicle.Description,
+                Brand = vehicle.Brand,
+                Model = vehicle.Model,
+                Year = vehicle.Year,
+                Vin = vehicle.Vin,
+                LicensePlate = vehicle.LicensePlate,
+                Color = vehicle.Color,
+                BatteryCapacity = vehicle.BatteryCapacity,
+                RangeKm = vehicle.RangeKm,
+                PurchaseDate = vehicle.PurchaseDate,
+                PurchasePrice = vehicle.PurchasePrice,
+                WarrantyUntil = vehicle.WarrantyUntil,
+                DistanceTravelled = vehicle.DistanceTravelled,
+                Status = vehicle.StatusEnum?.ToString(),
+                VerificationStatus = vehicle.VerificationStatusEnum?.ToString(),
+                LocationLatitude = vehicle.LocationLatitude,
+                LocationLongitude = vehicle.LocationLongitude,
+                CreatedAt = vehicle.CreatedAt,
+                UpdatedAt = vehicle.UpdatedAt,
+                CoOwners = coOwners,
+                TotalOwnershipPercentage = totalOwnershipPercentage,
+                AvailableOwnershipPercentage = 100 - totalOwnershipPercentage,
+                Fund = fundInfo,
+                CreatedBy = creatorInfo
+            };
+        }
+
+        public async Task<BaseResponse> GetVehicleAvailabilityScheduleAsync(
+            int vehicleId,
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
+            string? statusFilter = null)
+        {
+            try
+            {
+                // Validate date range
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE",
+                        Errors = "Start date must be before end date"
+                    };
+                }
+
+                // Max 90 days
+                if ((endDate - startDate).TotalDays > 90)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "DATE_RANGE_TOO_LARGE",
+                        Errors = "Date range cannot exceed 90 days"
+                    };
+                }
+
+                // Get vehicle
+                var vehicle = await _unitOfWork.VehicleRepository
+                    .GetQueryable()
+                    .Include(v => v.VehicleCoOwners)
+                    .FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+                if (vehicle == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    };
+                }
+
+                // Check access rights
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                // Role-based access
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                        .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "USER_NOT_CO_OWNER"
+                        };
+                    }
+
+                    // Check if user is co-owner of this vehicle
+                    var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
+                        vco.CoOwnerId == coOwner.UserId &&
+                        vco.StatusEnum == EContractStatus.Active);
+
+                    if (!isCoOwner)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "ACCESS_DENIED_NOT_VEHICLE_CO_OWNER"
+                        };
+                    }
+                }
+                // Staff/Admin can access all vehicles
+
+                // Parse status filter
+                EBookingStatus? statusEnum = null;
+                if (!string.IsNullOrWhiteSpace(statusFilter))
+                {
+                    if (Enum.TryParse<EBookingStatus>(statusFilter, true, out var parsed))
+                    {
+                        statusEnum = parsed;
+                    }
+                }
+
+                // Get bookings for this vehicle in date range
+                var bookings = await _unitOfWork.BookingRepository.GetBookingsForCalendarAsync(
+                    startDate, endDate, null, vehicleId, statusEnum);
+
+                // Map to time slots
+                var bookedSlots = bookings.Select(b => new VehicleTimeSlot
+                {
+                    StartTime = b.StartTime,
+                    EndTime = b.EndTime,
+                    IsAvailable = false,
+                    BookingId = b.Id,
+                    BookedBy = $"{b.CoOwner?.User?.FirstName} {b.CoOwner?.User?.LastName}".Trim(),
+                    Purpose = b.Purpose,
+                    BookingStatus = b.StatusEnum
+                }).ToList();
+
+                // Calculate statistics
+                var totalHours = (int)(endDate - startDate).TotalHours;
+                var totalDays = (int)(endDate - startDate).TotalDays;
+                var bookedHours = bookings.Sum(b => (int)(b.EndTime - b.StartTime).TotalHours);
+                var availableHours = totalHours - bookedHours;
+                var utilizationPercentage = totalHours > 0 ? Math.Round((decimal)bookedHours / totalHours * 100, 2) : 0;
+
+                // Find available days (days with no bookings)
+                var availableDays = new List<DateTime>();
+                for (var date = startDate.Date; date < endDate.Date; date = date.AddDays(1))
+                {
+                    var hasBooking = bookings.Any(b =>
+                        b.StartTime.Date <= date && b.EndTime.Date >= date);
+
+                    if (!hasBooking)
+                    {
+                        availableDays.Add(date);
+                    }
+                }
+
+                var stats = new VehicleUtilizationStats
+                {
+                    TotalDaysInPeriod = totalDays,
+                    TotalBookedHours = bookedHours,
+                    TotalAvailableHours = availableHours,
+                    UtilizationPercentage = utilizationPercentage,
+                    TotalBookings = bookings.Count,
+                    ConfirmedBookings = bookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed),
+                    PendingBookings = bookings.Count(b => b.StatusEnum == EBookingStatus.Pending),
+                    AverageBookingDuration = bookings.Any()
+                        ? Math.Round((decimal)bookings.Average(b => (b.EndTime - b.StartTime).TotalHours), 2)
+                        : 0
+                };
+
+                var response = new VehicleAvailabilityScheduleResponse
+                {
+                    VehicleId = vehicle.Id,
+                    VehicleName = vehicle.Name,
+                    Brand = vehicle.Brand,
+                    Model = vehicle.Model,
+                    LicensePlate = vehicle.LicensePlate,
+                    Status = vehicle.StatusEnum ?? EVehicleStatus.Available,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    BookedSlots = bookedSlots,
+                    AvailableDays = availableDays,
+                    UtilizationStats = stats
+                };
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_AVAILABILITY_SCHEDULE_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vehicle availability schedule");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse> FindAvailableTimeSlotsAsync(
+            int vehicleId,
+            int userId,
+            DateTime startDate,
+            DateTime endDate,
+            int minimumDurationHours = 1,
+            bool fullDayOnly = false)
+        {
+            try
+            {
+                // Validate
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE"
+                    };
+                }
+
+                if (minimumDurationHours < 1 || minimumDurationHours > 24)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_MINIMUM_DURATION",
+                        Errors = "Minimum duration must be between 1 and 24 hours"
+                    };
+                }
+
+                // Get vehicle and check access (reuse logic)
+                var scheduleResponse = await GetVehicleAvailabilityScheduleAsync(
+                    vehicleId, userId, startDate, endDate, "Confirmed");
+
+                if (scheduleResponse.StatusCode != 200)
+                {
+                    return scheduleResponse;
+                }
+
+                var schedule = scheduleResponse.Data as VehicleAvailabilityScheduleResponse;
+                if (schedule == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 500,
+                        Message = "INTERNAL_SERVER_ERROR"
+                    };
+                }
+
+                // Find available slots
+                var availableSlots = new List<AvailableTimeSlot>();
+                var confirmedBookings = schedule.BookedSlots
+                    .Where(b => b.BookingStatus == EBookingStatus.Confirmed)
+                    .OrderBy(b => b.StartTime)
+                    .ToList();
+
+                // Check slot before first booking
+                if (confirmedBookings.Any())
+                {
+                    var firstBooking = confirmedBookings.First();
+                    if (firstBooking.StartTime > startDate)
+                    {
+                        var duration = (int)(firstBooking.StartTime - startDate).TotalHours;
+                        if (duration >= minimumDurationHours && (!fullDayOnly || duration >= 8))
+                        {
+                            availableSlots.Add(new AvailableTimeSlot
+                            {
+                                StartTime = startDate,
+                                EndTime = firstBooking.StartTime,
+                                DurationHours = duration,
+                                IsFullDay = duration >= 8,
+                                Recommendation = duration >= 8 ? "Full day available" : $"{duration} hours available"
+                            });
+                        }
+                    }
+                }
+                else
+                {
+                    // No bookings at all - entire period is free
+                    var duration = (int)(endDate - startDate).TotalHours;
+                    availableSlots.Add(new AvailableTimeSlot
+                    {
+                        StartTime = startDate,
+                        EndTime = endDate,
+                        DurationHours = duration,
+                        IsFullDay = duration >= 8,
+                        Recommendation = "Entire period available - no bookings"
+                    });
+                }
+
+                // Check slots between bookings
+                for (int i = 0; i < confirmedBookings.Count - 1; i++)
+                {
+                    var currentBooking = confirmedBookings[i];
+                    var nextBooking = confirmedBookings[i + 1];
+
+                    var gapStart = currentBooking.EndTime;
+                    var gapEnd = nextBooking.StartTime;
+                    var duration = (int)(gapEnd - gapStart).TotalHours;
+
+                    if (duration >= minimumDurationHours && (!fullDayOnly || duration >= 8))
+                    {
+                        availableSlots.Add(new AvailableTimeSlot
+                        {
+                            StartTime = gapStart,
+                            EndTime = gapEnd,
+                            DurationHours = duration,
+                            IsFullDay = duration >= 8,
+                            Recommendation = duration >= 8
+                                ? "Full day available"
+                                : $"{duration} hours between bookings"
+                        });
+                    }
+                }
+
+                // Check slot after last booking
+                if (confirmedBookings.Any())
+                {
+                    var lastBooking = confirmedBookings.Last();
+                    if (lastBooking.EndTime < endDate)
+                    {
+                        var duration = (int)(endDate - lastBooking.EndTime).TotalHours;
+                        if (duration >= minimumDurationHours && (!fullDayOnly || duration >= 8))
+                        {
+                            availableSlots.Add(new AvailableTimeSlot
+                            {
+                                StartTime = lastBooking.EndTime,
+                                EndTime = endDate,
+                                DurationHours = duration,
+                                IsFullDay = duration >= 8,
+                                Recommendation = duration >= 8 ? "Full day available" : $"{duration} hours available"
+                            });
+                        }
+                    }
+                }
+
+                var response = new AvailableTimeSlotsResponse
+                {
+                    VehicleId = vehicleId,
+                    VehicleName = schedule.VehicleName,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    MinimumDurationHours = minimumDurationHours,
+                    AvailableSlots = availableSlots,
+                    TotalSlotsFound = availableSlots.Count,
+                    Message = availableSlots.Any()
+                        ? $"Found {availableSlots.Count} available time slot(s)"
+                        : "No available time slots matching your criteria"
+                };
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "AVAILABLE_TIME_SLOTS_FOUND",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finding available time slots");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
+        }
+
+        public async Task<BaseResponse> CompareVehicleUtilizationAsync(
+            int userId,
+            DateTime startDate,
+            DateTime endDate)
+        {
+            try
+            {
+                // Validate date range
+                if (startDate >= endDate)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "INVALID_DATE_RANGE"
+                    };
+                }
+
+                if ((endDate - startDate).TotalDays > 90)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 400,
+                        Message = "DATE_RANGE_TOO_LARGE"
+                    };
+                }
+
+                // Get user and determine accessible vehicles
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    };
+                }
+
+                List<Vehicle> vehicles;
+
+                if (user.RoleEnum == EUserRole.CoOwner)
+                {
+                    // Get co-owner's vehicles
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetQueryable()
+                        .FirstOrDefaultAsync(co => co.UserId == userId);
+
+                    if (coOwner == null)
+                    {
+                        return new BaseResponse
+                        {
+                            StatusCode = 403,
+                            Message = "USER_NOT_CO_OWNER"
+                        };
+                    }
+
+                    vehicles = await _unitOfWork.VehicleRepository.GetQueryable()
+                        .Include(v => v.VehicleCoOwners)
+                        .Include(v => v.Bookings)
+                            .ThenInclude(b => b.CoOwner)
+                                .ThenInclude(co => co.User)
+                        .Where(v => v.VehicleCoOwners.Any(vco =>
+                            vco.CoOwnerId == coOwner.UserId &&
+                            vco.StatusEnum == EContractStatus.Active))
+                        .ToListAsync();
+                }
+                else
+                {
+                    // Staff/Admin - all vehicles
+                    vehicles = await _unitOfWork.VehicleRepository.GetQueryable()
+                        .Include(v => v.Bookings)
+                            .ThenInclude(b => b.CoOwner)
+                                .ThenInclude(co => co.User)
+                        .ToListAsync();
+                }
+
+                if (!vehicles.Any())
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "NO_VEHICLES_FOUND"
+                    };
+                }
+
+                // Calculate utilization for each vehicle
+                var comparisons = new List<VehicleUtilizationComparison>();
+                var totalHoursInPeriod = (int)(endDate - startDate).TotalHours;
+
+                foreach (var vehicle in vehicles)
+                {
+                    var vehicleBookings = vehicle.Bookings
+                        .Where(b => b.StartTime < endDate && b.EndTime > startDate)
+                        .Where(b => b.StatusEnum == EBookingStatus.Confirmed ||
+                                   b.StatusEnum == EBookingStatus.Active ||
+                                   b.StatusEnum == EBookingStatus.Completed)
+                        .ToList();
+
+                    var totalBookedHours = vehicleBookings.Sum(b =>
+                        (int)(b.EndTime - b.StartTime).TotalHours);
+
+                    var utilizationPercentage = totalHoursInPeriod > 0
+                        ? Math.Round((decimal)totalBookedHours / totalHoursInPeriod * 100, 2)
+                        : 0;
+
+                    // Find most active day
+                    var bookingsByDay = vehicleBookings
+                        .GroupBy(b => b.StartTime.DayOfWeek)
+                        .OrderByDescending(g => g.Count())
+                        .FirstOrDefault();
+
+                    var mostActiveDay = bookingsByDay?.Key.ToString() ?? "N/A";
+
+                    comparisons.Add(new VehicleUtilizationComparison
+                    {
+                        VehicleId = vehicle.Id,
+                        VehicleName = vehicle.Name,
+                        Brand = vehicle.Brand,
+                        Model = vehicle.Model,
+                        LicensePlate = vehicle.LicensePlate,
+                        UtilizationPercentage = utilizationPercentage,
+                        TotalBookings = vehicleBookings.Count,
+                        TotalBookedHours = totalBookedHours,
+                        MostActiveDay = mostActiveDay
+                    });
+                }
+
+                // Sort by utilization
+                comparisons = comparisons.OrderByDescending(c => c.UtilizationPercentage).ToList();
+
+                var response = new VehicleUtilizationComparisonResponse
+                {
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    Vehicles = comparisons,
+                    MostUtilizedVehicle = comparisons.FirstOrDefault(),
+                    LeastUtilizedVehicle = comparisons.LastOrDefault(),
+                    AverageUtilization = comparisons.Any()
+                        ? Math.Round(comparisons.Average(c => c.UtilizationPercentage), 2)
+                        : 0
+                };
+
+                return new BaseResponse
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_UTILIZATION_COMPARISON_RETRIEVED_SUCCESSFULLY",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error comparing vehicle utilization");
+                return new BaseResponse
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                };
+            }
         }
     }
 }

@@ -81,6 +81,81 @@ namespace EvCoOwnership.DTOs.VehicleDTOs
     }
 
     /// <summary>
+    /// Detailed response DTO for vehicle information including fund details
+    /// </summary>
+    public class VehicleDetailResponse
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+
+        // Vehicle Specifications
+        public string Brand { get; set; } = null!;
+        public string Model { get; set; } = null!;
+        public int Year { get; set; }
+        public string Vin { get; set; } = null!;
+        public string LicensePlate { get; set; } = null!;
+        public string Color { get; set; } = null!;
+        public decimal? BatteryCapacity { get; set; }
+        public int? RangeKm { get; set; }
+
+        // Purchase & Financial Info
+        public DateOnly PurchaseDate { get; set; }
+        public decimal PurchasePrice { get; set; }
+        public DateOnly? WarrantyUntil { get; set; }
+
+        // Current Status
+        public int? DistanceTravelled { get; set; }
+        public string? Status { get; set; }
+        public string? VerificationStatus { get; set; }
+
+        // Location
+        public decimal? LocationLatitude { get; set; }
+        public decimal? LocationLongitude { get; set; }
+
+        // Timestamps
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        // Co-ownership Information
+        public List<VehicleCoOwnerResponse> CoOwners { get; set; } = new List<VehicleCoOwnerResponse>();
+        public decimal TotalOwnershipPercentage { get; set; }
+        public decimal AvailableOwnershipPercentage { get; set; }
+
+        // Fund Information
+        public VehicleFundInfo? Fund { get; set; }
+
+        // Creator Information
+        public CreatorInfo? CreatedBy { get; set; }
+    }
+
+    /// <summary>
+    /// Fund information for a vehicle
+    /// </summary>
+    public class VehicleFundInfo
+    {
+        public int FundId { get; set; }
+        public decimal CurrentBalance { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public int TotalAdditions { get; set; }
+        public int TotalUsages { get; set; }
+        public decimal TotalAddedAmount { get; set; }
+        public decimal TotalUsedAmount { get; set; }
+    }
+
+    /// <summary>
+    /// Creator information
+    /// </summary>
+    public class CreatorInfo
+    {
+        public int UserId { get; set; }
+        public string FirstName { get; set; } = null!;
+        public string LastName { get; set; } = null!;
+        public string Email { get; set; } = null!;
+    }
+
+    /// <summary>
     /// Response DTO for vehicle co-owner information
     /// </summary>
     public class VehicleCoOwnerResponse

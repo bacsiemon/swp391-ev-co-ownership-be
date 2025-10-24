@@ -15,5 +15,27 @@ namespace EvCoOwnership.Services.Interfaces
         Task<BaseResponse<string>> CancelBookingAsync(int bookingId, int userId);
         Task<BaseResponse<string>> DeleteBookingAsync(int bookingId);
         Task<BaseResponse<BookingStatisticsResponse>> GetBookingStatisticsAsync();
+
+        // Calendar and availability
+        Task<BaseResponse<BookingCalendarResponse>> GetBookingCalendarAsync(int userId, DateTime startDate, DateTime endDate, int? vehicleId = null, string? status = null);
+        Task<BaseResponse<VehicleAvailabilityResponse>> CheckVehicleAvailabilityAsync(int vehicleId, DateTime startTime, DateTime endTime);
+
+        // Booking slot requests
+        Task<BaseResponse<BookingSlotRequestResponse>> RequestBookingSlotAsync(int vehicleId, int userId, RequestBookingSlotRequest request);
+        Task<BaseResponse<BookingSlotRequestResponse>> RespondToSlotRequestAsync(int requestId, int userId, RespondToSlotRequestRequest request);
+        Task<BaseResponse<string>> CancelSlotRequestAsync(int requestId, int userId, CancelSlotRequestRequest request);
+        Task<BaseResponse<PendingSlotRequestsResponse>> GetPendingSlotRequestsAsync(int vehicleId, int userId);
+        Task<BaseResponse<SlotRequestAnalytics>> GetSlotRequestAnalyticsAsync(int vehicleId, int userId, DateTime? startDate = null, DateTime? endDate = null);
+
+        // Booking conflict resolution (Advanced approve/reject with intelligence)
+        Task<BaseResponse<BookingConflictResolutionResponse>> ResolveBookingConflictAsync(int bookingId, int userId, ResolveBookingConflictRequest request);
+        Task<BaseResponse<PendingConflictsResponse>> GetPendingConflictsAsync(int userId, GetPendingConflictsRequest request);
+        Task<BaseResponse<BookingConflictAnalyticsResponse>> GetConflictAnalyticsAsync(int vehicleId, int userId, DateTime? startDate = null, DateTime? endDate = null);
+
+        // Booking modification and cancellation (Enhanced with policies & impact analysis)
+        Task<BaseResponse<ModifyBookingResponse>> ModifyBookingAsync(int bookingId, int userId, ModifyBookingRequest request);
+        Task<BaseResponse<CancelBookingResponse>> CancelBookingEnhancedAsync(int bookingId, int userId, CancelBookingRequest request);
+        Task<BaseResponse<ModificationValidationResult>> ValidateModificationAsync(int userId, ValidateModificationRequest request);
+        Task<BaseResponse<ModificationHistoryResponse>> GetModificationHistoryAsync(GetModificationHistoryRequest request);
     }
 }
