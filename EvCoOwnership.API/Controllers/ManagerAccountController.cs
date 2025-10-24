@@ -10,6 +10,9 @@ using System.Security.Claims;
 
 namespace EvCoOwnership.API.Controllers
 {
+    /// <summary>
+    /// Manager Account Controller - Quản lý tài khoản Admin/Staff
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [AuthorizeRoles(EUserRole.Admin)]
@@ -24,6 +27,15 @@ namespace EvCoOwnership.API.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Lấy danh sách tài khoản Manager với phân trang
+        /// </summary>
+        /// <param name="page">Số trang (mặc định: 1)</param>
+        /// <param name="size">Kích thước trang (mặc định: 10)</param>
+        /// <param name="search">Từ khóa tìm kiếm theo tên hoặc email</param>
+        /// <param name="role">Lọc theo role (Admin/Staff)</param>
+        /// <param name="status">Lọc theo trạng thái (Active/Inactive/Suspended)</param>
+        /// <returns>Danh sách tài khoản Manager</returns>
         [HttpGet]
         public async Task<IActionResult> GetManagerAccounts(
             int page = 1, 
@@ -34,7 +46,7 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                var query = _unitOfWork.UserRepository.GetAll()
+                var query = _unitOfWork.UserRepository.GetQueryable()
                     .Where(u => u.RoleEnum == EUserRole.Admin || u.RoleEnum == EUserRole.Staff);
 
                 if (!string.IsNullOrWhiteSpace(search))
@@ -84,6 +96,11 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết tài khoản Manager theo ID
+        /// </summary>
+        /// <param name="id">ID tài khoản Manager</param>
+        /// <returns>Thông tin chi tiết tài khoản Manager</returns>
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetManagerAccount(int id)
         {
@@ -130,6 +147,11 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Tạo tài khoản Manager mới
+        /// </summary>
+        /// <param name="request">Thông tin tài khoản Manager cần tạo</param>
+        /// <returns>Tài khoản Manager đã được tạo</returns>
         [HttpPost]
         public async Task<IActionResult> CreateManagerAccount([FromBody] CreateManagerAccountRequest request)
         {
@@ -189,6 +211,12 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Cập nhật thông tin tài khoản Manager
+        /// </summary>
+        /// <param name="id">ID tài khoản Manager</param>
+        /// <param name="request">Thông tin cập nhật</param>
+        /// <returns>Tài khoản Manager đã được cập nhật</returns>
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateManagerAccount(int id, [FromBody] UpdateManagerAccountRequest request)
         {
@@ -260,6 +288,11 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Xóa tài khoản Manager
+        /// </summary>
+        /// <param name="id">ID tài khoản Manager</param>
+        /// <returns>Kết quả xóa tài khoản</returns>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteManagerAccount(int id)
         {
@@ -340,6 +373,12 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Thay đổi trạng thái tài khoản Manager
+        /// </summary>
+        /// <param name="id">ID tài khoản Manager</param>
+        /// <param name="request">Trạng thái mới</param>
+        /// <returns>Tài khoản Manager với trạng thái đã cập nhật</returns>
         [HttpPatch("{id:int}/status")]
         public async Task<IActionResult> ChangeManagerAccountStatus(int id, [FromBody] ChangeManagerStatusRequest request)
         {
@@ -392,27 +431,31 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy thống kê tài khoản Manager
+        /// </summary>
+        /// <returns>Thống kê số lượng Manager theo role và status</returns>
         [HttpGet("statistics")]
         public async Task<IActionResult> GetManagerAccountStatistics()
         {
             try
             {
-                var totalManagers = await _unitOfWork.UserRepository.GetAll()
+                var totalManagers = await _unitOfWork.UserRepository.GetQueryable()
                     .CountAsync(u => u.RoleEnum == EUserRole.Admin || u.RoleEnum == EUserRole.Staff);
 
-                var totalAdmins = await _unitOfWork.UserRepository.GetAll()
+                var totalAdmins = await _unitOfWork.UserRepository.GetQueryable()
                     .CountAsync(u => u.RoleEnum == EUserRole.Admin);
 
-                var totalStaff = await _unitOfWork.UserRepository.GetAll()
+                var totalStaff = await _unitOfWork.UserRepository.GetQueryable()
                     .CountAsync(u => u.RoleEnum == EUserRole.Staff);
 
-                var activeManagers = await _unitOfWork.UserRepository.GetAll()
+                var activeManagers = await _unitOfWork.UserRepository.GetQueryable()
                     .CountAsync(u => (u.RoleEnum == EUserRole.Admin || u.RoleEnum == EUserRole.Staff) && u.StatusEnum == EUserStatus.Active);
 
-                var inactiveManagers = await _unitOfWork.UserRepository.GetAll()
+                var inactiveManagers = await _unitOfWork.UserRepository.GetQueryable()
                     .CountAsync(u => (u.RoleEnum == EUserRole.Admin || u.RoleEnum == EUserRole.Staff) && u.StatusEnum == EUserStatus.Inactive);
 
-                var suspendedManagers = await _unitOfWork.UserRepository.GetAll()
+                var suspendedManagers = await _unitOfWork.UserRepository.GetQueryable()
                     .CountAsync(u => (u.RoleEnum == EUserRole.Admin || u.RoleEnum == EUserRole.Staff) && u.StatusEnum == EUserStatus.Suspended);
 
                 var statistics = new
@@ -448,31 +491,101 @@ namespace EvCoOwnership.API.Controllers
         }
     }
 
+    /// <summary>
+    /// Request DTO cho việc tạo tài khoản Manager
+    /// </summary>
     public class CreateManagerAccountRequest
     {
+        /// <summary>
+        /// Email của Manager
+        /// </summary>
         public string Email { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Tên của Manager
+        /// </summary>
         public string FirstName { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Họ của Manager
+        /// </summary>
         public string LastName { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Số điện thoại
+        /// </summary>
         public string? Phone { get; set; }
+        
+        /// <summary>
+        /// Địa chỉ
+        /// </summary>
         public string? Address { get; set; }
+        
+        /// <summary>
+        /// Ngày sinh
+        /// </summary>
         public DateOnly? DateOfBirth { get; set; }
+        
+        /// <summary>
+        /// Vai trò (Admin/Staff)
+        /// </summary>
         public EUserRole Role { get; set; } = EUserRole.Staff;
+        
+        /// <summary>
+        /// Mật khẩu
+        /// </summary>
         public string? Password { get; set; }
     }
 
+    /// <summary>
+    /// Request DTO cho việc cập nhật tài khoản Manager
+    /// </summary>
     public class UpdateManagerAccountRequest
     {
+        /// <summary>
+        /// Tên mới
+        /// </summary>
         public string? FirstName { get; set; }
+        
+        /// <summary>
+        /// Họ mới
+        /// </summary>
         public string? LastName { get; set; }
+        
+        /// <summary>
+        /// Số điện thoại mới
+        /// </summary>
         public string? Phone { get; set; }
+        
+        /// <summary>
+        /// Địa chỉ mới
+        /// </summary>
         public string? Address { get; set; }
+        
+        /// <summary>
+        /// Ngày sinh mới
+        /// </summary>
         public DateOnly? DateOfBirth { get; set; }
+        
+        /// <summary>
+        /// Vai trò mới
+        /// </summary>
         public EUserRole? Role { get; set; }
+        
+        /// <summary>
+        /// Trạng thái mới
+        /// </summary>
         public EUserStatus? Status { get; set; }
     }
 
+    /// <summary>
+    /// Request DTO cho việc thay đổi trạng thái Manager
+    /// </summary>
     public class ChangeManagerStatusRequest
     {
+        /// <summary>
+        /// Trạng thái mới (Active/Inactive/Suspended)
+        /// </summary>
         public EUserStatus Status { get; set; }
     }
 }
