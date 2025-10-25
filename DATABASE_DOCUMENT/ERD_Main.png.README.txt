@@ -1,0 +1,21 @@
+ERD for EV Co-Ownership System
+==============================
+
+[This is a placeholder for the ERD image.]
+
+To generate the ERD:
+- Use a tool like dbdiagram.io, dbdesigner.net, or draw.io
+- Import the schema from `master_schema.sql` or use the table/relationship list in `DATABASE_MASTER_DESIGN.md`
+- Ensure all PKs, FKs, and relationships are visually clear
+- Save/export the diagram as `ERD_Main.png` and place it in the project root
+
+**Diagram should include:**
+- All tables as boxes with fields
+- PKs and FKs clearly marked
+- Relationship lines/arrows (1-1, 1-N, N-N)
+- Composite keys and junction tables (e.g., VehicleCoOwner, FundUsageVote)
+- Color or grouping for major modules (User, Vehicle, Fund, Booking, etc.)
+
+---
+
+*Once the ERD is created, replace this file with the actual PNG image.*
