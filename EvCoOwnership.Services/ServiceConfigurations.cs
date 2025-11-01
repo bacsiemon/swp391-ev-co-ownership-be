@@ -1,5 +1,4 @@
 ﻿using EvCoOwnership.Helpers.Configuration;
-using EvCoOwnership.Services.BackgroundServices;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Services.Services;
 using Microsoft.Extensions.Configuration;
@@ -37,21 +36,15 @@ namespace EvCoOwnership.Services
             services.AddScoped<IMaintenanceService, MaintenanceService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
             services.AddScoped<IVnPayService, VnPayService>();
-            services.AddScoped<IBookingReminderService, BookingReminderService>();
             services.AddScoped<IOwnershipChangeService, OwnershipChangeService>();
             services.AddScoped<IUsageAnalyticsService, UsageAnalyticsService>();
-            services.AddScoped<IFairnessOptimizationService, FairnessOptimizationService>();
             services.AddScoped<ICheckInCheckOutService, CheckInCheckOutService>();
             services.AddScoped<IFundService, FundService>();
             services.AddScoped<IMaintenanceVoteService, MaintenanceVoteService>();
-            services.AddScoped<IVehicleUpgradeVoteService, VehicleUpgradeVoteService>();
-            services.AddScoped<IVehicleReportService, VehicleReportService>();
             services.AddScoped<IDisputeService, DisputeService>();
             services.AddScoped<IContractService, ContractService>();
-            services.AddScoped<IDepositService, DepositService>();
-
-            // Register background services
-            services.AddHostedService<BookingReminderBackgroundService>();
+            services.AddScoped<IGroupService, GroupService>();
+            services.AddScoped<IServiceService, ServiceService>();
         }
     }
 }
