@@ -292,3 +292,319 @@ ALTER TABLE notification_entities
 
 ALTER TABLE notification_entities 
 	ALTER COLUMN additional_data_json TYPE TEXT USING additional_data_json::TEXT;
+
+-- =============================================================================
+-- MANAGER ACCOUNT MANAGEMENT
+-- =============================================================================
+-- Views, Indexes, and Functions for Manager Account operations
+
+-- Create index for faster manager account queries
+CREATE INDEX idx_users_role_status ON users(role_enum, status_enum);
+CREATE INDEX idx_users_email_normalized ON users(normalized_email);
+CREATE INDEX idx_users_created_at ON users(created_at DESC);
+
+-- View for Manager Accounts (Admin and Staff)
+CREATE OR REPLACE VIEW v_manager_accounts AS
+SELECT 
+    id,
+    email,
+    normalized_email,
+    first_name,
+    last_name,
+    phone,
+    date_of_birth,
+    address,
+    profile_image_url,
+    role_enum,
+    status_enum,
+    created_at,
+    updated_at,
+    CASE 
+        WHEN role_enum = 1 THEN 'Staff'
+        WHEN role_enum = 2 THEN 'Admin'
+        ELSE 'Unknown'
+    END AS role_name,
+    CASE 
+        WHEN status_enum = 0 THEN 'Active'
+        WHEN status_enum = 1 THEN 'Inactive'
+        WHEN status_enum = 2 THEN 'Suspended'
+        ELSE 'Unknown'
+    END AS status_name
+FROM users
+WHERE role_enum IN (1, 2); -- Staff or Admin
+
+-- Function to get manager account statistics
+CREATE OR REPLACE FUNCTION get_manager_statistics()
+RETURNS TABLE (
+    total_managers BIGINT,
+    total_admins BIGINT,
+    total_staff BIGINT,
+    active_managers BIGINT,
+    inactive_managers BIGINT,
+    suspended_managers BIGINT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(*) FILTER (WHERE role_enum IN (1, 2)) AS total_managers,
+        COUNT(*) FILTER (WHERE role_enum = 2) AS total_admins,
+        COUNT(*) FILTER (WHERE role_enum = 1) AS total_staff,
+        COUNT(*) FILTER (WHERE role_enum IN (1, 2) AND status_enum = 0) AS active_managers,
+        COUNT(*) FILTER (WHERE role_enum IN (1, 2) AND status_enum = 1) AS inactive_managers,
+        COUNT(*) FILTER (WHERE role_enum IN (1, 2) AND status_enum = 2) AS suspended_managers
+    FROM users;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to search manager accounts
+CREATE OR REPLACE FUNCTION search_manager_accounts(
+    search_term TEXT DEFAULT NULL,
+    p_role_enum INTEGER DEFAULT NULL,
+    p_status_enum INTEGER DEFAULT NULL
+)
+RETURNS TABLE (
+    id INTEGER,
+    email VARCHAR(255),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    phone VARCHAR(20),
+    role_enum INTEGER,
+    status_enum INTEGER,
+    created_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.phone,
+        u.role_enum,
+        u.status_enum,
+        u.created_at
+    FROM users u
+    WHERE 
+        u.role_enum IN (1, 2)
+        AND (search_term IS NULL OR search_term = '' OR 
+             LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE LOWER('%' || search_term || '%') OR
+             LOWER(u.email) LIKE LOWER('%' || search_term || '%'))
+        AND (p_role_enum IS NULL OR u.role_enum = p_role_enum)
+        AND (p_status_enum IS NULL OR u.status_enum = p_status_enum)
+    ORDER BY u.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get manager account by ID with validation
+CREATE OR REPLACE FUNCTION get_manager_account_by_id(p_user_id INTEGER)
+RETURNS TABLE (
+    id INTEGER,
+    email VARCHAR(255),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    phone VARCHAR(20),
+    address TEXT,
+    date_of_birth DATE,
+    profile_image_url VARCHAR(500),
+    role_enum INTEGER,
+    status_enum INTEGER,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.phone,
+        u.address,
+        u.date_of_birth,
+        u.profile_image_url,
+        u.role_enum,
+        u.status_enum,
+        u.created_at,
+        u.updated_at
+    FROM users u
+    WHERE u.id = p_user_id
+        AND u.role_enum IN (1, 2);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to create manager account
+CREATE OR REPLACE FUNCTION create_manager_account(
+    p_email VARCHAR(255),
+    p_normalized_email VARCHAR(255),
+    p_password_hash VARCHAR(255),
+    p_password_salt VARCHAR(255),
+    p_first_name VARCHAR(100),
+    p_last_name VARCHAR(100),
+    p_phone VARCHAR(20),
+    p_address TEXT,
+    p_date_of_birth DATE,
+    p_role_enum INTEGER
+)
+RETURNS TABLE (
+    id INTEGER,
+    email VARCHAR(255),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    role_enum INTEGER,
+    status_enum INTEGER
+) AS $$
+DECLARE
+    new_id INTEGER;
+BEGIN
+    -- Insert new manager account
+    INSERT INTO users (
+        email, normalized_email, password_hash, password_salt,
+        first_name, last_name, phone, address, date_of_birth,
+        role_enum, status_enum, created_at, updated_at
+    ) VALUES (
+        p_email, p_normalized_email, p_password_hash, p_password_salt,
+        p_first_name, p_last_name, p_phone, p_address, p_date_of_birth,
+        p_role_enum, 0, NOW(), NOW()
+    )
+    RETURNING users.id INTO new_id;
+
+    -- Return created account
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role_enum,
+        u.status_enum
+    FROM users u
+    WHERE u.id = new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update manager account
+CREATE OR REPLACE FUNCTION update_manager_account(
+    p_user_id INTEGER,
+    p_first_name VARCHAR(100),
+    p_last_name VARCHAR(100),
+    p_phone VARCHAR(20),
+    p_address TEXT,
+    p_date_of_birth DATE,
+    p_role_enum INTEGER,
+    p_status_enum INTEGER
+)
+RETURNS TABLE (
+    id INTEGER,
+    email VARCHAR(255),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    role_enum INTEGER,
+    status_enum INTEGER,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    -- Update manager account
+    UPDATE users 
+    SET 
+        first_name = COALESCE(p_first_name, first_name),
+        last_name = COALESCE(p_last_name, last_name),
+        phone = COALESCE(p_phone, phone),
+        address = COALESCE(p_address, address),
+        date_of_birth = COALESCE(p_date_of_birth, date_of_birth),
+        role_enum = COALESCE(p_role_enum, role_enum),
+        status_enum = COALESCE(p_status_enum, status_enum),
+        updated_at = NOW()
+    WHERE id = p_user_id
+        AND role_enum IN (1, 2);
+
+    -- Return updated account
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role_enum,
+        u.status_enum,
+        u.updated_at
+    FROM users u
+    WHERE u.id = p_user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to change manager account status
+CREATE OR REPLACE FUNCTION change_manager_status(
+    p_user_id INTEGER,
+    p_status_enum INTEGER
+)
+RETURNS TABLE (
+    id INTEGER,
+    email VARCHAR(255),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    role_enum INTEGER,
+    status_enum INTEGER,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    -- Update status
+    UPDATE users 
+    SET 
+        status_enum = p_status_enum,
+        updated_at = NOW()
+    WHERE id = p_user_id
+        AND role_enum IN (1, 2);
+
+    -- Return updated account
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role_enum,
+        u.status_enum,
+        u.updated_at
+    FROM users u
+    WHERE u.id = p_user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check if email exists
+CREATE OR REPLACE FUNCTION check_email_exists(p_email VARCHAR(255))
+RETURNS BOOLEAN AS $$
+DECLARE
+    exists_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO exists_count
+    FROM users
+    WHERE normalized_email = UPPER(p_email);
+    
+    RETURN exists_count > 0;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically update normalized_email when email changes
+CREATE OR REPLACE FUNCTION normalize_email_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.normalized_email := UPPER(NEW.email);
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_normalize_email
+    BEFORE INSERT OR UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION normalize_email_trigger();
+
+-- Add comments to the functions
+COMMENT ON VIEW v_manager_accounts IS 'View of all manager accounts (Admin and Staff)';
+COMMENT ON FUNCTION get_manager_statistics() IS 'Get statistics about manager accounts';
+COMMENT ON FUNCTION search_manager_accounts(TEXT, INTEGER, INTEGER) IS 'Search manager accounts with filters';
+COMMENT ON FUNCTION get_manager_account_by_id(INTEGER) IS 'Get a specific manager account by ID';
+COMMENT ON FUNCTION create_manager_account IS 'Create a new manager account';
+COMMENT ON FUNCTION update_manager_account IS 'Update manager account information';
+COMMENT ON FUNCTION change_manager_status IS 'Change manager account status';
+COMMENT ON FUNCTION check_email_exists(VARCHAR) IS 'Check if an email already exists in the system';
