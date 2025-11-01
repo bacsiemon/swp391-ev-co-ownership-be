@@ -3,9 +3,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.DTOs.GroupDTOs;
+using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
+using EvCoOwnership.Repositories.UoW;
+using EvCoOwnership.Repositories.Models;
+using Microsoft.EntityFrameworkCore;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -21,6 +26,7 @@ namespace EvCoOwnership.API.Controllers
         private readonly IFundService _fundService;
         private readonly IMaintenanceVoteService _maintenanceVoteService;
         private readonly IVehicleService _vehicleService;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<GroupController> _logger;
 
         /// <summary>
@@ -30,18 +36,21 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="fundService">Fund management service</param>
         /// <param name="maintenanceVoteService">Maintenance voting service</param>
         /// <param name="vehicleService">Vehicle management service</param>
+        /// <param name="unitOfWork">Unit of work for database operations</param>
         /// <param name="logger">Logger instance</param>
         public GroupController(
             IGroupService groupService,
             IFundService fundService,
             IMaintenanceVoteService maintenanceVoteService,
             IVehicleService vehicleService,
+            IUnitOfWork unitOfWork,
             ILogger<GroupController> logger)
         {
             _groupService = groupService;
             _fundService = fundService;
             _maintenanceVoteService = maintenanceVoteService;
             _vehicleService = vehicleService;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -361,19 +370,51 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                // Mock implementation - replace with actual service call when available
-                var mockMembers = new List<GroupMemberDto>
+                // Get the vehicles associated with this group concept (using vehicleId as groupId)
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(groupId);
+                if (vehicle == null)
                 {
-                    new GroupMemberDto { Id = 1, GroupId = groupId, UserId = 1, Role = "Owner" },
-                    new GroupMemberDto { Id = 2, GroupId = groupId, UserId = 2, Role = "Member" },
-                    new GroupMemberDto { Id = 3, GroupId = groupId, UserId = 3, Role = "Member" }
-                };
+                    return NotFound(new BaseResponse<IEnumerable<GroupMemberDto>>
+                    {
+                        StatusCode = 404,
+                        Message = "Group (Vehicle) not found"
+                    });
+                }
+
+                // Get all co-owners for this vehicle
+                var vehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository.GetAllAsync();
+                var coOwnersForVehicle = vehicleCoOwners.Where(vco => vco.VehicleId == groupId).ToList();
+
+                // Get co-owner details and user information
+                var groupMembers = new List<GroupMemberDto>();
+
+                foreach (var vco in coOwnersForVehicle)
+                {
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(vco.CoOwnerId);
+                    if (coOwner != null)
+                    {
+                        var user = await _unitOfWork.UserRepository.GetByIdAsync(coOwner.UserId);
+                        if (user != null)
+                        {
+                            // Determine role based on ownership percentage or other criteria
+                            var role = vco.OwnershipPercentage >= 50 ? "Owner" : "Member";
+
+                            groupMembers.Add(new GroupMemberDto
+                            {
+                                Id = vco.CoOwnerId,
+                                GroupId = groupId,
+                                UserId = coOwner.UserId,
+                                Role = role
+                            });
+                        }
+                    }
+                }
 
                 var response = new BaseResponse<IEnumerable<GroupMemberDto>>
                 {
                     StatusCode = 200,
                     Message = "Group members retrieved successfully",
-                    Data = mockMembers
+                    Data = groupMembers
                 };
 
                 return Ok(response);
@@ -414,12 +455,12 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="401">Unauthorized access</response>
         /// <response code="403">Insufficient permissions to add members</response>
         [HttpPost("{groupId}/members")]
-        public async Task<IActionResult> AddMember(int groupId, [FromBody] object dto)
+        public async Task<IActionResult> AddMember(int groupId, [FromBody] AddMemberDto dto)
         {
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var currentUserId))
                 {
                     var unauthorizedResponse = new BaseResponse<GroupMemberDto>
                     {
@@ -429,20 +470,70 @@ namespace EvCoOwnership.API.Controllers
                     return Unauthorized(unauthorizedResponse);
                 }
 
-                // Mock implementation - replace with actual service call when available
-                var mockMember = new GroupMemberDto
+                // Check if vehicle (group) exists
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(groupId);
+                if (vehicle == null)
                 {
-                    Id = new Random().Next(1000, 9999),
+                    return NotFound(new BaseResponse<GroupMemberDto>
+                    {
+                        StatusCode = 404,
+                        Message = "Group (Vehicle) not found"
+                    });
+                }
+
+                // Check if user to be added exists and is a co-owner
+                var newCoOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(dto.UserId);
+                if (newCoOwner == null)
+                {
+                    return BadRequest(new BaseResponse<GroupMemberDto>
+                    {
+                        StatusCode = 400,
+                        Message = "User is not a registered co-owner"
+                    });
+                }
+
+                // Check if user is already a member of this group
+                var existingVehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository.GetAllAsync();
+                var existingMembership = existingVehicleCoOwners.Any(vco =>
+                    vco.VehicleId == groupId && vco.CoOwnerId == dto.UserId);
+
+                if (existingMembership)
+                {
+                    return BadRequest(new BaseResponse<GroupMemberDto>
+                    {
+                        StatusCode = 400,
+                        Message = "User is already a member of this group"
+                    });
+                }
+
+                // Create new VehicleCoOwner relationship
+                var vehicleCoOwner = new VehicleCoOwner
+                {
+                    VehicleId = groupId,
+                    CoOwnerId = dto.UserId,
+                    OwnershipPercentage = dto.OwnershipPercentage,
+                    InvestmentAmount = dto.InvestmentAmount,
+                    StatusEnum = EEContractStatus.Active,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.VehicleCoOwnerRepository.AddAsync(vehicleCoOwner);
+                await _unitOfWork.SaveChangesAsync();
+
+                var newMember = new GroupMemberDto
+                {
+                    Id = dto.UserId,
                     GroupId = groupId,
-                    UserId = new Random().Next(100, 999),
-                    Role = "Member"
+                    UserId = newCoOwner.UserId,
+                    Role = dto.Role
                 };
 
                 var response = new BaseResponse<GroupMemberDto>
                 {
                     StatusCode = 201,
                     Message = "Member added to group successfully",
-                    Data = mockMember
+                    Data = newMember
                 };
 
                 return StatusCode(201, response);
@@ -484,7 +575,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
                 {
                     var unauthorizedResponse = new BaseResponse<object>
                     {
@@ -494,7 +585,69 @@ namespace EvCoOwnership.API.Controllers
                     return Unauthorized(unauthorizedResponse);
                 }
 
-                // Mock implementation - replace with actual service call when available
+                // Check if group exists and get associated vehicle
+                var vehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository
+                    .GetByVehicleIdAsync(groupId);
+
+                if (!vehicleCoOwners.Any())
+                {
+                    var notFoundResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "Group not found"
+                    };
+                    return NotFound(notFoundResponse);
+                }
+
+                // Check if member to remove exists
+                var memberToRemove = vehicleCoOwners.FirstOrDefault(vco => vco.CoOwnerId == memberId);
+                if (memberToRemove == null)
+                {
+                    var notFoundResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "Member not found in this group"
+                    };
+                    return NotFound(notFoundResponse);
+                }
+
+                // Check if current user has permission to remove members (owner or high ownership percentage)
+                var currentUserCoOwner = vehicleCoOwners.FirstOrDefault(vco => vco.CoOwner.UserId == parsedUserId);
+                if (currentUserCoOwner == null || currentUserCoOwner.OwnershipPercentage < 50)
+                {
+                    var forbiddenResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 403,
+                        Message = "Insufficient permissions to remove members"
+                    };
+                    return StatusCode(403, forbiddenResponse);
+                }
+
+                // Can't remove self or if it would leave group empty
+                if (memberToRemove.CoOwnerId == currentUserCoOwner.CoOwnerId)
+                {
+                    var badRequestResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "Cannot remove yourself from the group"
+                    };
+                    return BadRequest(badRequestResponse);
+                }
+
+                if (vehicleCoOwners.Count <= 1)
+                {
+                    var badRequestResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "Cannot remove the last member from the group"
+                    };
+                    return BadRequest(badRequestResponse);
+                }
+
+                // Remove the member
+                _unitOfWork.VehicleCoOwnerRepository.Remove(memberToRemove);
+                await _unitOfWork.SaveChangesAsync();
+
                 var response = new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -538,12 +691,12 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="401">Unauthorized access</response>
         /// <response code="403">Insufficient permissions to update member roles</response>
         [HttpPut("{groupId}/members/{memberId}/role")]
-        public async Task<IActionResult> UpdateMemberRole(int groupId, int memberId, [FromBody] object dto)
+        public async Task<IActionResult> UpdateMemberRole(int groupId, int memberId, [FromBody] UpdateMemberRoleDto dto)
         {
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
                 {
                     var unauthorizedResponse = new BaseResponse<GroupMemberDto>
                     {
@@ -553,13 +706,63 @@ namespace EvCoOwnership.API.Controllers
                     return Unauthorized(unauthorizedResponse);
                 }
 
-                // Mock implementation - replace with actual service call when available
+                // Get group members
+                var vehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository
+                    .GetByVehicleIdAsync(groupId);
+
+                if (!vehicleCoOwners.Any())
+                {
+                    var notFoundResponse = new BaseResponse<GroupMemberDto>
+                    {
+                        StatusCode = 404,
+                        Message = "Group not found"
+                    };
+                    return NotFound(notFoundResponse);
+                }
+
+                // Find member to update
+                var memberToUpdate = vehicleCoOwners.FirstOrDefault(vco => vco.CoOwnerId == memberId);
+                if (memberToUpdate == null)
+                {
+                    var notFoundResponse = new BaseResponse<GroupMemberDto>
+                    {
+                        StatusCode = 404,
+                        Message = "Member not found in this group"
+                    };
+                    return NotFound(notFoundResponse);
+                }
+
+                // Check if current user has permission to update roles (owner or high ownership percentage)
+                var currentUserCoOwner = vehicleCoOwners.FirstOrDefault(vco => vco.CoOwner.UserId == parsedUserId);
+                if (currentUserCoOwner == null || currentUserCoOwner.OwnershipPercentage < 50)
+                {
+                    var forbiddenResponse = new BaseResponse<GroupMemberDto>
+                    {
+                        StatusCode = 403,
+                        Message = "Insufficient permissions to update member roles"
+                    };
+                    return StatusCode(403, forbiddenResponse);
+                }
+
+                // Update role and ownership percentage
+                if (dto.OwnershipPercentage.HasValue)
+                {
+                    memberToUpdate.OwnershipPercentage = dto.OwnershipPercentage.Value;
+                }
+
+                // Save changes
+                _unitOfWork.VehicleCoOwnerRepository.Update(memberToUpdate);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Get updated user info for response
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(memberToUpdate.CoOwnerId, "User");
+                
                 var updatedMember = new GroupMemberDto
                 {
-                    Id = memberId,
+                    Id = memberToUpdate.CoOwnerId,
                     GroupId = groupId,
-                    UserId = memberId,
-                    Role = "Admin"
+                    UserId = coOwner?.UserId ?? 0,
+                    Role = dto.Role
                 };
 
                 var response = new BaseResponse<GroupMemberDto>
@@ -824,7 +1027,7 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="409">Vehicle already exists</response>
         /// <response code="500">Internal server error</response>
         [HttpPost("{groupId}/vehicles")]
-        public async Task<IActionResult> CreateGroupVehicle(int groupId, [FromBody] object request)
+        public async Task<IActionResult> CreateGroupVehicle(int groupId, [FromBody] CreateVehicleDto request)
         {
             try
             {
@@ -839,13 +1042,70 @@ namespace EvCoOwnership.API.Controllers
                     return Unauthorized(unauthorizedResponse);
                 }
 
-                // Use vehicle service to create vehicle
-                // Note: In real implementation, ensure vehicle is associated with the group
+                // Check if user is part of the group (using groupId as vehicleId since they're the same in this context)
+                var existingGroupMember = await _unitOfWork.VehicleCoOwnerRepository
+                    .GetByVehicleIdAsync(groupId);
+
+                var currentUserCoOwner = existingGroupMember.FirstOrDefault(vco => vco.CoOwner.UserId == parsedUserId);
+                if (currentUserCoOwner == null)
+                {
+                    var forbiddenResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 403,
+                        Message = "You are not a member of this group"
+                    };
+                    return StatusCode(403, forbiddenResponse);
+                }
+
+                // Check if vehicle with this license plate already exists
+                var existingVehicle = await _unitOfWork.VehicleRepository
+                    .GetQueryable()
+                    .Where(v => v.LicensePlate == request.LicensePlate)
+                    .FirstOrDefaultAsync();
+
+                if (existingVehicle != null)
+                {
+                    var conflictResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 409,
+                        Message = "Vehicle with this license plate already exists"
+                    };
+                    return Conflict(conflictResponse);
+                }
+
+                // Create new vehicle
+                var newVehicle = new Vehicle
+                {
+                    Name = $"{request.Make} {request.Model}",
+                    Brand = request.Make,
+                    Model = request.Model,
+                    Year = request.Year,
+                    LicensePlate = request.LicensePlate,
+                    Vin = request.VinNumber,
+                    Color = request.Color,
+                    PurchasePrice = request.PurchasePrice,
+                    PurchaseDate = DateOnly.FromDateTime(DateTime.Now),
+                    Description = request.Description,
+                    StatusEnum = EVehicleStatus.Available,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = parsedUserId
+                };
+
+                var createdVehicle = await _unitOfWork.VehicleRepository.AddAsync(newVehicle);
+                await _unitOfWork.SaveChangesAsync();
+
                 var response = new BaseResponse<object>
                 {
                     StatusCode = 201,
                     Message = "Vehicle created successfully for group",
-                    Data = new { VehicleId = new Random().Next(1000, 9999), GroupId = groupId, CreatedAt = DateTime.UtcNow }
+                    Data = new { 
+                        VehicleId = createdVehicle.Id, 
+                        GroupId = groupId, 
+                        LicensePlate = createdVehicle.LicensePlate,
+                        Brand = createdVehicle.Brand,
+                        Model = createdVehicle.Model,
+                        CreatedAt = createdVehicle.CreatedAt 
+                    }
                 };
 
                 return StatusCode(201, response);
