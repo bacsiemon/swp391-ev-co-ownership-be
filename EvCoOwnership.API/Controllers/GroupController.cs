@@ -756,7 +756,7 @@ namespace EvCoOwnership.API.Controllers
 
                 // Get updated user info for response
                 var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(memberToUpdate.CoOwnerId, "User");
-                
+
                 var updatedMember = new GroupMemberDto
                 {
                     Id = memberToUpdate.CoOwnerId,
@@ -1098,13 +1098,14 @@ namespace EvCoOwnership.API.Controllers
                 {
                     StatusCode = 201,
                     Message = "Vehicle created successfully for group",
-                    Data = new { 
-                        VehicleId = createdVehicle.Id, 
-                        GroupId = groupId, 
+                    Data = new
+                    {
+                        VehicleId = createdVehicle.Id,
+                        GroupId = groupId,
                         LicensePlate = createdVehicle.LicensePlate,
                         Brand = createdVehicle.Brand,
                         Model = createdVehicle.Model,
-                        CreatedAt = createdVehicle.CreatedAt 
+                        CreatedAt = createdVehicle.CreatedAt
                     }
                 };
 

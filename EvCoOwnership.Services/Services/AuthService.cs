@@ -332,22 +332,79 @@ namespace EvCoOwnership.Services.Services
                     };
                 }
 
-                // Mock verification success
+                // Find user by first name and last name (for basic verification)
+                // In real implementation, this should be done with user ID from authentication token
+                var users = await _unitOfWork.UserRepository
+                    .GetQueryable()
+                    .Where(u => u.FirstName == request.FirstName && u.LastName == request.LastName)
+                    .ToListAsync();
+
+                if (!users.Any())
+                {
+                    return new BaseResponse
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND_BY_NAME"
+                    };
+                }
+
+                // If multiple users with same name, use the first one for this simplified verification
+                var user = users.First();
+
+                var coOwner = await _unitOfWork.CoOwnerRepository
+                    .GetQueryable()
+                    .Where(co => co.UserId == user.Id)
+                    .FirstOrDefaultAsync();
+
+                if (coOwner == null)
+                {
+                    // Create new CoOwner record
+                    coOwner = new CoOwner
+                    {
+                        UserId = user.Id,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.CoOwnerRepository.AddAsync(coOwner);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+                // Calculate expiry date based on issue date (typically 10 years for driving licenses)
+                var expiryDate = request.IssueDate.AddYears(10);
+                var currentDate = DateOnly.FromDateTime(DateTime.Today);
+                var isExpired = expiryDate < currentDate;
+
+                // Create DrivingLicense record
+                var newLicense = new DrivingLicense
+                {
+                    CoOwnerId = coOwner.UserId,
+                    LicenseNumber = request.LicenseNumber,
+                    IssuedBy = request.IssuedBy,
+                    IssueDate = request.IssueDate,
+                    ExpiryDate = expiryDate,
+                    VerificationStatus = isExpired ? EDrivingLicenseVerificationStatus.Expired : EDrivingLicenseVerificationStatus.Verified,
+                    CreatedAt = DateTime.UtcNow,
+                    VerifiedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.DrivingLicenseRepository.AddAsync(newLicense);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Create real verification response with database data
                 var verificationResponse = new VerifyLicenseResponse
                 {
-                    IsValid = true,
-                    Status = "VERIFIED",
-                    Message = "License verification successful",
+                    IsValid = !isExpired,
+                    Status = isExpired ? "EXPIRED" : "VERIFIED",
+                    Message = isExpired ? "License verification successful but license has expired" : "License verification successful",
                     VerifiedAt = DateTime.UtcNow,
                     LicenseDetails = new LicenseDetails
                     {
-                        LicenseNumber = request.LicenseNumber,
+                        LicenseNumber = newLicense.LicenseNumber,
                         HolderName = $"{request.FirstName} {request.LastName}",
-                        IssueDate = request.IssueDate,
-                        ExpiryDate = request.IssueDate.AddYears(10),
-                        IssuedBy = request.IssuedBy,
-                        Status = "ACTIVE",
-                        LicenseClass = "B"
+                        IssueDate = newLicense.IssueDate,
+                        ExpiryDate = newLicense.ExpiryDate,
+                        IssuedBy = newLicense.IssuedBy,
+                        Status = isExpired ? "EXPIRED" : "ACTIVE",
+                        LicenseClass = "B" // Default license class for standard vehicles
                     }
                 };
 
