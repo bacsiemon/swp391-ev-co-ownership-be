@@ -5,12 +5,15 @@ using EvCoOwnership.Repositories.DTOs.BookingDTOs;
 using EvCoOwnership.Repositories.DTOs.PaymentDTOs;
 using EvCoOwnership.Repositories.DTOs.UsageAnalyticsDTOs;
 using EvCoOwnership.Repositories.DTOs.ScheduleDTOs;
+using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
 using EvCoOwnership.DTOs.UserDTOs;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.UoW;
+using EvCoOwnership.Repositories.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -183,13 +186,52 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="403">Không có quyền truy cập</response>
         /// <response code="500">Lỗi server</response>
         [HttpPatch("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] object profileData)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock response vì service method cần specific DTO type
+                // Get user from database
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    });
+                }
+
+                // Update user properties if provided
+                if (!string.IsNullOrEmpty(request.FirstName))
+                    user.FirstName = request.FirstName;
+                
+                if (!string.IsNullOrEmpty(request.LastName))
+                    user.LastName = request.LastName;
+                
+                if (!string.IsNullOrEmpty(request.Phone))
+                    user.Phone = request.Phone;
+                
+                if (!string.IsNullOrEmpty(request.Address))
+                    user.Address = request.Address;
+                
+                if (request.DateOfBirth.HasValue)
+                    user.DateOfBirth = DateOnly.FromDateTime(request.DateOfBirth.Value);
+                
+                if (!string.IsNullOrEmpty(request.AvatarUrl))
+                    user.ProfileImageUrl = request.AvatarUrl;
+                
+                // Note: Bio field doesn't exist in User model, skip it
+                // if (!string.IsNullOrEmpty(request.Bio))
+                //     user.Bio = request.Bio;
+
+                user.UpdatedAt = DateTime.UtcNow;
+
+                // Save changes
+                _unitOfWork.UserRepository.Update(user);
+                await _unitOfWork.SaveChangesAsync();
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -197,7 +239,7 @@ namespace EvCoOwnership.API.Controllers
                     Data = new
                     {
                         UserId = userId,
-                        UpdatedAt = DateTime.UtcNow,
+                        UpdatedAt = user.UpdatedAt,
                         Message = "Profile updated successfully"
                     }
                 });
@@ -387,23 +429,92 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="403">Không có quyền truy cập</response>
         /// <response code="500">Lỗi server</response>
         [HttpPost("booking")]
-        public async Task<IActionResult> BookVehicle([FromBody] object bookingData)
+        public async Task<IActionResult> BookVehicle([FromBody] CreateBookingRequest request)
         {
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock response vì service method cần specific DTO type
+                // Get co-owner info
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(userId);
+                if (coOwner == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND"
+                    });
+                }
+
+                // Check vehicle exists and is available
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(request.VehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                if (vehicle.StatusEnum != EVehicleStatus.Available)
+                {
+                    return BadRequest(new BaseResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "VEHICLE_NOT_AVAILABLE"
+                    });
+                }
+
+                // Check for booking conflicts
+                var existingBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var conflictingBooking = existingBookings.Any(b => 
+                    b.VehicleId == request.VehicleId &&
+                    b.StatusEnum != EBookingStatus.Cancelled &&
+                    b.StatusEnum != EBookingStatus.Completed &&
+                    ((request.StartTime >= b.StartTime && request.StartTime < b.EndTime) ||
+                     (request.EndTime > b.StartTime && request.EndTime <= b.EndTime) ||
+                     (request.StartTime <= b.StartTime && request.EndTime >= b.EndTime)));
+
+                if (conflictingBooking)
+                {
+                    return BadRequest(new BaseResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "BOOKING_TIME_CONFLICT"
+                    });
+                }
+
+                // Create new booking
+                var booking = new Booking
+                {
+                    CoOwnerId = coOwner.UserId,
+                    VehicleId = request.VehicleId,
+                    StartTime = request.StartTime,
+                    EndTime = request.EndTime,
+                    Purpose = request.Purpose,
+                    StatusEnum = EBookingStatus.Pending,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.BookingRepository.AddAsync(booking);
+                await _unitOfWork.SaveChangesAsync();
+
                 return StatusCode(201, new BaseResponse<object>
                 {
                     StatusCode = 201,
                     Message = "BOOKING_CREATED_SUCCESS",
                     Data = new
                     {
-                        BookingId = new Random().Next(1000, 9999),
+                        BookingId = booking.Id,
                         UserId = userId,
-                        BookedAt = DateTime.UtcNow,
-                        Status = "Confirmed"
+                        VehicleId = request.VehicleId,
+                        StartTime = request.StartTime,
+                        EndTime = request.EndTime,
+                        Purpose = request.Purpose,
+                        Status = booking.StatusEnum.ToString(),
+                        BookedAt = booking.CreatedAt
                     }
                 });
             }
@@ -518,24 +629,54 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data - cần implement cost calculation service
+                // Get payments from database for this user
+                var payments = await _unitOfWork.PaymentRepository.GetAllAsync();
+                var userPayments = payments.Where(p => p.UserId == userId);
+
+                // Get maintenance costs
+                var maintenanceCosts = (await _unitOfWork.MaintenanceCostRepository.GetAllAsync()).AsQueryable();
+                
+                // Filter by date range if provided
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    userPayments = userPayments.Where(p => p.CreatedAt >= fromDate && p.CreatedAt <= toDate);
+                    maintenanceCosts = maintenanceCosts.Where(mc => mc.ServiceDate >= DateOnly.FromDateTime(fromDate.Value) && 
+                                                                   mc.ServiceDate <= DateOnly.FromDateTime(toDate.Value));
+                }
+
+                // Calculate totals
+                var totalPaid = userPayments.Where(p => p.StatusEnum == EPaymentStatus.Completed).Sum(p => p.Amount);
+                var totalDue = maintenanceCosts.Sum(mc => mc.Cost);
+                var remainingBalance = totalDue - totalPaid;
+
+                // Group by month for breakdown
+                var monthlyBreakdown = userPayments
+                    .GroupBy(p => new { p.CreatedAt?.Year, p.CreatedAt?.Month })
+                    .Select(g => new
+                    {
+                        Month = $"{g.Key.Month:D2}/{g.Key.Year}",
+                        Amount = g.Sum(p => p.Amount),
+                        Status = g.All(p => p.StatusEnum == EPaymentStatus.Completed) ? "Paid" : "Pending"
+                    })
+                    .ToArray();
+
+                // Calculate categories based on maintenance types
+                var maintenanceAmount = maintenanceCosts.Where(mc => mc.MaintenanceTypeEnum == EMaintenanceType.Routine).Sum(mc => mc.Cost);
+                var repairAmount = maintenanceCosts.Where(mc => mc.MaintenanceTypeEnum == EMaintenanceType.Repair).Sum(mc => mc.Cost);
+
                 var costs = new
                 {
                     UserId = userId,
-                    TotalDue = 1500000, // VND
-                    PaidAmount = 1200000,
-                    RemainingBalance = 300000,
-                    MonthlyBreakdown = new[]
-                    {
-                        new { Month = "October 2025", Amount = 500000, Status = "Paid" },
-                        new { Month = "November 2025", Amount = 300000, Status = "Pending" }
-                    },
+                    TotalDue = totalDue,
+                    PaidAmount = totalPaid,
+                    RemainingBalance = remainingBalance,
+                    MonthlyBreakdown = monthlyBreakdown,
                     Categories = new
                     {
-                        Maintenance = 200000,
-                        Insurance = 100000,
-                        Fuel = 150000,
-                        Depreciation = 350000
+                        Maintenance = maintenanceAmount,
+                        Repairs = repairAmount,
+                        Insurance = 0, // Can be calculated from specific cost categories
+                        Other = totalDue - maintenanceAmount - repairAmount
                     }
                 };
 
@@ -579,23 +720,58 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="403">Không có quyền truy cập</response>
         /// <response code="500">Lỗi server</response>
         [HttpPost("payment")]
-        public async Task<IActionResult> MakePayment([FromBody] object paymentData)
+        public async Task<IActionResult> MakePayment([FromBody] CreatePaymentRequest request)
         {
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock response vì service method signature khác
+                // Validate user exists
+                var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    });
+                }
+
+                // Create new payment record
+                var payment = new Payment
+                {
+                    UserId = userId,
+                    Amount = request.Amount,
+                    PaymentGateway = request.PaymentGateway.ToString(),
+                    StatusEnum = EPaymentStatus.Pending,
+                    FundAdditionId = request.FundAdditionId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.PaymentRepository.AddAsync(payment);
+                await _unitOfWork.SaveChangesAsync();
+
+                // For real implementation, you would integrate with payment gateway here
+                // For now, simulate immediate success
+                payment.StatusEnum = EPaymentStatus.Completed;
+                payment.PaidAt = DateTime.UtcNow;
+
+                _unitOfWork.PaymentRepository.Update(payment);
+                await _unitOfWork.SaveChangesAsync();
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "PAYMENT_PROCESSED_SUCCESS",
                     Data = new
                     {
-                        PaymentId = new Random().Next(1000, 9999),
+                        PaymentId = payment.Id,
                         UserId = userId,
-                        ProcessedAt = DateTime.UtcNow,
-                        Status = "Completed"
+                        Amount = payment.Amount,
+                        PaymentGateway = payment.PaymentGateway,
+                        Status = payment.StatusEnum.ToString(),
+                        PaidAt = payment.PaidAt,
+                        CreatedAt = payment.CreatedAt
                     }
                 });
             }
@@ -630,28 +806,59 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data
+                // Get co-owner from database
+                var coOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
+                var currentCoOwner = coOwners.FirstOrDefault(co => co.UserId == userId);
+                
+                if (currentCoOwner == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND"
+                    });
+                }
+
+                // Get users and group information from database
+                var users = await _unitOfWork.UserRepository.GetAllAsync();
+                var coOwnersInGroup = coOwners.ToList();
+                
+                var members = coOwnersInGroup.Select(co => new
+                {
+                    Id = co.UserId,
+                    Name = users.FirstOrDefault(u => u.Id == co.UserId)?.FirstName + " " + 
+                           users.FirstOrDefault(u => u.Id == co.UserId)?.LastName,
+                    Role = co.UserId == userId ? "Member" : "Member", // You can enhance this based on your group role system
+                    SharePercentage = 100 / coOwnersInGroup.Count // Equal shares for now
+                }).ToArray();
+
+                // Get vehicles from database
+                var vehicles = await _unitOfWork.VehicleRepository.GetAllAsync();
+                var vehicleList = vehicles.Select(v => new
+                {
+                    Id = v.Id,
+                    Model = $"{v.Brand} {v.Model}",
+                    Status = v.StatusEnum?.ToString() ?? "Unknown"
+                }).ToArray();
+
+                // Get fund information
+                var funds = await _unitOfWork.FundRepository.GetAllAsync();
+                var groupFund = funds.FirstOrDefault();
+                
+                var fundInfo = new
+                {
+                    TotalAmount = groupFund?.CurrentBalance ?? 0,
+                    AvailableAmount = groupFund?.CurrentBalance ?? 0,
+                    PendingExpenses = 0 // Calculate from pending fund usages
+                };
+
                 var group = new
                 {
                     Id = 1,
-                    Name = "EV Owners Group Alpha",
-                    Members = new[]
-                    {
-                        new { Id = userId, Name = "Current User", Role = "Member", SharePercentage = 25 },
-                        new { Id = 2, Name = "John Smith", Role = "Leader", SharePercentage = 40 },
-                        new { Id = 3, Name = "Jane Doe", Role = "Member", SharePercentage = 35 }
-                    },
-                    Vehicles = new[]
-                    {
-                        new { Id = 1, Model = "Tesla Model 3", Status = "Available" },
-                        new { Id = 2, Model = "BMW i3", Status = "In Use" }
-                    },
-                    Fund = new
-                    {
-                        TotalAmount = 50000000, // VND
-                        AvailableAmount = 35000000,
-                        PendingExpenses = 15000000
-                    }
+                    Name = "EV Owners Group", // You can enhance this to get actual group name
+                    Members = members,
+                    Vehicles = vehicleList,
+                    Fund = fundInfo
                 };
 
                 return Ok(new BaseResponse<object>
@@ -838,22 +1045,62 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data
+                // Get co-owner info
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(userId);
+                if (coOwner == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND"
+                    });
+                }
+
+                // Get all funds (assuming co-owner is part of a group with shared funds)
+                var funds = await _unitOfWork.FundRepository.GetAllAsync();
+                var groupFunds = funds.ToList();
+
+                // Calculate total amounts
+                var totalAmount = groupFunds.Sum(f => f.CurrentBalance ?? 0);
+                var availableAmount = totalAmount; // All funds are available since no status filtering
+
+                // Get fund additions for monthly contributions
+                var fundAdditions = await _unitOfWork.FundAdditionRepository.GetAllAsync();
+                var monthlyContributions = fundAdditions
+                    .Where(fa => fa.CreatedAt.HasValue && fa.CreatedAt.Value >= DateTime.UtcNow.AddMonths(-6))
+                    .GroupBy(fa => new { Year = fa.CreatedAt!.Value.Year, Month = fa.CreatedAt!.Value.Month })
+                    .Select(g => new
+                    {
+                        Month = $"{new DateTime(g.Key.Year, g.Key.Month, 1):MMMM yyyy}",
+                        Amount = g.Sum(fa => fa.Amount),
+                        Status = "Collected"
+                    })
+                    .OrderByDescending(x => x.Month)
+                    .Take(6)
+                    .ToArray();
+
+                // Get recent payments as transactions
+                var payments = await _unitOfWork.PaymentRepository.GetAllAsync();
+                var recentTransactions = payments
+                    .Where(p => p.CreatedAt.HasValue && p.CreatedAt.Value >= DateTime.UtcNow.AddDays(-30))
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(10)
+                    .Select(p => new
+                    {
+                        Date = p.CreatedAt,
+                        Description = $"Payment - {p.StatusEnum}",
+                        Amount = p.Amount,
+                        Type = "Income" // Payments are typically income to the fund
+                    })
+                    .ToArray();
+
                 var fund = new
                 {
-                    TotalAmount = 50000000, // VND
-                    AvailableAmount = 35000000,
-                    PendingExpenses = 15000000,
-                    MonthlyContributions = new[]
-                    {
-                        new { Month = "October 2025", Amount = 5000000, Status = "Collected" },
-                        new { Month = "November 2025", Amount = 5000000, Status = "Pending" }
-                    },
-                    RecentTransactions = new[]
-                    {
-                        new { Date = DateTime.UtcNow.AddDays(-1), Description = "Vehicle maintenance", Amount = -800000, Type = "Expense" },
-                        new { Date = DateTime.UtcNow.AddDays(-7), Description = "Monthly contribution", Amount = 5000000, Type = "Income" }
-                    }
+                    TotalAmount = totalAmount,
+                    AvailableAmount = availableAmount,
+                    PendingExpenses = totalAmount - availableAmount, // Difference as pending
+                    MonthlyContributions = monthlyContributions,
+                    RecentTransactions = recentTransactions
                 };
 
                 return Ok(new BaseResponse<object>
@@ -893,35 +1140,81 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data vì service method chưa tồn tại
+                // Get bookings from database
+                var bookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var userBookings = bookings.Where(b => b.CoOwnerId != null);
+                
+                // Get co-owner to match user (note: CoOwner uses UserId as primary key)
+                var coOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
+                var currentCoOwner = coOwners.FirstOrDefault(co => co.UserId == userId);
+                
+                if (currentCoOwner != null)
+                {
+                    userBookings = userBookings.Where(b => b.CoOwnerId == currentCoOwner.UserId);
+                }
+
+                // Filter by date range if provided
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    userBookings = userBookings.Where(b => b.CreatedAt >= fromDate && b.CreatedAt <= toDate);
+                }
+
+                // Calculate usage statistics
+                var totalBookings = userBookings.Count();
+                var completedBookings = userBookings.Where(b => b.StatusEnum == EBookingStatus.Completed);
+                
+                // Calculate total hours based on StartTime and EndTime
+                var totalHours = completedBookings
+                    .Sum(b => (b.EndTime - b.StartTime).TotalHours);
+
+                // For distance, we'll need to calculate from checkin/checkout or use TotalCost as proxy
+                var totalCost = completedBookings.Sum(b => b.TotalCost ?? 0);
+                var estimatedDistance = (double)(totalCost / 1000); // Rough estimate: 1000 VND per km
+
+                // Get payments for cost analysis
+                var payments = await _unitOfWork.PaymentRepository.GetAllAsync();
+                var userPayments = payments.Where(p => p.UserId == userId);
+                
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    userPayments = userPayments.Where(p => p.CreatedAt >= fromDate && p.CreatedAt <= toDate);
+                }
+
+                var totalPaymentAmount = userPayments.Sum(p => p.Amount);
+                var monthlyAverage = userPayments.Any() ? totalPaymentAmount / Math.Max(1, userPayments.GroupBy(p => new { p.CreatedAt?.Year, p.CreatedAt?.Month }).Count()) : 0;
+                var costPerKm = estimatedDistance > 0 ? (double)(totalPaymentAmount / (decimal)estimatedDistance) : 0;
+
+                // Get peak usage times from bookings
+                var peakUsageTimes = userBookings
+                    .GroupBy(b => b.StartTime.Hour)
+                    .Select(g => new { Hour = g.Key, Count = g.Count() })
+                    .OrderByDescending(x => x.Count)
+                    .Take(5)
+                    .ToArray();
+
                 var analytics = new
                 {
                     UserId = userId,
                     UsageStats = new
                     {
-                        TotalBookings = 15,
-                        TotalHours = 120,
-                        TotalDistance = 2500, // km
-                        AverageRating = 4.8
+                        TotalBookings = totalBookings,
+                        TotalHours = Math.Round(totalHours, 1),
+                        TotalDistance = Math.Round(estimatedDistance, 1),
+                        AverageRating = 4.5 // Could be calculated from actual ratings
                     },
                     CostAnalysis = new
                     {
-                        MonthlyAverage = 800000, // VND
-                        CostPerKm = 320, // VND
-                        SavingsVsOwnership = 2000000 // VND per month
+                        MonthlyAverage = Math.Round(monthlyAverage, 0),
+                        CostPerKm = Math.Round(costPerKm, 0),
+                        SavingsVsOwnership = Math.Round(monthlyAverage * 0.3m, 0) // Estimated 30% savings
                     },
                     Recommendations = new[]
                     {
-                        "Consider booking during off-peak hours for better rates",
-                        "Your usage pattern suggests upgrading to premium membership",
-                        "You could save 15% by planning bookings in advance"
+                        totalBookings > 10 ? "You're an active user! Consider premium membership." : "Try booking more frequently for better rates",
+                        peakUsageTimes.Any() && peakUsageTimes.First().Hour >= 17 ? "Consider booking during off-peak hours for better rates" : "Great timing on your bookings!",
+                        estimatedDistance > 1000 ? "You could save more with longer booking periods" : "Short trips are cost-effective with your current pattern"
                     },
-                    PeakUsageTimes = new[]
-                    {
-                        new { Hour = 9, Count = 8 },
-                        new { Hour = 17, Count = 12 },
-                        new { Hour = 19, Count = 6 }
-                    }
+                    PeakUsageTimes = peakUsageTimes
                 };
 
                 return Ok(new BaseResponse<object>
@@ -2417,7 +2710,7 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="400">Validation error. Possible messages: CURRENT_PASSWORD_INCORRECT, PASSWORD_TOO_WEAK</response>
         /// <response code="404">User not found. Message: USER_NOT_FOUND</response>
         [HttpPut("my-profile/change-password")]
-        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        public async Task<IActionResult> ChangePassword([FromBody] EvCoOwnership.DTOs.UserDTOs.ChangePasswordRequest request)
         {
             try
             {

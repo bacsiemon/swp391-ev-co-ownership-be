@@ -2198,7 +2198,7 @@ namespace EvCoOwnership.API.Controllers
                     VerifiedAt = license.VerifiedAt.Value
                 };
 
-                _logger.LogInformation("License {LicenseId} rejected by staff user {StaffUserId} with reason: {RejectReason}", 
+                _logger.LogInformation("License {LicenseId} rejected by staff user {StaffUserId} with reason: {RejectReason}",
                     request.LicenseId, staffUserId, request.RejectReason);
 
                 return Ok(new BaseResponse<LicenseApprovalResponse>
