@@ -1,7 +1,6 @@
 using EvCoOwnership.API.Attributes;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Repositories.DTOs.FundDTOs;
-using EvCoOwnership.Repositories.DTOs.OwnershipDTOs;
 using EvCoOwnership.Repositories.DTOs.BookingDTOs;
 using EvCoOwnership.Repositories.DTOs.PaymentDTOs;
 using EvCoOwnership.Repositories.DTOs.UsageAnalyticsDTOs;
@@ -11,6 +10,7 @@ using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using EvCoOwnership.Helpers.BaseClasses;
+using EvCoOwnership.Repositories.UoW;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -29,8 +29,9 @@ namespace EvCoOwnership.API.Controllers
         private readonly IGroupService _groupService;
         private readonly IUsageAnalyticsService _analyticsService;
         private readonly IFundService _fundService;
-        private readonly IOwnershipChangeService _ownershipService;
+        // private readonly IOwnershipChangeService _ownershipService;
         private readonly IScheduleService _scheduleService;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CoOwnerController> _logger;
 
         /// <summary>
@@ -43,8 +44,8 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="groupService">Group service</param>
         /// <param name="analyticsService">Analytics service</param>
         /// <param name="fundService">Fund service for managing group funds</param>
-        /// <param name="ownershipService">Ownership service for managing ownership changes</param>
         /// <param name="scheduleService">Schedule service for managing vehicle schedules</param>
+        /// <param name="unitOfWork">Unit of work for database operations</param>
         /// <param name="logger">Logger</param>
         public CoOwnerController(
             ICoOwnerEligibilityService coOwnerEligibilityService,
@@ -54,8 +55,9 @@ namespace EvCoOwnership.API.Controllers
             IGroupService groupService,
             IUsageAnalyticsService analyticsService,
             IFundService fundService,
-            IOwnershipChangeService ownershipService,
+            // IOwnershipChangeService ownershipService,
             IScheduleService scheduleService,
+            IUnitOfWork unitOfWork,
             ILogger<CoOwnerController> logger)
         {
             _coOwnerEligibilityService = coOwnerEligibilityService;
@@ -65,8 +67,9 @@ namespace EvCoOwnership.API.Controllers
             _groupService = groupService;
             _analyticsService = analyticsService;
             _fundService = fundService;
-            _ownershipService = ownershipService;
+            // _ownershipService = ownershipService;
             _scheduleService = scheduleService;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -228,17 +231,43 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data - cần implement OwnershipService
+                // Get real ownership data from database
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                if (coOwner == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND"
+                    });
+                }
+
+                var vehicleOwnerships = await _unitOfWork.VehicleCoOwnerRepository.GetAllAsync();
+                var userVehicleOwnerships = vehicleOwnerships
+                    .Where(vco => vco.CoOwnerId == coOwner.UserId)
+                    .ToList();
+
+                var vehicles = await _unitOfWork.VehicleRepository.GetAllAsync();
+                var ownedVehicles = userVehicleOwnerships
+                    .Join(vehicles, vco => vco.VehicleId, v => v.Id, (vco, v) => new
+                    {
+                        Id = v.Id,
+                        Model = $"{v.Brand} {v.Model}",
+                        Share = vco.OwnershipPercentage,
+                        Status = vco.StatusEnum?.ToString() ?? "Unknown",
+                        InvestmentAmount = vco.InvestmentAmount
+                    })
+                    .ToArray();
+
+                var totalShares = userVehicleOwnerships.Sum(vco => vco.OwnershipPercentage);
+                var totalValue = userVehicleOwnerships.Sum(vco => vco.InvestmentAmount);
+
                 var ownership = new
                 {
                     UserId = userId,
-                    Vehicles = new[]
-                    {
-                        new { Id = 1, Model = "Tesla Model 3", Share = 25, Status = "Active" },
-                        new { Id = 2, Model = "BMW i3", Share = 50, Status = "Active" }
-                    },
-                    TotalShares = 75,
-                    TotalValue = 1500000000 // VND
+                    Vehicles = ownedVehicles,
+                    TotalShares = totalShares,
+                    TotalValue = totalValue
                 };
 
                 return Ok(new BaseResponse<object>
@@ -278,16 +307,42 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data
+                // Get real booking data from database
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                if (coOwner == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND"
+                    });
+                }
+
+                var allBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var userBookings = allBookings
+                    .Where(b => b.CoOwnerId == coOwner.UserId &&
+                               b.StartTime > DateTime.UtcNow) // Only upcoming bookings
+                    .OrderBy(b => b.StartTime)
+                    .ToList();
+
+                var vehicles = await _unitOfWork.VehicleRepository.GetAllAsync();
+                var bookingList = userBookings
+                    .Join(vehicles, b => b.VehicleId, v => v.Id, (b, v) => new
+                    {
+                        Id = b.Id,
+                        VehicleModel = $"{v.Brand} {v.Model}",
+                        StartTime = b.StartTime,
+                        EndTime = b.EndTime,
+                        Status = b.StatusEnum?.ToString() ?? "Unknown",
+                        Purpose = b.Purpose ?? "No purpose specified"
+                    })
+                    .ToArray();
+
                 var schedule = new
                 {
                     UserId = userId,
-                    Bookings = new[]
-                    {
-                        new { Id = 1, VehicleModel = "Tesla Model 3", StartTime = DateTime.UtcNow.AddHours(2), EndTime = DateTime.UtcNow.AddHours(6), Status = "Confirmed" },
-                        new { Id = 2, VehicleModel = "BMW i3", StartTime = DateTime.UtcNow.AddDays(1), EndTime = DateTime.UtcNow.AddDays(1).AddHours(4), Status = "Pending" }
-                    },
-                    TotalBookings = 2
+                    Bookings = bookingList,
+                    TotalBookings = bookingList.Length
                 };
 
                 return Ok(new BaseResponse<object>
@@ -381,16 +436,47 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Mock data vì service method chưa tồn tại
+                // Get real booking history from database
+                var coOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
+                if (coOwner == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "CO_OWNER_NOT_FOUND"
+                    });
+                }
+
+                var allBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var userBookings = allBookings
+                    .Where(b => b.CoOwnerId == coOwner.UserId)
+                    .OrderByDescending(b => b.StartTime)
+                    .ToList();
+
+                var totalCount = userBookings.Count;
+                var pagedBookings = userBookings
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var vehicles = await _unitOfWork.VehicleRepository.GetAllAsync();
+                var bookingHistoryItems = pagedBookings
+                    .Join(vehicles, b => b.VehicleId, v => v.Id, (b, v) => new
+                    {
+                        Id = b.Id,
+                        VehicleModel = $"{v.Brand} {v.Model}",
+                        StartTime = b.StartTime,
+                        EndTime = b.EndTime,
+                        Status = b.StatusEnum?.ToString() ?? "Unknown",
+                        Cost = b.TotalCost ?? 0,
+                        Purpose = b.Purpose ?? "No purpose specified"
+                    })
+                    .ToArray();
+
                 var history = new
                 {
-                    Items = new[]
-                    {
-                        new { Id = 1, VehicleModel = "Tesla Model 3", StartTime = DateTime.UtcNow.AddDays(-7), EndTime = DateTime.UtcNow.AddDays(-7).AddHours(4), Status = "Completed", Cost = 200000 },
-                        new { Id = 2, VehicleModel = "BMW i3", StartTime = DateTime.UtcNow.AddDays(-3), EndTime = DateTime.UtcNow.AddDays(-3).AddHours(6), Status = "Completed", Cost = 300000 },
-                        new { Id = 3, VehicleModel = "Tesla Model 3", StartTime = DateTime.UtcNow.AddHours(2), EndTime = DateTime.UtcNow.AddHours(6), Status = "Upcoming", Cost = 250000 }
-                    },
-                    TotalCount = 3,
+                    Items = bookingHistoryItems,
+                    TotalCount = totalCount,
                     PageIndex = pageIndex,
                     PageSize = pageSize
                 };
@@ -2437,207 +2523,11 @@ namespace EvCoOwnership.API.Controllers
 
         #endregion
 
-        #region Ownership Change Management
-
-        /// <summary>
-        /// CoOwner
-        /// </summary>
-        /// <remarks>
-        /// Proposes a change to vehicle ownership percentages
-        /// 
-        /// **CREATE OWNERSHIP CHANGE PROPOSAL**
-        /// 
-        /// **Sample Request:**
-        /// ```json
-        /// {
-        ///   "vehicleId": 5,
-        ///   "reason": "Adjusting ownership after new investment",
-        ///   "proposedChanges": [
-        ///     {
-        ///       "coOwnerId": 10,
-        ///       "proposedPercentage": 60.0
-        ///     }
-        ///   ]
-        /// }
-        /// ```
-        /// </remarks>
-        /// <response code="201">Ownership change request created successfully. Message: OWNERSHIP_CHANGE_REQUEST_CREATED_SUCCESSFULLY</response>
-        /// <response code="400">Bad request. Possible messages: INVALID_CO_OWNER_IDS_IN_PROPOSED_CHANGES</response>
-        /// <response code="403">Access denied. Message: ONLY_CO_OWNERS_CAN_PROPOSE_OWNERSHIP_CHANGES</response>
-        /// <response code="404">Vehicle not found. Message: VEHICLE_NOT_FOUND</response>
-        [HttpPost("ownership/propose")]
-        public async Task<IActionResult> ProposeOwnershipChange([FromBody] ProposeOwnershipChangeRequest request)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _ownershipService.ProposeOwnershipChangeAsync(request, userId);
-
-                return response.StatusCode switch
-                {
-                    201 => CreatedAtAction(nameof(GetOwnershipChangeRequest), new { requestId = response.Data }, response),
-                    400 => BadRequest(response),
-                    403 => StatusCode(403, response),
-                    404 => NotFound(response),
-                    409 => Conflict(response),
-                    _ => StatusCode(500, response)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in ProposeOwnershipChange");
-                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
-            }
-        }
-
-        /// <summary>
-        /// CoOwner
-        /// </summary>
-        /// <remarks>
-        /// Gets detailed information about an ownership change request
-        /// 
-        /// **Sample Request:**
-        /// ```
-        /// GET /api/coowner/ownership/request/123
-        /// ```
-        /// </remarks>
-        /// <response code="200">Request details retrieved successfully</response>
-        /// <response code="403">Access denied. Message: NOT_AUTHORIZED_TO_VIEW_THIS_REQUEST</response>
-        /// <response code="404">Request not found. Message: OWNERSHIP_CHANGE_REQUEST_NOT_FOUND</response>
-        [HttpGet("ownership/request/{requestId}")]
-        public async Task<IActionResult> GetOwnershipChangeRequest(int requestId)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _ownershipService.GetOwnershipChangeRequestAsync(requestId, userId);
-
-                return response.StatusCode switch
-                {
-                    200 => Ok(response),
-                    403 => StatusCode(403, response),
-                    404 => NotFound(response),
-                    _ => StatusCode(500, response)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetOwnershipChangeRequest for request {RequestId}", requestId);
-                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
-            }
-        }
-
-        /// <summary>
-        /// CoOwner
-        /// </summary>
-        /// <remarks>
-        /// Gets all pending ownership change requests requiring approval from current user
-        /// 
-        /// **Sample Request:**
-        /// ```
-        /// GET /api/coowner/ownership/pending-approvals
-        /// ```
-        /// </remarks>
-        /// <response code="200">Pending approvals retrieved. Message: FOUND_X_PENDING_APPROVALS</response>
-        [HttpGet("ownership/pending-approvals")]
-        public async Task<IActionResult> GetPendingApprovals()
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _ownershipService.GetPendingApprovalsAsync(userId);
-
-                return response.StatusCode switch
-                {
-                    200 => Ok(response),
-                    _ => StatusCode(500, response)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetPendingApprovals");
-                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
-            }
-        }
-
-        /// <summary>
-        /// CoOwner
-        /// </summary>
-        /// <remarks>
-        /// Approves or rejects an ownership change request
-        /// 
-        /// **Sample Request (Approve):**
-        /// ```json
-        /// {
-        ///   "approve": true,
-        ///   "comments": "I agree with this ownership adjustment"
-        /// }
-        /// ```
-        /// </remarks>
-        /// <response code="200">Decision recorded successfully</response>
-        /// <response code="400">Bad request. Possible messages: REQUEST_ALREADY_APPROVED</response>
-        /// <response code="403">Access denied. Message: NOT_AUTHORIZED_TO_APPROVE_THIS_REQUEST</response>
-        /// <response code="404">Request not found. Message: OWNERSHIP_CHANGE_REQUEST_NOT_FOUND</response>
-        [HttpPost("ownership/request/{requestId}/respond")]
-        public async Task<IActionResult> ApproveOrRejectOwnershipChange(
-            int requestId,
-            [FromBody] ApproveOwnershipChangeRequest request)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _ownershipService.ApproveOrRejectOwnershipChangeAsync(requestId, request, userId);
-
-                return response.StatusCode switch
-                {
-                    200 => Ok(response),
-                    400 => BadRequest(response),
-                    403 => StatusCode(403, response),
-                    404 => NotFound(response),
-                    _ => StatusCode(500, response)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in ApproveOrRejectOwnershipChange for request {RequestId}", requestId);
-                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
-            }
-        }
-
-        /// <summary>
-        /// CoOwner
-        /// </summary>
-        /// <remarks>
-        /// Gets all ownership change requests for current user
-        /// 
-        /// **Sample Request:**
-        /// ```
-        /// GET /api/coowner/ownership/my-requests?includeCompleted=false
-        /// ```
-        /// </remarks>
-        /// <response code="200">Ownership change requests retrieved successfully</response>
-        [HttpGet("ownership/my-requests")]
-        public async Task<IActionResult> GetMyOwnershipChangeRequests([FromQuery] bool includeCompleted = false)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _ownershipService.GetUserOwnershipChangeRequestsAsync(userId, includeCompleted);
-
-                return response.StatusCode switch
-                {
-                    200 => Ok(response),
-                    _ => StatusCode(500, response)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetMyOwnershipChangeRequests");
-                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
-            }
-        }
-
-        #endregion
+        /*
+        // REMOVED: Ownership Change Management section
+        // All ownership change related endpoints have been removed
+        // due to missing OwnershipChangeService and related DTOs
+        */
 
         #region Schedule Management
 

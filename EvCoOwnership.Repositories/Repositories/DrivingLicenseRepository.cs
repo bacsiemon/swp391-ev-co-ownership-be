@@ -15,6 +15,7 @@ namespace EvCoOwnership.Repositories.Repositories
         public async Task<DrivingLicense?> GetByLicenseNumberAsync(string licenseNumber)
         {
             return await _context.DrivingLicenses
+                .Include(dl => dl.VerifiedByUser)
                 .FirstOrDefaultAsync(dl => dl.LicenseNumber == licenseNumber);
         }
 
@@ -23,6 +24,7 @@ namespace EvCoOwnership.Repositories.Repositories
             return await _context.DrivingLicenses
                 .Include(dl => dl.CoOwner)
                 .ThenInclude(co => co.User)
+                .Include(dl => dl.VerifiedByUser)
                 .FirstOrDefaultAsync(dl => dl.LicenseNumber == licenseNumber);
         }
 
@@ -58,7 +60,20 @@ namespace EvCoOwnership.Repositories.Repositories
             return await _context.DrivingLicenses
                 .Include(dl => dl.CoOwner)
                 .ThenInclude(co => co.User)
+                .Include(dl => dl.VerifiedByUser)
                 .FirstOrDefaultAsync(dl => dl.CoOwner.UserId == userId);
+        }
+
+        /// <summary>
+        /// Get license by ID with all related entities for admin operations
+        /// </summary>
+        public async Task<DrivingLicense?> GetByIdWithDetailsAsync(int licenseId)
+        {
+            return await _context.DrivingLicenses
+                .Include(dl => dl.CoOwner)
+                .ThenInclude(co => co.User)
+                .Include(dl => dl.VerifiedByUser)
+                .FirstOrDefaultAsync(dl => dl.Id == licenseId);
         }
     }
 }

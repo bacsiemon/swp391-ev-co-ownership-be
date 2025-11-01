@@ -58,24 +58,7 @@ public partial class EvCoOwnershipDbContext : DbContext
 
     public virtual DbSet<VehicleStation> VehicleStations { get; set; }
 
-    public virtual DbSet<VehicleVerificationHistory> VehicleVerificationHistories { get; set; }
-
     public virtual DbSet<VehicleUsageRecord> VehicleUsageRecords { get; set; }
-
-    // Booking Reminder tables
-    public virtual DbSet<UserReminderPreference> UserReminderPreferences { get; set; }
-
-    public virtual DbSet<BookingReminderLog> BookingReminderLogs { get; set; }
-
-    // Ownership Change tables
-    public virtual DbSet<OwnershipChangeRequest> OwnershipChangeRequests { get; set; }
-
-    public virtual DbSet<OwnershipChangeDetail> OwnershipChangeDetails { get; set; }
-
-    public virtual DbSet<OwnershipChangeApproval> OwnershipChangeApprovals { get; set; }
-
-    // Ownership History table
-    public virtual DbSet<OwnershipHistory> OwnershipHistories { get; set; }
 
     // Vehicle Upgrade Voting tables
     public virtual DbSet<VehicleUpgradeProposal> VehicleUpgradeProposals { get; set; }
@@ -840,6 +823,7 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        /*
         modelBuilder.Entity<VehicleVerificationHistory>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("vehicle_verification_history_pkey");
@@ -869,7 +853,9 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasForeignKey(d => d.VehicleId)
                 .HasConstraintName("vehicle_verification_history_vehicle_id_fkey");
         });
+        */
 
+        /*
         // Configure UserReminderPreference
         modelBuilder.Entity<UserReminderPreference>(entity =>
         {
@@ -1059,6 +1045,7 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasIndex(e => new { e.UserId, e.ApprovalStatusEnum });
         });
 
+        /*
         // Ownership History configuration
         modelBuilder.Entity<OwnershipHistory>(entity =>
         {
@@ -1131,6 +1118,7 @@ public partial class EvCoOwnershipDbContext : DbContext
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
         });
+        */
 
         ConfigureDateTimeConversions(modelBuilder);
         OnModelCreatingPartial(modelBuilder);

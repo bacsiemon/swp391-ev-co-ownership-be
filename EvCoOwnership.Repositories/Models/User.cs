@@ -54,7 +54,7 @@ public partial class User
 
     public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
 
-    public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
+    // public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
 
     public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 }

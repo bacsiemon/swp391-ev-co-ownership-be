@@ -2,6 +2,7 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Models;
 
@@ -21,9 +22,31 @@ public partial class DrivingLicense
 
     public string LicenseImageUrl { get; set; }
 
+    /// <summary>
+    /// Verification status of the driving license
+    /// </summary>
+    public EDrivingLicenseVerificationStatus VerificationStatus { get; set; } = EDrivingLicenseVerificationStatus.Pending;
+
+    /// <summary>
+    /// Reason for rejection if the license is rejected
+    /// </summary>
+    public string RejectReason { get; set; }
+
+    /// <summary>
+    /// User ID of the admin/staff who approved/rejected the license
+    /// </summary>
+    public int? VerifiedByUserId { get; set; }
+
+    /// <summary>
+    /// Date and time when the license was verified (approved/rejected)
+    /// </summary>
+    public DateTime? VerifiedAt { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
     public virtual CoOwner CoOwner { get; set; }
+
+    public virtual User VerifiedByUser { get; set; }
 }

@@ -36,7 +36,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IMaintenanceService, MaintenanceService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
             services.AddScoped<IVnPayService, VnPayService>();
-            services.AddScoped<IOwnershipChangeService, OwnershipChangeService>();
+            // services.AddScoped<IOwnershipChangeService, OwnershipChangeService>();
             services.AddScoped<IUsageAnalyticsService, UsageAnalyticsService>();
             services.AddScoped<ICheckInCheckOutService, CheckInCheckOutService>();
             services.AddScoped<IFundService, FundService>();

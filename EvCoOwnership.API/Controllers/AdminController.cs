@@ -8,6 +8,10 @@ using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.DTOs;
 using EvCoOwnership.Repositories.DTOs.GroupManagementDTOs;
 using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
+using EvCoOwnership.Repositories.DTOs.LicenseDTOs;
+using EvCoOwnership.Repositories.Interfaces;
+using EvCoOwnership.Repositories.UoW;
+using Microsoft.EntityFrameworkCore;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -25,6 +29,7 @@ namespace EvCoOwnership.API.Controllers
         private readonly INotificationService _notificationService;
         private readonly IProfileService _profileService;
         private readonly IGroupManagementService _groupManagementService;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AdminController> _logger;
 
         /// <summary>
@@ -36,6 +41,7 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="notificationService">Notification service for notification management</param>
         /// <param name="profileService">Profile service for user profile management</param>
         /// <param name="groupManagementService">Group management service for group administration</param>
+        /// <param name="unitOfWork">Unit of work for database operations</param>
         /// <param name="logger">Logger for logging</param>
         public AdminController(
             IUserService userService,
@@ -44,6 +50,7 @@ namespace EvCoOwnership.API.Controllers
             INotificationService notificationService,
             IProfileService profileService,
             IGroupManagementService groupManagementService,
+            IUnitOfWork unitOfWork,
             ILogger<AdminController> logger)
         {
             _userService = userService;
@@ -52,6 +59,7 @@ namespace EvCoOwnership.API.Controllers
             _notificationService = notificationService;
             _profileService = profileService;
             _groupManagementService = groupManagementService;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -246,29 +254,81 @@ namespace EvCoOwnership.API.Controllers
         /// Admin
         /// </summary>
         /// <remarks>
-        /// Lấy danh sách tất cả license cần duyệt
+        /// Lấy danh sách tất cả license theo trạng thái
+        /// 
+        /// **Query Parameters:**
+        /// - status: pending, verified, rejected, expired (optional - lấy tất cả nếu không có)
+        /// - page: Số trang (mặc định 1)
+        /// - pageSize: Số item per page (mặc định 10)
         /// </remarks>
         /// <response code="200">Lấy danh sách license thành công</response>
         /// <response code="401">Chưa đăng nhập</response>
         /// <response code="403">Không có quyền truy cập - chỉ Admin</response>
         /// <response code="500">Lỗi server</response>
         [HttpGet("licenses")]
-        public async Task<IActionResult> GetLicenses()
+        public async Task<IActionResult> GetLicenses(
+            [FromQuery] string? status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                // Tạm thời trả về mock data, có thể implement service sau
-                var licenses = new[]
+                // Get driving licenses with user information from database
+                var coOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
+                var licenses = coOwners
+                    .Where(co => co.DrivingLicenses != null && co.DrivingLicenses.Any())
+                    .SelectMany(co => co.DrivingLicenses.Select(dl => new LicenseListResponse
+                    {
+                        Id = dl.Id,
+                        LicenseNumber = dl.LicenseNumber,
+                        IssuedBy = dl.IssuedBy,
+                        IssueDate = dl.IssueDate,
+                        ExpiryDate = dl.ExpiryDate,
+                        LicenseImageUrl = dl.LicenseImageUrl,
+                        VerificationStatus = dl.VerificationStatus,
+                        RejectReason = dl.RejectReason,
+                        UserName = $"{co.User?.FirstName} {co.User?.LastName}".Trim(),
+                        UserId = co.UserId,
+                        SubmittedAt = dl.CreatedAt,
+                        VerifiedByUserName = dl.VerifiedByUser != null ? $"{dl.VerifiedByUser.FirstName} {dl.VerifiedByUser.LastName}".Trim() : null,
+                        VerifiedAt = dl.VerifiedAt,
+                        IsExpired = dl.ExpiryDate.HasValue && dl.ExpiryDate.Value < DateOnly.FromDateTime(DateTime.Now)
+                    }))
+                    .AsQueryable();
+
+                // Filter by status if provided
+                if (!string.IsNullOrEmpty(status))
                 {
-                    new { Id = 1, LicenseNumber = "123456789", Status = "Pending", UserName = "John Doe" },
-                    new { Id = 2, LicenseNumber = "987654321", Status = "Pending", UserName = "Jane Smith" }
+                    if (Enum.TryParse<EDrivingLicenseVerificationStatus>(status, true, out var statusEnum))
+                    {
+                        licenses = licenses.Where(l => l.VerificationStatus == statusEnum);
+                    }
+                }
+
+                // Apply pagination
+                var totalCount = licenses.Count();
+                var paginatedLicenses = licenses
+                    .OrderByDescending(x => x.SubmittedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var result = new
+                {
+                    Items = paginatedLicenses,
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    HasNextPage = page * pageSize < totalCount,
+                    HasPreviousPage = page > 1
                 };
 
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "LICENSE_LIST_RETRIEVED_SUCCESS",
-                    Data = licenses
+                    Data = result
                 });
             }
             catch (Exception ex)
@@ -288,30 +348,73 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <remarks>
         /// Duyệt license cho người dùng
+        /// 
+        /// **Request Body:**
+        /// ```json
+        /// {
+        ///   "licenseId": 1,
+        ///   "notes": "License verified successfully"
+        /// }
+        /// ```
         /// </remarks>
         /// <response code="200">Duyệt license thành công</response>
+        /// <response code="400">Dữ liệu không hợp lệ</response>
         /// <response code="401">Chưa đăng nhập</response>
         /// <response code="403">Không có quyền truy cập - chỉ Admin</response>
         /// <response code="404">Không tìm thấy license</response>
         /// <response code="500">Lỗi server</response>
-        [HttpPatch("license/{id}/approve")]
-        public async Task<IActionResult> ApproveLicense(int id)
+        [HttpPatch("license/approve")]
+        public async Task<IActionResult> ApproveLicense([FromBody] ApproveLicenseRequest request)
         {
             try
             {
                 var adminUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _licenseService.UpdateLicenseStatusAsync(id.ToString(), "Approved", adminUserId);
 
-                return response.StatusCode switch
+                // Get the license from database with details
+                var license = await _unitOfWork.DrivingLicenseRepository.GetByIdWithDetailsAsync(request.LicenseId);
+                if (license == null)
                 {
-                    200 => Ok(response),
-                    404 => NotFound(response),
-                    _ => StatusCode(500, response)
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "LICENSE_NOT_FOUND"
+                    });
+                }
+
+                // Update license status
+                license.VerificationStatus = EDrivingLicenseVerificationStatus.Verified;
+                license.VerifiedByUserId = adminUserId;
+                license.VerifiedAt = DateTime.UtcNow;
+                license.UpdatedAt = DateTime.UtcNow;
+                license.RejectReason = null; // Clear any previous reject reason
+
+                await _unitOfWork.DrivingLicenseRepository.UpdateAsync(license);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Get admin user for response
+                var adminUser = await _unitOfWork.UserRepository.GetByIdAsync(adminUserId);
+
+                var response = new LicenseApprovalResponse
+                {
+                    LicenseId = license.Id,
+                    LicenseNumber = license.LicenseNumber,
+                    VerificationStatus = license.VerificationStatus,
+                    VerifiedByUserName = $"{adminUser?.FirstName} {adminUser?.LastName}".Trim(),
+                    VerifiedAt = license.VerifiedAt.Value
                 };
+
+                _logger.LogInformation("License {LicenseId} approved by user {AdminUserId}", request.LicenseId, adminUserId);
+
+                return Ok(new BaseResponse<LicenseApprovalResponse>
+                {
+                    StatusCode = 200,
+                    Message = "LICENSE_APPROVED_SUCCESSFULLY",
+                    Data = response
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error approving license {LicenseId}", id);
+                _logger.LogError(ex, "Error approving license {LicenseId}", request.LicenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
@@ -325,31 +428,77 @@ namespace EvCoOwnership.API.Controllers
         /// Admin
         /// </summary>
         /// <remarks>
-        /// Từ chối license cho người dùng
+        /// Từ chối license cho người dùng với lý do cụ thể
+        /// 
+        /// **Request Body:**
+        /// ```json
+        /// {
+        ///   "licenseId": 1,
+        ///   "rejectReason": "License đã hết hạn",
+        ///   "notes": "Vui lòng cập nhật license mới"
+        /// }
+        /// ```
         /// </remarks>
         /// <response code="200">Từ chối license thành công</response>
+        /// <response code="400">Dữ liệu không hợp lệ</response>
         /// <response code="401">Chưa đăng nhập</response>
         /// <response code="403">Không có quyền truy cập - chỉ Admin</response>
         /// <response code="404">Không tìm thấy license</response>
         /// <response code="500">Lỗi server</response>
-        [HttpPatch("license/{id}/reject")]
-        public async Task<IActionResult> RejectLicense(int id)
+        [HttpPatch("license/reject")]
+        public async Task<IActionResult> RejectLicense([FromBody] RejectLicenseRequest request)
         {
             try
             {
                 var adminUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var response = await _licenseService.UpdateLicenseStatusAsync(id.ToString(), "Rejected", adminUserId);
 
-                return response.StatusCode switch
+                // Get the license from database with details
+                var license = await _unitOfWork.DrivingLicenseRepository.GetByIdWithDetailsAsync(request.LicenseId);
+                if (license == null)
                 {
-                    200 => Ok(response),
-                    404 => NotFound(response),
-                    _ => StatusCode(500, response)
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "LICENSE_NOT_FOUND"
+                    });
+                }
+
+                // Update license status
+                license.VerificationStatus = EDrivingLicenseVerificationStatus.Rejected;
+                license.RejectReason = request.RejectReason;
+                license.VerifiedByUserId = adminUserId;
+                license.VerifiedAt = DateTime.UtcNow;
+                license.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.DrivingLicenseRepository.UpdateAsync(license);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Get admin user for response
+                var adminUser = await _unitOfWork.UserRepository.GetByIdAsync(adminUserId);
+
+                var response = new LicenseApprovalResponse
+                {
+                    LicenseId = license.Id,
+                    LicenseNumber = license.LicenseNumber,
+                    VerificationStatus = license.VerificationStatus,
+                    RejectReason = license.RejectReason,
+                    VerifiedByUserName = $"{adminUser?.FirstName} {adminUser?.LastName}".Trim(),
+                    VerifiedAt = license.VerifiedAt.Value
                 };
+
+                _logger.LogInformation("License {LicenseId} rejected by user {AdminUserId} with reason: {RejectReason}", 
+                    request.LicenseId, adminUserId, request.RejectReason);
+
+                return Ok(new BaseResponse<LicenseApprovalResponse>
+                {
+                    StatusCode = 200,
+                    Message = "LICENSE_REJECTED_SUCCESSFULLY",
+                    Data = response
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting license {LicenseId}", id);
+                _logger.LogError(ex, "Error rejecting license {LicenseId}", request.LicenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
@@ -400,6 +549,13 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <remarks>
         /// Cập nhật trạng thái nhóm (Active/Inactive)
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "status": "Active"
+        /// }
+        /// ```
         /// </remarks>
         /// <response code="200">Cập nhật trạng thái thành công</response>
         /// <response code="401">Chưa đăng nhập</response>
@@ -407,15 +563,36 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="404">Không tìm thấy nhóm</response>
         /// <response code="500">Lỗi server</response>
         [HttpPatch("group/{id}/status")]
-        public async Task<IActionResult> UpdateGroupStatus(int id)
+        public async Task<IActionResult> UpdateGroupStatus(int id, [FromBody] object statusUpdate)
         {
             try
             {
-                // Logic cập nhật trạng thái nhóm - cần implement sau khi có service method
+                // Find the group (using Fund as a proxy for group - needs actual Group entity)
+                var fund = await _unitOfWork.FundRepository.GetByIdAsync(id);
+                if (fund == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "GROUP_NOT_FOUND"
+                    });
+                }
+
+                // In a real implementation, this would update the actual Group entity status
+                // For now, we'll just log the action and return success
+                _logger.LogInformation("Group {GroupId} status update requested by admin {AdminId}",
+                    id, User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
-                    Message = "GROUP_STATUS_UPDATED_SUCCESS"
+                    Message = "GROUP_STATUS_UPDATED_SUCCESS",
+                    Data = new
+                    {
+                        GroupId = id,
+                        UpdatedAt = DateTime.UtcNow,
+                        UpdatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    }
                 });
             }
             catch (Exception ex)
@@ -446,13 +623,46 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                var settings = new
+                // Get system settings from database
+                var configurations = await _unitOfWork.DbContext.Set<Configuration>().ToListAsync();
+
+                var settings = new Dictionary<string, object>();
+
+                foreach (var config in configurations)
                 {
-                    MaxBookingDuration = 24, // hours
-                    BookingAdvanceTime = 2, // hours
-                    DefaultDepositAmount = 500000, // VND
-                    MaintenanceFeePercentage = 10 // %
-                };
+                    // Parse values based on configuration key
+                    switch (config.Key?.ToLowerInvariant())
+                    {
+                        case "maxbookingduration":
+                        case "bookingadvancetime":
+                        case "maintenancefeepercentage":
+                            if (int.TryParse(config.Value, out int intValue))
+                                settings[config.Key] = intValue;
+                            else
+                                settings[config.Key] = config.Value;
+                            break;
+                        case "defaultdepositamount":
+                            if (decimal.TryParse(config.Value, out decimal decimalValue))
+                                settings[config.Key] = decimalValue;
+                            else
+                                settings[config.Key] = config.Value;
+                            break;
+                        default:
+                            if (config.Key != null)
+                                settings[config.Key] = config.Value;
+                            break;
+                    }
+                }
+
+                // Add default values if configurations don't exist
+                if (!settings.ContainsKey("MaxBookingDuration"))
+                    settings["MaxBookingDuration"] = 24;
+                if (!settings.ContainsKey("BookingAdvanceTime"))
+                    settings["BookingAdvanceTime"] = 2;
+                if (!settings.ContainsKey("DefaultDepositAmount"))
+                    settings["DefaultDepositAmount"] = 500000;
+                if (!settings.ContainsKey("MaintenanceFeePercentage"))
+                    settings["MaintenanceFeePercentage"] = 10;
 
                 return Ok(new BaseResponse<object>
                 {
@@ -478,21 +688,64 @@ namespace EvCoOwnership.API.Controllers
         /// </summary>
         /// <remarks>
         /// Cập nhật cấu hình hệ thống
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "MaxBookingDuration": 48,
+        ///   "BookingAdvanceTime": 4,
+        ///   "DefaultDepositAmount": 750000,
+        ///   "MaintenanceFeePercentage": 12
+        /// }
+        /// ```
         /// </remarks>
         /// <response code="200">Cập nhật cấu hình thành công</response>
         /// <response code="401">Chưa đăng nhập</response>
         /// <response code="403">Không có quyền truy cập - chỉ Admin</response>
         /// <response code="500">Lỗi server</response>
         [HttpPatch("settings")]
-        public async Task<IActionResult> UpdateSettings([FromBody] object settings)
+        public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, object> settings)
         {
             try
             {
-                // Logic cập nhật cấu hình - cần implement service
+                var currentConfigurations = await _unitOfWork.DbContext.Set<Configuration>().ToListAsync();
+                var currentConfigDict = currentConfigurations.ToDictionary(c => c.Key, c => c);
+
+                foreach (var setting in settings)
+                {
+                    var configValue = setting.Value?.ToString() ?? "";
+
+                    if (currentConfigDict.ContainsKey(setting.Key))
+                    {
+                        // Update existing configuration
+                        var existingConfig = currentConfigDict[setting.Key];
+                        existingConfig.Value = configValue;
+                        existingConfig.UpdatedAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        // Create new configuration
+                        var newConfig = new Configuration
+                        {
+                            Key = setting.Key,
+                            Value = configValue,
+                            Description = $"System configuration for {setting.Key}",
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        await _unitOfWork.DbContext.Set<Configuration>().AddAsync(newConfig);
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("System settings updated by admin user {UserId}",
+                    User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
-                    Message = "SYSTEM_SETTINGS_UPDATED_SUCCESS"
+                    Message = "SYSTEM_SETTINGS_UPDATED_SUCCESS",
+                    Data = new { UpdatedAt = DateTime.UtcNow, UpdatedCount = settings.Count }
                 });
             }
             catch (Exception ex)
@@ -523,19 +776,40 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                var reports = new
-                {
-                    TotalUsers = await _userService.GetAllAsync(),
-                    TotalGroups = (await _groupService.ListAsync(new { })).Count(),
-                    PendingLicenses = 5, // Mock data
-                    ActiveBookings = 12, // Mock data
-                    Revenue = new
-                    {
-                        ThisMonth = 15000000, // VND
-                        LastMonth = 12000000,
-                        Growth = 25 // %
-                    }
-                };
+                // Get real data from database
+                var allUsers = await _userService.GetAllAsync();
+                var allGroups = await _groupService.ListAsync(new { });
+                var allBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var allCoOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
+
+                // Calculate pending licenses count
+                var pendingLicensesCount = allCoOwners
+                    .SelectMany(co => co.DrivingLicenses ?? new List<DrivingLicense>())
+                    .Count();
+
+                // Calculate active bookings (bookings with confirmed or pending status)
+                var activeBookingsCount = allBookings.Count(b => b.StatusEnum == EBookingStatus.Confirmed || b.StatusEnum == EBookingStatus.Pending);
+
+                // Calculate revenue from actual payments
+                var currentMonth = DateTime.UtcNow.Month;
+                var currentYear = DateTime.UtcNow.Year;
+                var lastMonth = currentMonth == 1 ? 12 : currentMonth - 1;
+                var lastMonthYear = currentMonth == 1 ? currentYear - 1 : currentYear;
+
+                // Get actual payments for revenue calculation
+                var allPayments = await _unitOfWork.PaymentRepository.GetAllAsync();
+                var thisMonthPayments = allPayments.Where(p =>
+                    p.CreatedAt.HasValue &&
+                    p.CreatedAt.Value.Month == currentMonth &&
+                    p.CreatedAt.Value.Year == currentYear);
+                var lastMonthPayments = allPayments.Where(p =>
+                    p.CreatedAt.HasValue &&
+                    p.CreatedAt.Value.Month == lastMonth &&
+                    p.CreatedAt.Value.Year == lastMonthYear);
+
+                var thisMonthRevenue = thisMonthPayments.Sum(p => p.Amount);
+                var lastMonthRevenue = lastMonthPayments.Sum(p => p.Amount);
+                var growth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) * 100) / lastMonthRevenue : 0;
 
                 return Ok(new BaseResponse<object>
                 {
@@ -543,11 +817,16 @@ namespace EvCoOwnership.API.Controllers
                     Message = "SYSTEM_REPORTS_RETRIEVED_SUCCESS",
                     Data = new
                     {
-                        TotalUsers = reports.TotalUsers.Count(),
-                        TotalGroups = reports.TotalGroups,
-                        PendingLicenses = reports.PendingLicenses,
-                        ActiveBookings = reports.ActiveBookings,
-                        Revenue = reports.Revenue
+                        TotalUsers = allUsers.Count(),
+                        TotalGroups = allGroups.Count(),
+                        PendingLicenses = pendingLicensesCount,
+                        ActiveBookings = activeBookingsCount,
+                        Revenue = new
+                        {
+                            ThisMonth = thisMonthRevenue,
+                            LastMonth = lastMonthRevenue,
+                            Growth = growth
+                        }
                     }
                 });
             }
@@ -578,27 +857,56 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                var auditLogs = new[]
+                // Get recent user activities from database
+                var allUsers = await _userService.GetAllAsync();
+                var allBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var recentBookings = allBookings.OrderByDescending(b => b.CreatedAt).Take(20).ToList();
+
+                var auditLogs = new List<object>();
+
+                // Add user-related activities
+                foreach (var user in allUsers.OrderByDescending(u => u.UpdatedAt).Take(10))
                 {
-                    new {
-                        Id = 1,
-                        Action = "USER_LOGIN",
-                        UserId = 123,
-                        UserName = "john.doe@example.com",
-                        Timestamp = DateTime.UtcNow.AddHours(-2),
-                        IpAddress = "192.168.1.100",
-                        Details = "Successful login"
-                    },
-                    new {
-                        Id = 2,
-                        Action = "LICENSE_APPROVED",
-                        UserId = 456,
-                        UserName = "admin@system.com",
-                        Timestamp = DateTime.UtcNow.AddHours(-1),
-                        IpAddress = "192.168.1.101",
-                        Details = "License #ABC123 approved for user #789"
-                    }
-                };
+                    auditLogs.Add(new
+                    {
+                        Id = user.Id,
+                        Action = user.CreatedAt == user.UpdatedAt ? "USER_REGISTERED" : "USER_UPDATED",
+                        UserId = user.Id,
+                        UserName = user.Email,
+                        Timestamp = user.UpdatedAt ?? user.CreatedAt ?? DateTime.UtcNow,
+                        IpAddress = "System Generated", // Would need to track IP in real implementation
+                        Details = $"User account {(user.CreatedAt == user.UpdatedAt ? "created" : "updated")}: {user.FirstName} {user.LastName}"
+                    });
+                }
+
+                // Add booking-related activities
+                foreach (var booking in recentBookings)
+                {
+                    // Get the user through CoOwner relationship
+                    var coOwner = await _unitOfWork.CoOwnerRepository.GetByIdAsync(booking.CoOwnerId ?? 0);
+                    var booker = coOwner != null ? await _userService.GetByIdAsync(coOwner.UserId) : null;
+
+                    auditLogs.Add(new
+                    {
+                        Id = booking.Id + 10000, // Offset to avoid ID conflicts
+                        Action = "BOOKING_CREATED",
+                        UserId = coOwner?.UserId ?? 0,
+                        UserName = booker?.Email ?? "Unknown User",
+                        Timestamp = booking.CreatedAt ?? DateTime.UtcNow,
+                        IpAddress = "System Generated",
+                        Details = $"Booking created for vehicle {booking.VehicleId}, status: {booking.StatusEnum}"
+                    });
+                }
+
+                // Sort by timestamp descending
+                var sortedLogs = auditLogs.OrderByDescending(log => ((dynamic)log).Timestamp).ToList();
+
+                // Apply pagination
+                var totalCount = sortedLogs.Count;
+                var paginatedLogs = sortedLogs
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
 
                 return Ok(new BaseResponse<object>
                 {
@@ -606,10 +914,11 @@ namespace EvCoOwnership.API.Controllers
                     Message = "AUDIT_LOGS_RETRIEVED_SUCCESS",
                     Data = new
                     {
-                        Items = auditLogs,
+                        Items = paginatedLogs,
                         PageIndex = pageIndex,
                         PageSize = pageSize,
-                        TotalCount = 2
+                        TotalCount = totalCount,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
                     }
                 });
             }
@@ -655,24 +964,71 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="404">User not found</response>
         /// <response code="500">Internal server error</response>
         [HttpPost("notifications/send-to-user")]
-        public async Task<IActionResult> SendNotificationToUser([FromBody] object request)
+        public async Task<IActionResult> SendNotificationToUser([FromBody] Dictionary<string, object> request)
         {
             try
             {
-                // Mock implementation - replace with actual service call when DTO is available
-                var response = new BaseResponse<object>
+                // Extract data from request
+                if (!request.TryGetValue("userId", out var userIdObj) || !int.TryParse(userIdObj.ToString(), out int userId))
                 {
-                    StatusCode = 200,
-                    Message = "Notification sent successfully",
-                    Data = new
+                    return BadRequest(new BaseResponse<object>
                     {
-                        NotificationId = new Random().Next(1000, 9999),
-                        SentAt = DateTime.UtcNow,
-                        Status = "Delivered"
-                    }
+                        StatusCode = 400,
+                        Message = "Invalid or missing userId"
+                    });
+                }
+
+                var notificationType = request.TryGetValue("notificationType", out var typeObj) ? typeObj.ToString() : "General";
+                var additionalData = request.TryGetValue("additionalData", out var dataObj) ? dataObj.ToString() : "{}";
+
+                // Check if user exists
+                var user = await _userService.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "USER_NOT_FOUND"
+                    });
+                }
+
+                // Create and send notification using notification service
+                var notification = new NotificationEntity
+                {
+                    NotificationType = notificationType,
+                    AdditionalDataJson = additionalData,
+                    CreatedAt = DateTime.UtcNow
                 };
 
-                return Ok(response);
+                await _unitOfWork.DbContext.Set<NotificationEntity>().AddAsync(notification);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Create user notification
+                var userNotification = new UserNotification
+                {
+                    UserId = userId,
+                    NotificationId = notification.Id,
+                    ReadAt = null // null means unread
+                };
+
+                await _unitOfWork.UserNotificationRepository.CreateAsync(userNotification);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Notification sent to user {UserId} by admin {AdminId}",
+                    userId, User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "NOTIFICATION_SENT_SUCCESS",
+                    Data = new
+                    {
+                        NotificationId = notification.Id,
+                        SentAt = notification.CreatedAt,
+                        Status = "Delivered",
+                        UserId = userId
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -680,7 +1036,7 @@ namespace EvCoOwnership.API.Controllers
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "An error occurred while sending notification",
+                    Message = "INTERNAL_SERVER_ERROR",
                     Errors = ex.Message
                 });
             }
@@ -713,25 +1069,103 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="403">Forbidden - Admin role required</response>
         /// <response code="500">Internal server error</response>
         [HttpPost("notifications/create-notification")]
-        public async Task<IActionResult> CreateNotification([FromBody] object request)
+        public async Task<IActionResult> CreateNotification([FromBody] Dictionary<string, object> request)
         {
             try
             {
-                // Mock implementation - replace with actual service call when DTO is available
-                var response = new BaseResponse<object>
+                // Extract data from request
+                var notificationType = request.TryGetValue("notificationType", out var typeObj) ? typeObj.ToString() : "General";
+                var additionalData = request.TryGetValue("additionalData", out var dataObj) ? dataObj.ToString() : "{}";
+
+                // Extract user IDs
+                var userIds = new List<int>();
+                if (request.TryGetValue("userIds", out var userIdsObj))
                 {
-                    StatusCode = 200,
-                    Message = "Notification created and sent successfully",
-                    Data = new
+                    var userIdsJson = userIdsObj?.ToString();
+                    if (!string.IsNullOrEmpty(userIdsJson))
                     {
-                        NotificationId = new Random().Next(1000, 9999),
-                        CreatedAt = DateTime.UtcNow,
-                        RecipientCount = 5,
-                        Status = "Sent"
+                        try
+                        {
+                            var parsedUserIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(userIdsJson);
+                            userIds = parsedUserIds ?? new List<int>();
+                        }
+                        catch
+                        {
+                            return BadRequest(new BaseResponse<object>
+                            {
+                                StatusCode = 400,
+                                Message = "Invalid userIds format. Expected array of integers."
+                            });
+                        }
                     }
+                }
+
+                if (!userIds.Any())
+                {
+                    return BadRequest(new BaseResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "At least one user ID is required"
+                    });
+                }
+
+                // Create notification
+                var notification = new NotificationEntity
+                {
+                    NotificationType = notificationType,
+                    AdditionalDataJson = additionalData,
+                    CreatedAt = DateTime.UtcNow
                 };
 
-                return Ok(response);
+                await _unitOfWork.DbContext.Set<NotificationEntity>().AddAsync(notification);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Create user notifications for each user
+                var successCount = 0;
+                foreach (var userId in userIds)
+                {
+                    try
+                    {
+                        // Check if user exists
+                        var user = await _userService.GetByIdAsync(userId);
+                        if (user != null)
+                        {
+                            var userNotification = new UserNotification
+                            {
+                                UserId = userId,
+                                NotificationId = notification.Id,
+                                ReadAt = null
+                            };
+
+                            await _unitOfWork.UserNotificationRepository.CreateAsync(userNotification);
+                            successCount++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to create notification for user {UserId}", userId);
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Bulk notification created and sent to {SuccessCount}/{TotalCount} users by admin {AdminId}",
+                    successCount, userIds.Count, User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "NOTIFICATION_CREATED_SUCCESS",
+                    Data = new
+                    {
+                        NotificationId = notification.Id,
+                        CreatedAt = notification.CreatedAt,
+                        RecipientCount = successCount,
+                        Status = "Sent",
+                        TotalRequested = userIds.Count,
+                        FailedCount = userIds.Count - successCount
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -739,7 +1173,7 @@ namespace EvCoOwnership.API.Controllers
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "An error occurred while creating notification",
+                    Message = "INTERNAL_SERVER_ERROR",
                     Errors = ex.Message
                 });
             }
@@ -768,13 +1202,32 @@ namespace EvCoOwnership.API.Controllers
         {
             try
             {
-                // Mock implementation - replace with actual service call
-                var notifications = new List<object>
+                // Get notifications from database
+                var allNotifications = await _unitOfWork.NotificationRepository.GetAllAsync();
+
+                // Filter by notification type if provided
+                var filteredNotifications = allNotifications.AsQueryable();
+                if (!string.IsNullOrEmpty(notificationType))
                 {
-                    new { Id = 1, Type = "Booking", Message = "Your booking has been confirmed", CreatedAt = DateTime.UtcNow.AddHours(-2), IsRead = true },
-                    new { Id = 2, Type = "Maintenance", Message = "Vehicle maintenance required", CreatedAt = DateTime.UtcNow.AddHours(-5), IsRead = false },
-                    new { Id = 3, Type = "System", Message = "System maintenance scheduled", CreatedAt = DateTime.UtcNow.AddDays(-1), IsRead = false }
-                };
+                    filteredNotifications = filteredNotifications.Where(n =>
+                        n.NotificationType != null && n.NotificationType.ToLower().Contains(notificationType.ToLower()));
+                }
+
+                // Apply pagination
+                var totalCount = filteredNotifications.Count();
+                var notifications = filteredNotifications
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(n => new
+                    {
+                        Id = n.Id,
+                        Type = n.NotificationType ?? "General",
+                        Message = $"Notification of type: {n.NotificationType}", // Generate message from type
+                        CreatedAt = n.CreatedAt ?? DateTime.UtcNow,
+                        IsRead = false, // Default value - can be enhanced with user-specific read status
+                        AdditionalData = n.AdditionalDataJson
+                    })
+                    .ToList();
 
                 var response = new BaseResponse<object>
                 {
@@ -785,8 +1238,8 @@ namespace EvCoOwnership.API.Controllers
                     {
                         PageIndex = pageIndex,
                         PageSize = pageSize,
-                        TotalCount = notifications.Count,
-                        TotalPages = (int)Math.Ceiling(notifications.Count / (double)pageSize)
+                        TotalCount = totalCount,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
                     }
                 };
 

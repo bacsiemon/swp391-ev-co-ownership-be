@@ -9,6 +9,19 @@ public partial class EvCoOwnershipDbContext
 {
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        // Configure DrivingLicense verification relationship
+        modelBuilder.Entity<DrivingLicense>(entity =>
+        {
+            entity.HasOne(d => d.VerifiedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.VerifiedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.VerificationStatus)
+                .HasConversion<int>()
+                .HasDefaultValue(0); // Pending
+        });
+
         // Configure VehicleUpgradeProposal
         modelBuilder.Entity<VehicleUpgradeProposal>(entity =>
         {
