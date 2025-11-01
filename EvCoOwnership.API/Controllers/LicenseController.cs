@@ -11,7 +11,7 @@ namespace EvCoOwnership.API.Controllers
     /// <summary>
     /// Controller for driving license verification and management
     /// </summary>
-    [Route("api/[controller]")]
+    [Route("api/shared/license")]
     [ApiController]
     public class LicenseController : ControllerBase
     {

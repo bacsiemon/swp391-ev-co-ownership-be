@@ -9,21 +9,67 @@ namespace EvCoOwnership.API.Controllers
     /// <summary>
     /// Controller for managing Co-owner eligibility in the EV Co-ownership system
     /// </summary>
-    [Route("api/[controller]")]
+    [Route("api/coowner")]
     [ApiController]
-    [AuthorizeRoles] // Requires authentication only
+    [AuthorizeRoles(EUserRole.CoOwner)]
     public class CoOwnerController : ControllerBase
     {
         private readonly ICoOwnerEligibilityService _coOwnerEligibilityService;
 
-        /// <summary>
-        /// Initializes a new instance of the CoOwnerController
-        /// </summary>
-        /// <param name="coOwnerEligibilityService">Co-owner eligibility service</param>
         public CoOwnerController(ICoOwnerEligibilityService coOwnerEligibilityService)
         {
             _coOwnerEligibilityService = coOwnerEligibilityService;
         }
+
+        // --- Tài khoản & xác thực ---
+        [HttpPost("register")]
+        public IActionResult Register() { return Ok(); }
+
+        [HttpGet("profile")]
+        public IActionResult GetProfile() { return Ok(); }
+
+        [HttpPatch("profile")]
+        public IActionResult UpdateProfile() { return Ok(); }
+
+        [HttpGet("ownership")]
+        public IActionResult GetOwnership() { return Ok(); }
+
+        // --- Đặt lịch & sử dụng xe ---
+        [HttpGet("schedule")]
+        public IActionResult GetSchedule() { return Ok(); }
+
+        [HttpPost("booking")]
+        public IActionResult BookVehicle() { return Ok(); }
+
+        [HttpGet("booking/history")]
+        public IActionResult GetBookingHistory() { return Ok(); }
+
+        // --- Chi phí & thanh toán ---
+        [HttpGet("costs")]
+        public IActionResult GetCosts() { return Ok(); }
+
+        [HttpPost("payment")]
+        public IActionResult MakePayment() { return Ok(); }
+
+        // --- Nhóm đồng sở hữu ---
+        [HttpGet("group")]
+        public IActionResult GetGroup() { return Ok(); }
+
+        [HttpPost("group/invite")]
+        public IActionResult InviteMember() { return Ok(); }
+
+        [HttpDelete("group/member/{id}")]
+        public IActionResult RemoveMember(int id) { return Ok(); }
+
+        [HttpPost("group/vote")]
+        public IActionResult Vote() { return Ok(); }
+
+        [HttpGet("group/fund")]
+        public IActionResult GetGroupFund() { return Ok(); }
+
+        // --- Phân tích & AI ---
+        [HttpGet("analytics")]
+        public IActionResult GetAnalytics() { return Ok(); }
 
         /// <summary>
         /// Checks eligibility for Co-owner status
