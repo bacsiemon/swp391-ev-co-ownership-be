@@ -206,22 +206,22 @@ namespace EvCoOwnership.API.Controllers
                 // Update user properties if provided
                 if (!string.IsNullOrEmpty(request.FirstName))
                     user.FirstName = request.FirstName;
-                
+
                 if (!string.IsNullOrEmpty(request.LastName))
                     user.LastName = request.LastName;
-                
+
                 if (!string.IsNullOrEmpty(request.Phone))
                     user.Phone = request.Phone;
-                
+
                 if (!string.IsNullOrEmpty(request.Address))
                     user.Address = request.Address;
-                
+
                 if (request.DateOfBirth.HasValue)
                     user.DateOfBirth = DateOnly.FromDateTime(request.DateOfBirth.Value);
-                
+
                 if (!string.IsNullOrEmpty(request.AvatarUrl))
                     user.ProfileImageUrl = request.AvatarUrl;
-                
+
                 // Note: Bio field doesn't exist in User model, skip it
                 // if (!string.IsNullOrEmpty(request.Bio))
                 //     user.Bio = request.Bio;
@@ -468,7 +468,7 @@ namespace EvCoOwnership.API.Controllers
 
                 // Check for booking conflicts
                 var existingBookings = await _unitOfWork.BookingRepository.GetAllAsync();
-                var conflictingBooking = existingBookings.Any(b => 
+                var conflictingBooking = existingBookings.Any(b =>
                     b.VehicleId == request.VehicleId &&
                     b.StatusEnum != EBookingStatus.Cancelled &&
                     b.StatusEnum != EBookingStatus.Completed &&
@@ -635,12 +635,12 @@ namespace EvCoOwnership.API.Controllers
 
                 // Get maintenance costs
                 var maintenanceCosts = (await _unitOfWork.MaintenanceCostRepository.GetAllAsync()).AsQueryable();
-                
+
                 // Filter by date range if provided
                 if (fromDate.HasValue && toDate.HasValue)
                 {
                     userPayments = userPayments.Where(p => p.CreatedAt >= fromDate && p.CreatedAt <= toDate);
-                    maintenanceCosts = maintenanceCosts.Where(mc => mc.ServiceDate >= DateOnly.FromDateTime(fromDate.Value) && 
+                    maintenanceCosts = maintenanceCosts.Where(mc => mc.ServiceDate >= DateOnly.FromDateTime(fromDate.Value) &&
                                                                    mc.ServiceDate <= DateOnly.FromDateTime(toDate.Value));
                 }
 
@@ -809,7 +809,7 @@ namespace EvCoOwnership.API.Controllers
                 // Get co-owner from database
                 var coOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
                 var currentCoOwner = coOwners.FirstOrDefault(co => co.UserId == userId);
-                
+
                 if (currentCoOwner == null)
                 {
                     return NotFound(new BaseResponse<object>
@@ -822,11 +822,11 @@ namespace EvCoOwnership.API.Controllers
                 // Get users and group information from database
                 var users = await _unitOfWork.UserRepository.GetAllAsync();
                 var coOwnersInGroup = coOwners.ToList();
-                
+
                 var members = coOwnersInGroup.Select(co => new
                 {
                     Id = co.UserId,
-                    Name = users.FirstOrDefault(u => u.Id == co.UserId)?.FirstName + " " + 
+                    Name = users.FirstOrDefault(u => u.Id == co.UserId)?.FirstName + " " +
                            users.FirstOrDefault(u => u.Id == co.UserId)?.LastName,
                     Role = co.UserId == userId ? "Member" : "Member", // You can enhance this based on your group role system
                     SharePercentage = 100 / coOwnersInGroup.Count // Equal shares for now
@@ -844,7 +844,7 @@ namespace EvCoOwnership.API.Controllers
                 // Get fund information
                 var funds = await _unitOfWork.FundRepository.GetAllAsync();
                 var groupFund = funds.FirstOrDefault();
-                
+
                 var fundInfo = new
                 {
                     TotalAmount = groupFund?.CurrentBalance ?? 0,
@@ -1143,11 +1143,11 @@ namespace EvCoOwnership.API.Controllers
                 // Get bookings from database
                 var bookings = await _unitOfWork.BookingRepository.GetAllAsync();
                 var userBookings = bookings.Where(b => b.CoOwnerId != null);
-                
+
                 // Get co-owner to match user (note: CoOwner uses UserId as primary key)
                 var coOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
                 var currentCoOwner = coOwners.FirstOrDefault(co => co.UserId == userId);
-                
+
                 if (currentCoOwner != null)
                 {
                     userBookings = userBookings.Where(b => b.CoOwnerId == currentCoOwner.UserId);
@@ -1162,7 +1162,7 @@ namespace EvCoOwnership.API.Controllers
                 // Calculate usage statistics
                 var totalBookings = userBookings.Count();
                 var completedBookings = userBookings.Where(b => b.StatusEnum == EBookingStatus.Completed);
-                
+
                 // Calculate total hours based on StartTime and EndTime
                 var totalHours = completedBookings
                     .Sum(b => (b.EndTime - b.StartTime).TotalHours);
@@ -1174,7 +1174,7 @@ namespace EvCoOwnership.API.Controllers
                 // Get payments for cost analysis
                 var payments = await _unitOfWork.PaymentRepository.GetAllAsync();
                 var userPayments = payments.Where(p => p.UserId == userId);
-                
+
                 if (fromDate.HasValue && toDate.HasValue)
                 {
                     userPayments = userPayments.Where(p => p.CreatedAt >= fromDate && p.CreatedAt <= toDate);
