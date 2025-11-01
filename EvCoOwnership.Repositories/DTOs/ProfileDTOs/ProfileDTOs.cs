@@ -52,35 +52,6 @@ namespace EvCoOwnership.Repositories.DTOs.ProfileDTOs
         }
     }
 
-    public class ChangePasswordRequest
-    {
-        public string CurrentPassword { get; set; } = string.Empty;
-        public string NewPassword { get; set; } = string.Empty;
-        public string ConfirmPassword { get; set; } = string.Empty;
-    }
-
-    public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
-    {
-        public ChangePasswordRequestValidator()
-        {
-            RuleFor(x => x.CurrentPassword)
-                .NotEmpty()
-                .WithMessage("Current password is required");
-
-            RuleFor(x => x.NewPassword)
-                .NotEmpty()
-                .WithMessage("New password is required")
-                .MinimumLength(6)
-                .WithMessage("Password must be at least 6 characters long")
-                .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]")
-                .WithMessage("Password must contain at least one uppercase letter, one lowercase letter, one number and one special character");
-
-            RuleFor(x => x.ConfirmPassword)
-                .Equal(x => x.NewPassword)
-                .WithMessage("Password confirmation does not match");
-        }
-    }
-
     public class UpdateNotificationSettingsRequest
     {
         public bool EmailNotifications { get; set; }

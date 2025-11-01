@@ -2710,7 +2710,7 @@ namespace EvCoOwnership.API.Controllers
         /// <response code="400">Validation error. Possible messages: CURRENT_PASSWORD_INCORRECT, PASSWORD_TOO_WEAK</response>
         /// <response code="404">User not found. Message: USER_NOT_FOUND</response>
         [HttpPut("my-profile/change-password")]
-        public async Task<IActionResult> ChangePassword([FromBody] EvCoOwnership.DTOs.UserDTOs.ChangePasswordRequest request)
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
             try
             {

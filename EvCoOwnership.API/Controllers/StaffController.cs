@@ -8,6 +8,7 @@ using EvCoOwnership.Repositories.DTOs;
 using EvCoOwnership.Repositories.DTOs.GroupManagementDTOs;
 using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
 using EvCoOwnership.Repositories.DTOs.LicenseDTOs;
+using EvCoOwnership.DTOs.UserDTOs;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.UoW;
 using Microsoft.EntityFrameworkCore;
