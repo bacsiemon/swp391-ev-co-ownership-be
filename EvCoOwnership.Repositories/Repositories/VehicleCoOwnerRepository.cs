@@ -19,7 +19,7 @@ namespace EvCoOwnership.Repositories.Repositories
         public async Task<List<VehicleCoOwner>> GetPendingInvitationsByCoOwnerAsync(int coOwnerId)
         {
             return await _context.Set<VehicleCoOwner>()
-                .Where(vco => vco.CoOwnerId == coOwnerId && vco.StatusEnum == EContractStatus.Pending)
+                .Where(vco => vco.CoOwnerId == coOwnerId && vco.StatusEnum == EEContractStatus.PendingSignatures)
                 .Include(vco => vco.Vehicle)
                 .ToListAsync();
         }

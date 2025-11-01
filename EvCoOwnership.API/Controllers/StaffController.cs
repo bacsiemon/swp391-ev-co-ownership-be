@@ -4,6 +4,9 @@ using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using EvCoOwnership.Helpers.BaseClasses;
+using EvCoOwnership.Repositories.DTOs;
+using EvCoOwnership.Repositories.DTOs.GroupManagementDTOs;
+using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -18,8 +21,10 @@ namespace EvCoOwnership.API.Controllers
         private readonly IGroupService _groupService;
         private readonly IContractService _contractService;
         private readonly ICheckInCheckOutService _checkInCheckOutService;
-        private readonly IServiceService _serviceService;
         private readonly IDisputeService _disputeService;
+        private readonly IMaintenanceService _maintenanceService;
+        private readonly IProfileService _profileService;
+        private readonly IGroupManagementService _groupManagementService;
         private readonly ILogger<StaffController> _logger;
 
         /// <summary>
@@ -28,22 +33,28 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="groupService">Group service for group management</param>
         /// <param name="contractService">Contract service for contract management</param>
         /// <param name="checkInCheckOutService">Check-in/out service</param>
-        /// <param name="serviceService">Service management service</param>
         /// <param name="disputeService">Dispute management service</param>
+        /// <param name="maintenanceService">Maintenance service for vehicle maintenance</param>
+        /// <param name="profileService">Profile service for user profile management</param>
+        /// <param name="groupManagementService">Group management service for staff operations</param>
         /// <param name="logger">Logger for logging</param>
         public StaffController(
             IGroupService groupService,
             IContractService contractService,
             ICheckInCheckOutService checkInCheckOutService,
-            IServiceService serviceService,
             IDisputeService disputeService,
+            IMaintenanceService maintenanceService,
+            IProfileService profileService,
+            IGroupManagementService groupManagementService,
             ILogger<StaffController> logger)
         {
             _groupService = groupService;
             _contractService = contractService;
             _checkInCheckOutService = checkInCheckOutService;
-            _serviceService = serviceService;
             _disputeService = disputeService;
+            _maintenanceService = maintenanceService;
+            _profileService = profileService;
+            _groupManagementService = groupManagementService;
             _logger = logger;
         }
 
@@ -650,5 +661,987 @@ namespace EvCoOwnership.API.Controllers
                 });
             }
         }
+
+        // --- VEHICLE CHECK-IN/CHECK-OUT OPERATIONS ---
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get all pending check-ins that require staff assistance
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/checkins/pending
+        /// ```
+        /// </remarks>
+        /// <response code="200">Pending check-ins retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("checkins/pending")]
+        public async Task<IActionResult> GetPendingCheckIns()
+        {
+            try
+            {
+                // Mock implementation - replace with actual service call
+                var pendingCheckIns = new List<object>
+                {
+                    new { BookingId = 1, VehicleId = 101, CoOwnerName = "John Doe", ScheduledTime = DateTime.UtcNow.AddMinutes(30), Status = "Pending" },
+                    new { BookingId = 2, VehicleId = 102, CoOwnerName = "Jane Smith", ScheduledTime = DateTime.UtcNow.AddHours(1), Status = "Pending" }
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "PENDING_CHECKINS_RETRIEVED_SUCCESS",
+                    Data = pendingCheckIns
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending check-ins");
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Perform staff-assisted check-in for co-owner
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "bookingId": 123,
+        ///   "vehicleCondition": "Good",
+        ///   "notes": "Vehicle ready for pickup"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Check-in completed successfully</response>
+        /// <response code="400">Invalid booking data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Booking not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("checkins/staff-assisted")]
+        public async Task<IActionResult> PerformStaffAssistedCheckIn([FromBody] object request)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                // Mock implementation - replace with actual service call
+                var result = new
+                {
+                    CheckInId = new Random().Next(1000, 9999),
+                    BookingId = 123,
+                    CompletedAt = DateTime.UtcNow,
+                    StaffId = staffUserId,
+                    Status = "Completed"
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "STAFF_CHECKIN_COMPLETED_SUCCESS",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error performing staff-assisted check-in");
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Perform staff-assisted check-out for co-owner
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "bookingId": 123,
+        ///   "vehicleCondition": "Good",
+        ///   "mileage": 45230,
+        ///   "fuelLevel": 85,
+        ///   "notes": "Vehicle returned in good condition"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Check-out completed successfully</response>
+        /// <response code="400">Invalid booking data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Booking not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("checkouts/staff-assisted")]
+        public async Task<IActionResult> PerformStaffAssistedCheckOut([FromBody] object request)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                // Mock implementation - replace with actual service call
+                var result = new
+                {
+                    CheckOutId = new Random().Next(1000, 9999),
+                    BookingId = 123,
+                    CompletedAt = DateTime.UtcNow,
+                    StaffId = staffUserId,
+                    Status = "Completed"
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "STAFF_CHECKOUT_COMPLETED_SUCCESS",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error performing staff-assisted check-out");
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                });
+            }
+        }
+
+        // --- VEHICLE MAINTENANCE MANAGEMENT ---
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get all maintenance requests that require staff attention
+        /// </remarks>
+        /// <response code="200">Maintenance requests retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("maintenance/requests")]
+        public async Task<IActionResult> GetMaintenanceRequests([FromQuery] string? status = null)
+        {
+            try
+            {
+                // Mock implementation - replace with actual service call
+                var requests = new List<object>
+                {
+                    new { Id = 1, VehicleId = 101, Type = "Oil Change", Status = "Pending", RequestedDate = DateTime.UtcNow.AddDays(-2), Priority = "Medium" },
+                    new { Id = 2, VehicleId = 102, Type = "Tire Replacement", Status = "In Progress", RequestedDate = DateTime.UtcNow.AddDays(-1), Priority = "High" }
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "MAINTENANCE_REQUESTS_RETRIEVED_SUCCESS",
+                    Data = requests
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting maintenance requests");
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Update maintenance request status
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "status": "Completed",
+        ///   "notes": "Oil change completed successfully",
+        ///   "cost": 150.00
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Maintenance request updated successfully</response>
+        /// <response code="400">Invalid maintenance data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Maintenance request not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPut("maintenance/{maintenanceId}/status")]
+        public async Task<IActionResult> UpdateMaintenanceStatus(int maintenanceId, [FromBody] object request)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                // Mock implementation - replace with actual service call
+                var result = new
+                {
+                    MaintenanceId = maintenanceId,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = staffUserId,
+                    NewStatus = "Completed"
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "MAINTENANCE_STATUS_UPDATED_SUCCESS",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating maintenance status for ID {MaintenanceId}", maintenanceId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                    Errors = ex.Message
+                });
+            }
+        }
+
+        #region Profile Management
+
+        /// <summary>
+        /// Get your staff profile information
+        /// </summary>
+        /// <remarks>
+        /// Retrieve your complete staff profile with statistics and settings.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/profile
+        /// ```
+        /// </remarks>
+        /// <response code="200">Profile retrieved successfully</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.GetProfileAsync(userId, userId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving staff profile");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Update your staff profile information
+        /// </summary>
+        /// <remarks>
+        /// Update personal information including name, contact details, and bio.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "firstName": "John",
+        ///   "lastName": "Doe",
+        ///   "phone": "+1-555-0123",
+        ///   "address": "123 Main St, City, Country",
+        ///   "dateOfBirth": "1990-01-15",
+        ///   "bio": "Experienced EV maintenance specialist"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Profile update request</param>
+        /// <response code="200">Profile updated successfully</response>
+        /// <response code="400">Invalid request data</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.UpdateProfileAsync(userId, request);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating staff profile");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Change your password
+        /// </summary>
+        /// <remarks>
+        /// Change your account password for security.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "currentPassword": "currentPassword123!",
+        ///   "newPassword": "newPassword456@",
+        ///   "confirmPassword": "newPassword456@"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Password change request</param>
+        /// <response code="200">Password changed successfully</response>
+        /// <response code="400">Invalid current password or validation error</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("profile/change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.ChangePasswordAsync(userId, request);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing staff password");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Update notification settings
+        /// </summary>
+        /// <remarks>
+        /// Configure which notifications you want to receive.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "emailNotifications": true,
+        ///   "pushNotifications": true,
+        ///   "bookingReminders": false,
+        ///   "maintenanceAlerts": true,
+        ///   "paymentNotifications": true,
+        ///   "systemAnnouncements": true
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Notification settings request</param>
+        /// <response code="200">Notification settings updated successfully</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPut("profile/notification-settings")]
+        public async Task<IActionResult> UpdateNotificationSettings([FromBody] UpdateNotificationSettingsRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.UpdateNotificationSettingsAsync(userId, request);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating staff notification settings");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Update privacy settings
+        /// </summary>
+        /// <remarks>
+        /// Configure your privacy preferences and data sharing settings.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "profileVisibility": true,
+        ///   "showEmail": false,
+        ///   "showPhone": false,
+        ///   "shareUsageData": true,
+        ///   "allowDataAnalytics": true
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Privacy settings request</param>
+        /// <response code="200">Privacy settings updated successfully</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPut("profile/privacy-settings")]
+        public async Task<IActionResult> UpdatePrivacySettings([FromBody] UpdatePrivacySettingsRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.UpdatePrivacySettingsAsync(userId, request);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating staff privacy settings");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Get your activity log
+        /// </summary>
+        /// <remarks>
+        /// View your account activity history and actions performed.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/profile/activity-log?page=1&amp;pageSize=50&amp;category=maintenance
+        /// ```
+        /// </remarks>
+        /// <param name="page">Page number (default: 1)</param>
+        /// <param name="pageSize">Items per page (default: 50)</param>
+        /// <param name="category">Optional activity category filter</param>
+        /// <response code="200">Activity log retrieved successfully</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("profile/activity-log")]
+        public async Task<IActionResult> GetActivityLog(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50,
+            [FromQuery] string? category = null)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.GetActivityLogAsync(userId, page, pageSize, category);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving staff activity log");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Get your security log
+        /// </summary>
+        /// <remarks>
+        /// View security events and login history for your account.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/profile/security-log?days=30
+        /// ```
+        /// </remarks>
+        /// <param name="days">Number of days to look back (default: 30)</param>
+        /// <response code="200">Security log retrieved successfully</response>
+        /// <response code="404">User not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("profile/security-log")]
+        public async Task<IActionResult> GetSecurityLog([FromQuery] int days = 30)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _profileService.GetSecurityLogAsync(userId, days);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving staff security log");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        #endregion
+
+        #region Group Management
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get list of groups assigned to the current staff member for support and management.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/groups/assigned
+        /// ```
+        /// 
+        /// Sample response:
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "ASSIGNED_GROUPS_RETRIEVED_SUCCESSFULLY",
+        ///   "data": [
+        ///     {
+        ///       "groupId": 1,
+        ///       "groupName": "EV Enthusiasts Group",
+        ///       "memberCount": 5,
+        ///       "vehicleCount": 2,
+        ///       "status": "Active",
+        ///       "assignedDate": "2024-01-15T10:00:00Z",
+        ///       "openDisputeCount": 1,
+        ///       "pendingRequestCount": 3,
+        ///       "totalFundAmount": 50000.00,
+        ///       "priority": "High"
+        ///     }
+        ///   ]
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Assigned groups retrieved successfully</response>
+        /// <response code="403">Access denied - not authorized</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("groups/assigned")]
+        public async Task<IActionResult> GetAssignedGroups()
+        {
+            try
+            {
+                var staffId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _groupManagementService.GetAssignedGroupsAsync(staffId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => Forbid(),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving assigned groups for staff");
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get detailed information about a specific group including members, vehicles, activities, and financial summary.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/group/1/details
+        /// ```
+        /// 
+        /// Sample response:
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "GROUP_DETAILS_RETRIEVED_SUCCESSFULLY",
+        ///   "data": {
+        ///     "groupId": 1,
+        ///     "groupName": "EV Enthusiasts Group",
+        ///     "description": "A group of EV enthusiasts sharing vehicles",
+        ///     "createdDate": "2024-01-01T00:00:00Z",
+        ///     "status": "Active",
+        ///     "members": [
+        ///       {
+        ///         "userId": 101,
+        ///         "fullName": "John Doe",
+        ///         "email": "john@example.com",
+        ///         "ownershipPercentage": 40.0,
+        ///         "role": "Owner",
+        ///         "joinedDate": "2024-01-01T00:00:00Z",
+        ///         "status": "Active",
+        ///         "contributedAmount": 20000.00
+        ///       }
+        ///     ],
+        ///     "vehicles": [
+        ///       {
+        ///         "vehicleId": 201,
+        ///         "vehicleName": "Tesla Model 3",
+        ///         "brand": "Tesla",
+        ///         "model": "Model 3",
+        ///         "year": 2023,
+        ///         "licensePlate": "ABC-123",
+        ///         "status": "Active",
+        ///         "purchasePrice": 45000.00,
+        ///         "acquisitionDate": "2024-01-15T00:00:00Z",
+        ///         "totalBookings": 25,
+        ///         "utilizationRate": 75.5
+        ///       }
+        ///     ],
+        ///     "financialSummary": {
+        ///       "totalFunds": 50000.00,
+        ///       "availableFunds": 35000.00,
+        ///       "reservedFunds": 15000.00,
+        ///       "monthlyIncome": 3000.00,
+        ///       "monthlyExpenses": 1500.00
+        ///     }
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">ID of the group to get details for</param>
+        /// <response code="200">Group details retrieved successfully</response>
+        /// <response code="403">Access denied - not assigned to this group</response>
+        /// <response code="404">Group not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("group/{groupId:int}/details")]
+        public async Task<IActionResult> GetGroupDetails([FromRoute] int groupId)
+        {
+            try
+            {
+                var staffId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _groupManagementService.GetGroupDetailsAsync(groupId, staffId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => Forbid(),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving group details for group {GroupId}", groupId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get all disputes within a specific group for resolution and management.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/staff/group/1/disputes
+        /// ```
+        /// 
+        /// Sample response:
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "GROUP_DISPUTES_RETRIEVED_SUCCESSFULLY",
+        ///   "data": [
+        ///     {
+        ///       "disputeId": 301,
+        ///       "title": "Vehicle Maintenance Cost Dispute",
+        ///       "description": "Disagreement about maintenance cost allocation",
+        ///       "status": "Open",
+        ///       "priority": "High",
+        ///       "createdDate": "2024-11-01T10:00:00Z",
+        ///       "reportedByUserId": 101,
+        ///       "reportedByUserName": "John Doe",
+        ///       "assignedStaffId": 501,
+        ///       "assignedStaffName": "Staff Member",
+        ///       "messages": [
+        ///         {
+        ///           "messageId": 1001,
+        ///           "message": "Initial dispute report",
+        ///           "createdDate": "2024-11-01T10:00:00Z",
+        ///           "createdByUserId": 101,
+        ///           "createdByUserName": "John Doe",
+        ///           "userRole": "Member"
+        ///         }
+        ///       ]
+        ///     }
+        ///   ]
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">ID of the group to get disputes for</param>
+        /// <response code="200">Group disputes retrieved successfully</response>
+        /// <response code="403">Access denied - not assigned to this group</response>
+        /// <response code="404">Group not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("group/{groupId:int}/disputes")]
+        public async Task<IActionResult> GetGroupDisputes([FromRoute] int groupId)
+        {
+            try
+            {
+                var staffId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _groupManagementService.GetGroupDisputesAsync(groupId, staffId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => Forbid(),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving disputes for group {GroupId}", groupId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Create a support ticket for a group to track and resolve issues.
+        /// 
+        /// Sample request:
+        /// ```
+        /// POST /api/staff/group/support
+        /// Content-Type: application/json
+        /// 
+        /// {
+        ///   "groupId": 1,
+        ///   "title": "Vehicle Maintenance Issue",
+        ///   "description": "The group's Tesla Model 3 needs immediate brake inspection",
+        ///   "priority": "High",
+        ///   "category": "Technical",
+        ///   "notifyMembers": true
+        /// }
+        /// ```
+        /// 
+        /// Sample response:
+        /// ```json
+        /// {
+        ///   "statusCode": 201,
+        ///   "message": "SUPPORT_TICKET_CREATED_SUCCESSFULLY",
+        ///   "data": {
+        ///     "ticketId": 1001,
+        ///     "title": "Vehicle Maintenance Issue",
+        ///     "status": "Open",
+        ///     "priority": "High",
+        ///     "createdDate": "2024-11-01T14:30:00Z",
+        ///     "createdByStaffId": 501,
+        ///     "createdByStaffName": "Staff Member"
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="request">Support ticket creation details</param>
+        /// <response code="201">Support ticket created successfully</response>
+        /// <response code="400">Invalid request data</response>
+        /// <response code="403">Access denied - not assigned to this group</response>
+        /// <response code="404">Group not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("group/support")]
+        public async Task<IActionResult> CreateSupportTicket([FromBody] CreateSupportTicketRequest request)
+        {
+            try
+            {
+                var staffId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _groupManagementService.CreateSupportTicketAsync(request, staffId);
+
+                return response.StatusCode switch
+                {
+                    201 => CreatedAtAction(nameof(CreateSupportTicket), response),
+                    400 => BadRequest(response),
+                    403 => Forbid(),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating support ticket for group {GroupId}", request.GroupId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Update the status of a dispute and add resolution notes.
+        /// 
+        /// Sample request:
+        /// ```
+        /// PUT /api/staff/dispute/301/status
+        /// Content-Type: application/json
+        /// 
+        /// {
+        ///   "newStatus": "Resolved",
+        ///   "resolutionNotes": "Issue resolved through mediation. Cost split agreed upon by all parties."
+        /// }
+        /// ```
+        /// 
+        /// Sample response:
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "DISPUTE_STATUS_UPDATED_SUCCESSFULLY",
+        ///   "data": {
+        ///     "disputeId": 301,
+        ///     "title": "Vehicle Maintenance Cost Dispute",
+        ///     "status": "Resolved",
+        ///     "priority": "High",
+        ///     "resolvedDate": "2024-11-01T16:45:00Z",
+        ///     "assignedStaffId": 501,
+        ///     "assignedStaffName": "Staff Member"
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="disputeId">ID of the dispute to update</param>
+        /// <param name="request">Update dispute status request containing new status and resolution notes</param>
+        /// <response code="200">Dispute status updated successfully</response>
+        /// <response code="400">Invalid request data</response>
+        /// <response code="403">Access denied - not assigned to this dispute</response>
+        /// <response code="404">Dispute not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPut("dispute/{disputeId:int}/status")]
+        public async Task<IActionResult> UpdateDisputeStatus([FromRoute] int disputeId, [FromBody] UpdateDisputeStatusRequest request)
+        {
+            try
+            {
+                var staffId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _groupManagementService.UpdateDisputeStatusAsync(disputeId, request.NewStatus, request.ResolutionNotes, staffId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    403 => Forbid(),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating dispute {DisputeId} status", disputeId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Add a message to an existing dispute for communication and progress tracking.
+        /// 
+        /// Sample request:
+        /// ```
+        /// POST /api/staff/dispute/301/message
+        /// Content-Type: application/json
+        /// 
+        /// {
+        ///   "message": "I have reviewed the maintenance receipts and will schedule a mediation session for next Tuesday."
+        /// }
+        /// ```
+        /// 
+        /// Sample response:
+        /// ```json
+        /// {
+        ///   "statusCode": 200,
+        ///   "message": "DISPUTE_MESSAGE_ADDED_SUCCESSFULLY",
+        ///   "data": {
+        ///     "disputeId": 301,
+        ///     "title": "Vehicle Maintenance Cost Dispute",
+        ///     "status": "In Progress",
+        ///     "messages": [
+        ///       {
+        ///         "messageId": 1002,
+        ///         "message": "I have reviewed the maintenance receipts and will schedule a mediation session for next Tuesday.",
+        ///         "createdDate": "2024-11-01T15:20:00Z",
+        ///         "createdByUserId": 501,
+        ///         "createdByUserName": "Staff Member",
+        ///         "userRole": "Staff"
+        ///       }
+        ///     ]
+        ///   }
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="disputeId">ID of the dispute to add message to</param>
+        /// <param name="request">Message content</param>
+        /// <response code="200">Message added successfully</response>
+        /// <response code="400">Invalid request data</response>
+        /// <response code="403">Access denied - not assigned to this dispute</response>
+        /// <response code="404">Dispute not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("dispute/{disputeId:int}/message")]
+        public async Task<IActionResult> AddDisputeMessage([FromRoute] int disputeId, [FromBody] AddDisputeMessageRequest request)
+        {
+            try
+            {
+                var staffId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var response = await _groupManagementService.AddDisputeMessageAsync(disputeId, request.Message, staffId);
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    403 => Forbid(),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding message to dispute {DisputeId}", disputeId);
+                return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
+            }
+        }
+
+        #endregion
     }
 }

@@ -48,7 +48,7 @@ namespace EvCoOwnership.Services.Services
                 var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
                     .AnyAsync(vco => vco.VehicleId == request.VehicleId && 
                                     vco.CoOwner.UserId == proposerUserId &&
-                                    vco.StatusEnum == EContractStatus.Active);
+                                    vco.StatusEnum == EEContractStatus.Active);
 
                 if (!isCoOwner)
                 {
@@ -234,7 +234,7 @@ namespace EvCoOwnership.Services.Services
                 var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
                     .AnyAsync(vco => vco.VehicleId == vehicle.Id &&
                                     vco.CoOwner.UserId == voterUserId &&
-                                    vco.StatusEnum == EContractStatus.Active);
+                                    vco.StatusEnum == EEContractStatus.Active);
 
                 if (!isCoOwner)
                 {
@@ -710,7 +710,7 @@ namespace EvCoOwnership.Services.Services
         {
             // Get total co-owners
             var totalCoOwners = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
-                .CountAsync(vco => vco.VehicleId == vehicleId && vco.StatusEnum == EContractStatus.Active);
+                .CountAsync(vco => vco.VehicleId == vehicleId && vco.StatusEnum == EEContractStatus.Active);
 
             // Get approval votes
             var approvalCount = await _unitOfWork.FundUsageVoteRepository.GetQueryable()
@@ -749,7 +749,7 @@ namespace EvCoOwnership.Services.Services
 
             // Get all co-owners
             var coOwners = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
-                .Where(vco => vco.VehicleId == vehicle.Id && vco.StatusEnum == EContractStatus.Active)
+                .Where(vco => vco.VehicleId == vehicle.Id && vco.StatusEnum == EEContractStatus.Active)
                 .Include(vco => vco.CoOwner)
                     .ThenInclude(co => co.User)
                 .ToListAsync();
@@ -849,7 +849,7 @@ namespace EvCoOwnership.Services.Services
             var isCoOwner = await _unitOfWork.VehicleCoOwnerRepository.GetQueryable()
                 .AnyAsync(vco => vco.VehicleId == vehicleId &&
                                 vco.CoOwner.UserId == userId &&
-                                vco.StatusEnum == EContractStatus.Active);
+                                vco.StatusEnum == EEContractStatus.Active);
 
             return isCoOwner;
         }

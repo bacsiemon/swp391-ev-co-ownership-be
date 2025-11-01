@@ -1,4 +1,5 @@
-using EvCoOwnership.Repositories.DTOs.UpgradeVoteDTOs;
+using EvCoOwnership.Repositories.DTOs;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Models
 {
@@ -19,23 +20,23 @@ namespace EvCoOwnership.Repositories.Models
         public string? VendorContact { get; set; }
         public DateTime? ProposedInstallationDate { get; set; }
         public int? EstimatedDurationDays { get; set; }
-        
+
         public int ProposedByUserId { get; set; }
         public DateTime ProposedAt { get; set; }
-        
+
         // Voting status
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected, Cancelled
         public DateTime? ApprovedAt { get; set; }
         public DateTime? RejectedAt { get; set; }
         public DateTime? CancelledAt { get; set; }
-        
+
         // Execution tracking
         public bool IsExecuted { get; set; }
         public DateTime? ExecutedAt { get; set; }
         public decimal? ActualCost { get; set; }
         public string? ExecutionNotes { get; set; }
         public int? FundUsageId { get; set; } // Link to fund deduction after execution
-        
+
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 

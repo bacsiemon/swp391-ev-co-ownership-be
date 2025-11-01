@@ -116,7 +116,7 @@ namespace EvCoOwnership.Services.Services
                         VehicleId = vehicle.Id,
                         OwnershipPercentage = request.InitialOwnershipPercentage,
                         InvestmentAmount = request.InitialInvestmentAmount,
-                        StatusEnum = EContractStatus.Active,
+                        StatusEnum = EEContractStatus.Active,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
@@ -205,7 +205,7 @@ namespace EvCoOwnership.Services.Services
 
                 var isVehicleCoOwner = vehicle.VehicleCoOwners.Any(vco =>
                     vco.CoOwnerId == requestingUserCoOwner.UserId &&
-                    vco.StatusEnum == EContractStatus.Active);
+                    vco.StatusEnum == EEContractStatus.Active);
 
                 if (!isVehicleCoOwner)
                 {
@@ -243,7 +243,7 @@ namespace EvCoOwnership.Services.Services
 
                 if (existingCoOwnership != null)
                 {
-                    if (existingCoOwnership.StatusEnum == EContractStatus.Active)
+                    if (existingCoOwnership.StatusEnum == EEContractStatus.Active)
                     {
                         return new BaseResponse
                         {
@@ -251,7 +251,7 @@ namespace EvCoOwnership.Services.Services
                             Message = "USER_ALREADY_CO_OWNER_OF_VEHICLE"
                         };
                     }
-                    else if (existingCoOwnership.StatusEnum == EContractStatus.Pending)
+                    else if (existingCoOwnership.StatusEnum == EEContractStatus.PendingSignatures)
                     {
                         return new BaseResponse
                         {
@@ -275,7 +275,7 @@ namespace EvCoOwnership.Services.Services
                     VehicleId = vehicleId,
                     OwnershipPercentage = request.OwnershipPercentage,
                     InvestmentAmount = request.InvestmentAmount,
-                    StatusEnum = EContractStatus.Pending,
+                    StatusEnum = EEContractStatus.PendingSignatures,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -331,7 +331,7 @@ namespace EvCoOwnership.Services.Services
                     .ContinueWith(task => task.Result.FirstOrDefault(vco =>
                         vco.VehicleId == vehicleId &&
                         vco.CoOwnerId == coOwner.UserId &&
-                        vco.StatusEnum == EContractStatus.Pending));
+                        vco.StatusEnum == EEContractStatus.PendingSignatures));
 
                 if (invitation == null)
                 {
@@ -356,11 +356,11 @@ namespace EvCoOwnership.Services.Services
                         };
                     }
 
-                    invitation.StatusEnum = EContractStatus.Active;
+                    invitation.StatusEnum = EEContractStatus.Active;
                 }
                 else
                 {
-                    invitation.StatusEnum = EContractStatus.Rejected;
+                    invitation.StatusEnum = EEContractStatus.Rejected;
                 }
 
                 invitation.UpdatedAt = DateTime.UtcNow;
@@ -415,7 +415,7 @@ namespace EvCoOwnership.Services.Services
                 var userCoOwner = await _unitOfWork.CoOwnerRepository.GetByUserIdAsync(userId);
                 var hasAccess = userCoOwner != null && vehicle.VehicleCoOwners.Any(vco =>
                     vco.CoOwnerId == userCoOwner.UserId &&
-                    (vco.StatusEnum == EContractStatus.Active || vco.StatusEnum == EContractStatus.Pending));
+                    (vco.StatusEnum == EEContractStatus.Active || vco.StatusEnum == EEContractStatus.PendingSignatures));
 
                 if (!hasAccess)
                 {
@@ -656,12 +656,12 @@ namespace EvCoOwnership.Services.Services
 
                 // Calculate total active ownership percentage
                 var totalActiveOwnership = vehicle.VehicleCoOwners
-                    .Where(vco => vco.StatusEnum == EContractStatus.Active)
+                    .Where(vco => vco.StatusEnum == EEContractStatus.Active)
                     .Sum(vco => vco.OwnershipPercentage);
 
                 // Calculate total pending ownership percentage
                 var totalPendingOwnership = vehicle.VehicleCoOwners
-                    .Where(vco => vco.StatusEnum == EContractStatus.Pending)
+                    .Where(vco => vco.StatusEnum == EEContractStatus.PendingSignatures)
                     .Sum(vco => vco.OwnershipPercentage);
 
                 // Check if adding new ownership would exceed 100%
@@ -748,7 +748,7 @@ namespace EvCoOwnership.Services.Services
                 }
 
                 // Cannot remove yourself if you're the only active owner
-                var activeCoOwners = vehicle.VehicleCoOwners.Where(vco => vco.StatusEnum == EContractStatus.Active).ToList();
+                var activeCoOwners = vehicle.VehicleCoOwners.Where(vco => vco.StatusEnum == EEContractStatus.Active).ToList();
                 if (activeCoOwners.Count == 1 && activeCoOwners.First().CoOwnerId == targetCoOwner.UserId)
                 {
                     return new BaseResponse
@@ -809,7 +809,7 @@ namespace EvCoOwnership.Services.Services
 
                 var isVehicleCoOwner = vehicle.VehicleCoOwners.Any(vco =>
                     vco.CoOwnerId == userCoOwner.UserId &&
-                    vco.StatusEnum == EContractStatus.Active); if (!isVehicleCoOwner)
+                    vco.StatusEnum == EEContractStatus.Active); if (!isVehicleCoOwner)
                 {
                     return new BaseResponse
                     {
@@ -1094,7 +1094,7 @@ namespace EvCoOwnership.Services.Services
 
                     var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
                         vco.CoOwnerId == coOwner.UserId &&
-                        vco.StatusEnum == EContractStatus.Active);
+                        vco.StatusEnum == EEContractStatus.Active);
 
                     if (!isCoOwner)
                     {
@@ -1167,7 +1167,7 @@ namespace EvCoOwnership.Services.Services
                     });
 
                     // Sum up active ownership percentages
-                    if (vco.StatusEnum == EContractStatus.Active)
+                    if (vco.StatusEnum == EEContractStatus.Active)
                     {
                         totalOwnershipPercentage += vco.OwnershipPercentage;
                     }
@@ -1326,7 +1326,7 @@ namespace EvCoOwnership.Services.Services
                     // Check if user is co-owner of this vehicle
                     var isCoOwner = vehicle.VehicleCoOwners.Any(vco =>
                         vco.CoOwnerId == coOwner.UserId &&
-                        vco.StatusEnum == EContractStatus.Active);
+                        vco.StatusEnum == EEContractStatus.Active);
 
                     if (!isCoOwner)
                     {
@@ -1663,7 +1663,7 @@ namespace EvCoOwnership.Services.Services
                                 .ThenInclude(co => co.User)
                         .Where(v => v.VehicleCoOwners.Any(vco =>
                             vco.CoOwnerId == coOwner.UserId &&
-                            vco.StatusEnum == EContractStatus.Active))
+                            vco.StatusEnum == EEContractStatus.Active))
                         .ToListAsync();
                 }
                 else

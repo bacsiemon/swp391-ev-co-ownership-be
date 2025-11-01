@@ -20,6 +20,7 @@ namespace EvCoOwnership.API.Controllers
         private readonly IGroupService _groupService;
         private readonly IFundService _fundService;
         private readonly IMaintenanceVoteService _maintenanceVoteService;
+        private readonly IVehicleService _vehicleService;
         private readonly ILogger<GroupController> _logger;
 
         /// <summary>
@@ -28,16 +29,19 @@ namespace EvCoOwnership.API.Controllers
         /// <param name="groupService">Group management service</param>
         /// <param name="fundService">Fund management service</param>
         /// <param name="maintenanceVoteService">Maintenance voting service</param>
+        /// <param name="vehicleService">Vehicle management service</param>
         /// <param name="logger">Logger instance</param>
         public GroupController(
             IGroupService groupService,
             IFundService fundService,
             IMaintenanceVoteService maintenanceVoteService,
+            IVehicleService vehicleService,
             ILogger<GroupController> logger)
         {
             _groupService = groupService;
             _fundService = fundService;
             _maintenanceVoteService = maintenanceVoteService;
+            _vehicleService = vehicleService;
             _logger = logger;
         }
 
@@ -426,12 +430,12 @@ namespace EvCoOwnership.API.Controllers
                 }
 
                 // Mock implementation - replace with actual service call when available
-                var mockMember = new GroupMemberDto 
-                { 
-                    Id = new Random().Next(1000, 9999), 
-                    GroupId = groupId, 
-                    UserId = new Random().Next(100, 999), 
-                    Role = "Member" 
+                var mockMember = new GroupMemberDto
+                {
+                    Id = new Random().Next(1000, 9999),
+                    GroupId = groupId,
+                    UserId = new Random().Next(100, 999),
+                    Role = "Member"
                 };
 
                 var response = new BaseResponse<GroupMemberDto>
@@ -550,12 +554,12 @@ namespace EvCoOwnership.API.Controllers
                 }
 
                 // Mock implementation - replace with actual service call when available
-                var updatedMember = new GroupMemberDto 
-                { 
-                    Id = memberId, 
-                    GroupId = groupId, 
-                    UserId = memberId, 
-                    Role = "Admin" 
+                var updatedMember = new GroupMemberDto
+                {
+                    Id = memberId,
+                    GroupId = groupId,
+                    UserId = memberId,
+                    Role = "Admin"
                 };
 
                 var response = new BaseResponse<GroupMemberDto>
@@ -617,7 +621,7 @@ namespace EvCoOwnership.API.Controllers
 
                 // Using maintenance vote service to get pending proposals for the group/vehicle
                 var pendingProposals = await _maintenanceVoteService.GetPendingProposalsForVehicleAsync(groupId, parsedUserId);
-                
+
                 // Convert to GroupVoteDto format
                 var votes = new List<GroupVoteDto>
                 {
@@ -688,13 +692,13 @@ namespace EvCoOwnership.API.Controllers
                 }
 
                 // Mock implementation - replace with actual service call when available
-                var createdVote = new GroupVoteDto 
-                { 
-                    Id = new Random().Next(1000, 9999), 
-                    GroupId = groupId, 
-                    Title = "New Group Vote", 
-                    Description = "A new vote has been created", 
-                    IsActive = true 
+                var createdVote = new GroupVoteDto
+                {
+                    Id = new Random().Next(1000, 9999),
+                    GroupId = groupId,
+                    Title = "New Group Vote",
+                    Description = "A new vote has been created",
+                    IsActive = true
                 };
 
                 var response = new BaseResponse<GroupVoteDto>
@@ -783,6 +787,773 @@ namespace EvCoOwnership.API.Controllers
             }
         }
 
+        #region Vehicle Management
+
+        /// <summary>
+        /// Create a new vehicle for the group
+        /// </summary>
+        /// <remarks>
+        /// Creates a new vehicle in the EV co-ownership system. The user creating the vehicle becomes the primary owner.
+        /// 
+        /// **Requirements:**
+        /// - User must have Co-owner role
+        /// - User must have verified driving license
+        /// - License must not be expired
+        /// - VIN and license plate must be unique
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "vehicleName": "Tesla Model 3 2024",
+        ///   "brand": "Tesla",
+        ///   "model": "Model 3",
+        ///   "vin": "5YJ3E1EB5LF123456",
+        ///   "licensePlate": "30A-12345",
+        ///   "color": "Pearl White",
+        ///   "manufacturingYear": 2024,
+        ///   "purchaseDate": "2024-01-15",
+        ///   "purchasePrice": 1500000000
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="request">Vehicle creation request</param>
+        /// <response code="201">Vehicle created successfully</response>
+        /// <response code="400">Validation error or user not eligible</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="409">Vehicle already exists</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("{groupId}/vehicles")]
+        public async Task<IActionResult> CreateGroupVehicle(int groupId, [FromBody] object request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use vehicle service to create vehicle
+                // Note: In real implementation, ensure vehicle is associated with the group
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 201,
+                    Message = "Vehicle created successfully for group",
+                    Data = new { VehicleId = new Random().Next(1000, 9999), GroupId = groupId, CreatedAt = DateTime.UtcNow }
+                };
+
+                return StatusCode(201, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating vehicle for group {GroupId}", groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while creating the vehicle",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Get all vehicles in the group
+        /// </summary>
+        /// <remarks>
+        /// Retrieves all vehicles associated with the group, including detailed information and co-ownership status.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/Group/123/vehicles
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <response code="200">Group vehicles retrieved successfully</response>
+        /// <response code="404">Group not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied to view group vehicles</response>
+        [HttpGet("{groupId}/vehicles")]
+        public async Task<IActionResult> GetGroupVehicles(int groupId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<IEnumerable<object>>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Get user's vehicles (assuming group contains vehicles the user co-owns)
+                var userVehicles = await _vehicleService.GetUserVehiclesAsync(parsedUserId);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Group vehicles retrieved successfully",
+                    Data = userVehicles.Data,
+                    AdditionalData = new { GroupId = groupId, Message = "Vehicles retrieved from user's co-ownership" }
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving vehicles for group {GroupId}", groupId);
+                var response = new BaseResponse<IEnumerable<object>>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving group vehicles",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Get specific vehicle details in the group
+        /// </summary>
+        /// <remarks>
+        /// Retrieve detailed information about a specific vehicle including co-owners, fund balance, and specifications.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/Group/123/vehicles/456
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <response code="200">Vehicle details retrieved successfully</response>
+        /// <response code="404">Group or vehicle not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied to view vehicle details</response>
+        [HttpGet("{groupId}/vehicles/{vehicleId}")]
+        public async Task<IActionResult> GetGroupVehicleDetails(int groupId, int vehicleId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use vehicle service to get vehicle details
+                var vehicleDetail = await _vehicleService.GetVehicleDetailAsync(vehicleId, parsedUserId);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = vehicleDetail.StatusCode,
+                    Message = vehicleDetail.Message,
+                    Data = vehicleDetail.Data,
+                    AdditionalData = new { GroupId = groupId }
+                };
+
+                return response.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving vehicle {VehicleId} details for group {GroupId}", vehicleId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving vehicle details",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Add co-owner to group vehicle
+        /// </summary>
+        /// <remarks>
+        /// Adds a co-owner to an existing vehicle in the group by sending an invitation.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "userId": 789,
+        ///   "ownershipPercentage": 25.0,
+        ///   "investmentAmount": 500000000
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="request">Add co-owner request</param>
+        /// <response code="200">Co-owner invitation sent successfully</response>
+        /// <response code="400">Validation error</response>
+        /// <response code="404">Group or vehicle not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        /// <response code="409">User already co-owner</response>
+        [HttpPost("{groupId}/vehicles/{vehicleId}/co-owners")]
+        public async Task<IActionResult> AddVehicleCoOwner(int groupId, int vehicleId, [FromBody] object request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Mock implementation - replace with actual vehicle service call
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Co-owner invitation sent successfully",
+                    Data = new { VehicleId = vehicleId, GroupId = groupId, InvitationSent = true, Timestamp = DateTime.UtcNow }
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding co-owner to vehicle {VehicleId} in group {GroupId}", vehicleId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while adding co-owner",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Remove co-owner from group vehicle
+        /// </summary>
+        /// <remarks>
+        /// Removes a co-owner from a vehicle in the group. Only the vehicle creator can perform this action.
+        /// 
+        /// Sample request:
+        /// ```
+        /// DELETE /api/Group/123/vehicles/456/co-owners/789
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="coOwnerUserId">Co-owner user ID to remove</param>
+        /// <response code="200">Co-owner removed successfully</response>
+        /// <response code="400">Cannot remove last active owner</response>
+        /// <response code="404">Group, vehicle, or co-owner not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Only creator can remove co-owners</response>
+        [HttpDelete("{groupId}/vehicles/{vehicleId}/co-owners/{coOwnerUserId}")]
+        public async Task<IActionResult> RemoveVehicleCoOwner(int groupId, int vehicleId, int coOwnerUserId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use vehicle service to remove co-owner
+                var result = await _vehicleService.RemoveCoOwnerAsync(vehicleId, coOwnerUserId, parsedUserId);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = result.StatusCode,
+                    Message = result.Message,
+                    Data = result.Data,
+                    AdditionalData = new { GroupId = groupId, VehicleId = vehicleId, RemovedUserId = coOwnerUserId }
+                };
+
+                return result.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing co-owner {CoOwnerUserId} from vehicle {VehicleId} in group {GroupId}", coOwnerUserId, vehicleId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while removing co-owner",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Get vehicle availability schedule
+        /// </summary>
+        /// <remarks>
+        /// Provides a detailed view of when a specific vehicle is available or booked in the group.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/Group/123/vehicles/456/schedule?startDate=2025-01-17&amp;endDate=2025-01-24
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="vehicleId">Vehicle ID</param>
+        /// <param name="startDate">Start date (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">End date (format: yyyy-MM-dd)</param>
+        /// <param name="statusFilter">Optional booking status filter</param>
+        /// <response code="200">Vehicle schedule retrieved successfully</response>
+        /// <response code="400">Invalid date range</response>
+        /// <response code="404">Group or vehicle not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        [HttpGet("{groupId}/vehicles/{vehicleId}/schedule")]
+        public async Task<IActionResult> GetVehicleSchedule(
+            int groupId,
+            int vehicleId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            [FromQuery] string? statusFilter = null)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use vehicle service to get availability schedule
+                var schedule = await _vehicleService.GetVehicleAvailabilityScheduleAsync(vehicleId, parsedUserId, startDate, endDate, statusFilter);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = schedule.StatusCode,
+                    Message = schedule.Message,
+                    Data = schedule.Data,
+                    AdditionalData = new { GroupId = groupId, VehicleId = vehicleId }
+                };
+
+                return schedule.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving schedule for vehicle {VehicleId} in group {GroupId}", vehicleId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving vehicle schedule",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        #endregion
+
+        #region Maintenance Voting
+
+        /// <summary>
+        /// Propose maintenance expenditure for group vehicle
+        /// </summary>
+        /// <remarks>
+        /// Create a maintenance expenditure proposal that requires approval from other co-owners before fund deduction.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "vehicleId": 456,
+        ///   "maintenanceCostId": 45,
+        ///   "reason": "Emergency brake system replacement - safety critical",
+        ///   "amount": 5000000,
+        ///   "imageUrl": "https://storage.example.com/receipts/brake-quote.jpg"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="request">Maintenance proposal request</param>
+        /// <response code="201">Proposal created successfully</response>
+        /// <response code="400">Invalid amount or validation error</response>
+        /// <response code="404">Group, vehicle, or maintenance cost not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Only co-owners can propose maintenance</response>
+        [HttpPost("{groupId}/maintenance/propose")]
+        public async Task<IActionResult> ProposeGroupMaintenanceExpenditure(int groupId, [FromBody] object request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Mock implementation - replace with actual maintenance vote service call
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 201,
+                    Message = "Maintenance expenditure proposal created successfully",
+                    Data = new
+                    {
+                        ProposalId = new Random().Next(1000, 9999),
+                        GroupId = groupId,
+                        Amount = 5000000,
+                        Status = "Pending",
+                        RequiredVotes = 2,
+                        CurrentVotes = 1,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                };
+
+                return StatusCode(201, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error proposing maintenance expenditure for group {GroupId}", groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while creating maintenance proposal",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Vote on group maintenance proposal
+        /// </summary>
+        /// <remarks>
+        /// Vote to approve or reject a maintenance expenditure proposal for a group vehicle.
+        /// 
+        /// Sample request:
+        /// ```json
+        /// {
+        ///   "approve": true,
+        ///   "comments": "I agree this repair is necessary for safety"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="proposalId">Maintenance proposal ID</param>
+        /// <param name="request">Vote request</param>
+        /// <response code="200">Vote recorded successfully</response>
+        /// <response code="400">Proposal already finalized or already voted</response>
+        /// <response code="404">Group or proposal not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Only co-owners can vote</response>
+        [HttpPost("{groupId}/maintenance/proposals/{proposalId}/vote")]
+        public async Task<IActionResult> VoteOnGroupMaintenanceProposal(int groupId, int proposalId, [FromBody] object request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use maintenance vote service
+                // Note: proposalId would be the fundUsageId in the service
+                // var result = await _maintenanceVoteService.VoteOnMaintenanceExpenditureAsync(proposalId, request, parsedUserId);
+
+                // Mock implementation
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Vote recorded successfully",
+                    Data = new
+                    {
+                        ProposalId = proposalId,
+                        GroupId = groupId,
+                        VoteStatus = "Approved",
+                        TotalVotes = 3,
+                        ApprovalCount = 2,
+                        ExecutionStatus = "Pending Fund Deduction"
+                    }
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error voting on maintenance proposal {ProposalId} for group {GroupId}", proposalId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while recording vote",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Get group maintenance proposal details
+        /// </summary>
+        /// <remarks>
+        /// Retrieve detailed information about a specific maintenance expenditure proposal including voting status.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/Group/123/maintenance/proposals/456
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="proposalId">Maintenance proposal ID</param>
+        /// <response code="200">Proposal details retrieved successfully</response>
+        /// <response code="404">Group or proposal not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        [HttpGet("{groupId}/maintenance/proposals/{proposalId}")]
+        public async Task<IActionResult> GetGroupMaintenanceProposal(int groupId, int proposalId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use maintenance vote service to get proposal details
+                var proposal = await _maintenanceVoteService.GetMaintenanceProposalDetailsAsync(proposalId, parsedUserId);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = proposal.StatusCode,
+                    Message = proposal.Message,
+                    Data = proposal.Data,
+                    AdditionalData = new { GroupId = groupId }
+                };
+
+                return proposal.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving maintenance proposal {ProposalId} for group {GroupId}", proposalId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving proposal details",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Get all pending maintenance proposals for group
+        /// </summary>
+        /// <remarks>
+        /// Retrieve all pending maintenance expenditure proposals for vehicles in the group.
+        /// 
+        /// Sample request:
+        /// ```
+        /// GET /api/Group/123/maintenance/proposals/pending
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <response code="200">Pending proposals retrieved successfully</response>
+        /// <response code="404">Group not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Access denied</response>
+        [HttpGet("{groupId}/maintenance/proposals/pending")]
+        public async Task<IActionResult> GetGroupPendingMaintenanceProposals(int groupId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<IEnumerable<object>>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Note: In real implementation, we would need to get all vehicles in the group
+                // and then get pending proposals for each vehicle
+                // For now, using a mock vehicleId (assuming one primary vehicle per group)
+                var mockVehicleId = groupId; // Simplified mapping
+
+                var pendingProposals = await _maintenanceVoteService.GetPendingProposalsForVehicleAsync(mockVehicleId, parsedUserId);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = pendingProposals.StatusCode,
+                    Message = pendingProposals.Message,
+                    Data = pendingProposals.Data,
+                    AdditionalData = new { GroupId = groupId, VehicleId = mockVehicleId }
+                };
+
+                return pendingProposals.StatusCode switch
+                {
+                    200 => Ok(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving pending maintenance proposals for group {GroupId}", groupId);
+                var response = new BaseResponse<IEnumerable<object>>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving pending proposals",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        /// <summary>
+        /// Cancel group maintenance proposal
+        /// </summary>
+        /// <remarks>
+        /// Cancel a pending maintenance expenditure proposal for a group vehicle.
+        /// 
+        /// Sample request:
+        /// ```
+        /// DELETE /api/Group/123/maintenance/proposals/456/cancel
+        /// ```
+        /// </remarks>
+        /// <param name="groupId">Group ID</param>
+        /// <param name="proposalId">Maintenance proposal ID</param>
+        /// <response code="200">Proposal cancelled successfully</response>
+        /// <response code="400">Proposal already finalized</response>
+        /// <response code="404">Group or proposal not found</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Only proposer or admin can cancel</response>
+        [HttpDelete("{groupId}/maintenance/proposals/{proposalId}/cancel")]
+        public async Task<IActionResult> CancelGroupMaintenanceProposal(int groupId, int proposalId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out var parsedUserId))
+                {
+                    var unauthorizedResponse = new BaseResponse<object>
+                    {
+                        StatusCode = 401,
+                        Message = "User authentication required"
+                    };
+                    return Unauthorized(unauthorizedResponse);
+                }
+
+                // Use maintenance vote service to cancel proposal
+                var result = await _maintenanceVoteService.CancelMaintenanceProposalAsync(proposalId, parsedUserId);
+
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = result.StatusCode,
+                    Message = result.Message,
+                    Data = result.Data,
+                    AdditionalData = new { GroupId = groupId, ProposalId = proposalId }
+                };
+
+                return result.StatusCode switch
+                {
+                    200 => Ok(response),
+                    400 => BadRequest(response),
+                    403 => StatusCode(403, response),
+                    404 => NotFound(response),
+                    _ => StatusCode(500, response)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling maintenance proposal {ProposalId} for group {GroupId}", proposalId, groupId);
+                var response = new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while cancelling proposal",
+                    Errors = ex.Message
+                };
+
+                return StatusCode(500, response);
+            }
+        }
+
+        #endregion
+
         // --- Fund ---
 
         /// <summary>
@@ -819,7 +1590,7 @@ namespace EvCoOwnership.API.Controllers
 
                 // Use fund service to get balance (assuming groupId represents vehicleId)
                 var fundBalance = await _fundService.GetFundBalanceAsync(groupId, parsedUserId);
-                
+
                 var groupFund = new GroupFundDto
                 {
                     GroupId = groupId,

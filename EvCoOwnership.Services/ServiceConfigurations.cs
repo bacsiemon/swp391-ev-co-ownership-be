@@ -44,7 +44,9 @@ namespace EvCoOwnership.Services
             services.AddScoped<IDisputeService, DisputeService>();
             services.AddScoped<IContractService, ContractService>();
             services.AddScoped<IGroupService, GroupService>();
-            services.AddScoped<IServiceService, ServiceService>();
+            services.AddScoped<IScheduleService, ScheduleService>();
+            services.AddScoped<IProfileService, ProfileService>();
+            services.AddScoped<IGroupManagementService, GroupManagementService>();
         }
     }
 }

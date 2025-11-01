@@ -45,7 +45,7 @@ namespace EvCoOwnership.Services.Services
                 var isCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
                     .AnyAsync(vco => vco.CoOwner!.UserId == userId &&
                                    vco.VehicleId == request.VehicleId &&
-                                   vco.StatusEnum == EContractStatus.Active);
+                                   vco.StatusEnum == EEContractStatus.Active);
 
                 if (!isCoOwner)
                 {
@@ -75,7 +75,7 @@ namespace EvCoOwnership.Services.Services
                     var isSignatoryCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
                         .AnyAsync(vco => vco.CoOwner!.UserId == signatoryId &&
                                        vco.VehicleId == request.VehicleId &&
-                                       vco.StatusEnum == EContractStatus.Active);
+                                       vco.StatusEnum == EEContractStatus.Active);
 
                     if (!isSignatoryCoOwner)
                     {
@@ -207,7 +207,7 @@ namespace EvCoOwnership.Services.Services
                 var isCoOwner = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
                     .AnyAsync(vco => vco.CoOwner!.UserId == userId &&
                                    vco.VehicleId == contract.VehicleId &&
-                                   vco.StatusEnum == EContractStatus.Active);
+                                   vco.StatusEnum == EEContractStatus.Active);
 
                 if (!isCreator && !isSignatory && !isCoOwner)
                 {
@@ -252,7 +252,7 @@ namespace EvCoOwnership.Services.Services
             {
                 // Get user's vehicle IDs
                 var userVehicleIds = await _unitOfWork.DbContext.Set<VehicleCoOwner>()
-                    .Where(vco => vco.CoOwner!.UserId == userId && vco.StatusEnum == EContractStatus.Active)
+                    .Where(vco => vco.CoOwner!.UserId == userId && vco.StatusEnum == EEContractStatus.Active)
                     .Select(vco => vco.VehicleId)
                     .ToListAsync();
 

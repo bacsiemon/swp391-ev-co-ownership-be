@@ -1,184 +1,89 @@
-using EvCoOwnership.Repositories.Enums;
+using FluentValidation;
 
 namespace EvCoOwnership.Repositories.DTOs.UpgradeVoteDTOs
 {
-    /// <summary>
-    /// Types of vehicle upgrades that can be proposed
-    /// </summary>
-    public enum EUpgradeType
+    #region Upgrade Vote Request DTOs
+
+    public class CreateUpgradeVoteRequest
     {
-        /// <summary>
-        /// Battery upgrade or replacement
-        /// </summary>
-        BatteryUpgrade = 0,
-
-        /// <summary>
-        /// Insurance package upgrade
-        /// </summary>
-        InsurancePackage = 1,
-
-        /// <summary>
-        /// Technology and software upgrades
-        /// </summary>
-        TechnologyUpgrade = 2,
-
-        /// <summary>
-        /// Interior or comfort upgrades
-        /// </summary>
-        InteriorUpgrade = 3,
-
-        /// <summary>
-        /// Performance and mechanical upgrades
-        /// </summary>
-        PerformanceUpgrade = 4,
-
-        /// <summary>
-        /// Safety features and equipment
-        /// </summary>
-        SafetyUpgrade = 5,
-
-        /// <summary>
-        /// Other miscellaneous upgrades
-        /// </summary>
-        Other = 6
-    }
-
-    /// <summary>
-    /// Request to propose a vehicle upgrade
-    /// </summary>
-    public class ProposeVehicleUpgradeRequest
-    {
-        public int VehicleId { get; set; }
-        public EUpgradeType UpgradeType { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public decimal EstimatedCost { get; set; }
-        public string? Justification { get; set; }
-        public string? ImageUrl { get; set; }
-        public string? VendorName { get; set; }
-        public string? VendorContact { get; set; }
-        public DateTime? ProposedInstallationDate { get; set; }
-        public int? EstimatedDurationDays { get; set; }
-    }
-
-    /// <summary>
-    /// Request to vote on a vehicle upgrade proposal
-    /// </summary>
-    public class VoteVehicleUpgradeRequest
-    {
-        public bool Approve { get; set; }
+        public int UpgradeProposalId { get; set; }
+        public string VoteType { get; set; } = string.Empty; // "approve", "reject"
         public string? Comments { get; set; }
     }
 
-    /// <summary>
-    /// Response for a vehicle upgrade proposal
-    /// </summary>
-    public class VehicleUpgradeProposalResponse
+    public class CreateUpgradeVoteRequestValidator : AbstractValidator<CreateUpgradeVoteRequest>
     {
-        public int ProposalId { get; set; }
-        public int VehicleId { get; set; }
-        public string VehicleName { get; set; } = string.Empty;
-        public EUpgradeType UpgradeType { get; set; }
-        public string UpgradeTypeName { get; set; } = string.Empty;
-        public string Title { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public decimal EstimatedCost { get; set; }
-        public string? Justification { get; set; }
-        public string? ImageUrl { get; set; }
-        public string? VendorName { get; set; }
-        public string? VendorContact { get; set; }
-        public DateTime? ProposedInstallationDate { get; set; }
-        public int? EstimatedDurationDays { get; set; }
-        
-        // Proposer information
-        public int ProposedByUserId { get; set; }
-        public string ProposedByUserName { get; set; } = string.Empty;
-        public DateTime ProposedAt { get; set; }
-        
-        // Voting statistics
-        public int TotalCoOwners { get; set; }
-        public int RequiredApprovals { get; set; }
-        public int CurrentApprovals { get; set; }
-        public int CurrentRejections { get; set; }
+        public CreateUpgradeVoteRequestValidator()
+        {
+            RuleFor(x => x.UpgradeProposalId)
+                .GreaterThan(0)
+                .WithMessage("Upgrade proposal ID must be valid");
+
+            RuleFor(x => x.VoteType)
+                .NotEmpty()
+                .WithMessage("Vote type is required")
+                .Must(x => x == "approve" || x == "reject")
+                .WithMessage("Vote type must be 'approve' or 'reject'");
+
+            RuleFor(x => x.Comments)
+                .MaximumLength(500)
+                .WithMessage("Comments cannot exceed 500 characters");
+        }
+    }
+
+    public class UpdateUpgradeVoteRequest
+    {
+        public string VoteType { get; set; } = string.Empty;
+        public string? Comments { get; set; }
+    }
+
+    public class UpdateUpgradeVoteRequestValidator : AbstractValidator<UpdateUpgradeVoteRequest>
+    {
+        public UpdateUpgradeVoteRequestValidator()
+        {
+            RuleFor(x => x.VoteType)
+                .NotEmpty()
+                .WithMessage("Vote type is required")
+                .Must(x => x == "approve" || x == "reject")
+                .WithMessage("Vote type must be 'approve' or 'reject'");
+
+            RuleFor(x => x.Comments)
+                .MaximumLength(500)
+                .WithMessage("Comments cannot exceed 500 characters");
+        }
+    }
+
+    #endregion
+
+    #region Upgrade Vote Response DTOs
+
+    public class UpgradeVoteResponse
+    {
+        public int VoteId { get; set; }
+        public int UpgradeProposalId { get; set; }
+        public int VoterId { get; set; }
+        public string VoterName { get; set; } = string.Empty;
+        public string VoteType { get; set; } = string.Empty;
+        public string? Comments { get; set; }
+        public DateTime VotedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class UpgradeVoteSummaryResponse
+    {
+        public int UpgradeProposalId { get; set; }
+        public string ProposalTitle { get; set; } = string.Empty;
+        public int TotalVotes { get; set; }
+        public int ApprovalVotes { get; set; }
+        public int RejectionVotes { get; set; }
         public decimal ApprovalPercentage { get; set; }
-        public string VotingStatus { get; set; } = string.Empty; // "Pending", "Approved", "Rejected", "Cancelled"
-        public bool IsApproved { get; set; }
-        public bool IsRejected { get; set; }
-        public bool IsCancelled { get; set; }
-        
-        // Execution details
-        public bool IsExecuted { get; set; }
-        public DateTime? ExecutedAt { get; set; }
-        public decimal? ActualCost { get; set; }
-        public string? ExecutionNotes { get; set; }
-        
-        // Vote details
-        public List<UpgradeVoteDetailResponse> Votes { get; set; } = new();
+        public string Status { get; set; } = string.Empty; // "pending", "approved", "rejected"
+        public bool HasUserVoted { get; set; }
+        public string? UserVoteType { get; set; }
+        public List<UpgradeVoteResponse> Votes { get; set; } = new();
+        public DateTime CreatedAt { get; set; }
+        public DateTime? DeadlineAt { get; set; }
     }
 
-    /// <summary>
-    /// Individual vote detail for upgrade proposal
-    /// </summary>
-    public class UpgradeVoteDetailResponse
-    {
-        public int UserId { get; set; }
-        public string UserName { get; set; } = string.Empty;
-        public string UserEmail { get; set; } = string.Empty;
-        public bool? HasVoted { get; set; }
-        public bool? IsAgree { get; set; }
-        public string? Comments { get; set; }
-        public DateTime? VotedAt { get; set; }
-    }
-
-    /// <summary>
-    /// Summary of pending upgrade proposals for a vehicle
-    /// </summary>
-    public class PendingUpgradeProposalsSummary
-    {
-        public int VehicleId { get; set; }
-        public string VehicleName { get; set; } = string.Empty;
-        public int TotalPendingProposals { get; set; }
-        public decimal TotalPendingCost { get; set; }
-        public List<VehicleUpgradeProposalResponse> Proposals { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Request to mark proposal as executed
-    /// </summary>
-    public class MarkUpgradeExecutedRequest
-    {
-        public decimal ActualCost { get; set; }
-        public string? ExecutionNotes { get; set; }
-        public string? InvoiceImageUrl { get; set; }
-    }
-
-    /// <summary>
-    /// Upgrade voting history for a user
-    /// </summary>
-    public class UserUpgradeVotingHistoryResponse
-    {
-        public int UserId { get; set; }
-        public string UserName { get; set; } = string.Empty;
-        public int TotalProposalsCreated { get; set; }
-        public int TotalVotesCast { get; set; }
-        public int ApprovalsGiven { get; set; }
-        public int RejectionsGiven { get; set; }
-        public int PendingVotes { get; set; }
-        public List<VehicleUpgradeProposalResponse> ProposalHistory { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Upgrade statistics for a vehicle
-    /// </summary>
-    public class VehicleUpgradeStatistics
-    {
-        public int VehicleId { get; set; }
-        public string VehicleName { get; set; } = string.Empty;
-        public int TotalUpgradesCompleted { get; set; }
-        public decimal TotalUpgradeCost { get; set; }
-        public int PendingProposals { get; set; }
-        public int RejectedProposals { get; set; }
-        public Dictionary<string, int> UpgradesByType { get; set; } = new();
-        public List<VehicleUpgradeProposalResponse> RecentUpgrades { get; set; } = new();
-    }
+    #endregion
 }

@@ -91,7 +91,7 @@ namespace EvCoOwnership.Repositories.Repositories
             {
                 query = query.Where(v => v.VehicleCoOwners.Any(vco =>
                     vco.CoOwnerId == coOwnerId.Value &&
-                    vco.StatusEnum == EContractStatus.Active));
+                    vco.StatusEnum == EEContractStatus.Active));
             }
 
             // Apply status filter if provided

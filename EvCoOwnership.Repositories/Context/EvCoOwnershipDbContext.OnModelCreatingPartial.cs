@@ -1,7 +1,7 @@
 #nullable disable
 using Microsoft.EntityFrameworkCore;
 using EvCoOwnership.Repositories.Models;
-using EvCoOwnership.Repositories.DTOs.UpgradeVoteDTOs;
+using EvCoOwnership.Repositories.DTOs;
 
 namespace EvCoOwnership.Repositories.Context;
 

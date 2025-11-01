@@ -16,7 +16,7 @@ public partial class VehicleCoOwner
 
     public decimal InvestmentAmount { get; set; }
 
-    public EContractStatus? StatusEnum { get; set; }
+    public EEContractStatus? StatusEnum { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
