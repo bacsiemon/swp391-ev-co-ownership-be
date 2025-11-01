@@ -286,7 +286,7 @@ namespace EvCoOwnership.API.Controllers
             {
                 var adminUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var response = await _licenseService.UpdateLicenseStatusAsync(id.ToString(), "Approved", adminUserId);
-                
+
                 return response.StatusCode switch
                 {
                     200 => Ok(response),
@@ -324,7 +324,7 @@ namespace EvCoOwnership.API.Controllers
             {
                 var adminUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var response = await _licenseService.UpdateLicenseStatusAsync(id.ToString(), "Rejected", adminUserId);
-                
+
                 return response.StatusCode switch
                 {
                     200 => Ok(response),
@@ -565,19 +565,19 @@ namespace EvCoOwnership.API.Controllers
             {
                 var auditLogs = new[]
                 {
-                    new { 
-                        Id = 1, 
-                        Action = "USER_LOGIN", 
-                        UserId = 123, 
+                    new {
+                        Id = 1,
+                        Action = "USER_LOGIN",
+                        UserId = 123,
                         UserName = "john.doe@example.com",
                         Timestamp = DateTime.UtcNow.AddHours(-2),
                         IpAddress = "192.168.1.100",
                         Details = "Successful login"
                     },
-                    new { 
-                        Id = 2, 
-                        Action = "LICENSE_APPROVED", 
-                        UserId = 456, 
+                    new {
+                        Id = 2,
+                        Action = "LICENSE_APPROVED",
+                        UserId = 456,
                         UserName = "admin@system.com",
                         Timestamp = DateTime.UtcNow.AddHours(-1),
                         IpAddress = "192.168.1.101",

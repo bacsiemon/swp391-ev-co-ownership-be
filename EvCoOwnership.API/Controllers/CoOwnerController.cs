@@ -83,8 +83,8 @@ namespace EvCoOwnership.API.Controllers
                 {
                     StatusCode = 201,
                     Message = "CO_OWNER_REGISTRATION_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         UserId = new Random().Next(1000, 9999),
                         Message = "Co-owner registration successful. Please verify your email."
                     }
@@ -120,7 +120,7 @@ namespace EvCoOwnership.API.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var profile = await _userProfileService.GetUserProfileAsync(userId);
-                
+
                 return profile.StatusCode switch
                 {
                     200 => Ok(profile),
@@ -166,14 +166,14 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method cần specific DTO type
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "PROFILE_UPDATED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         UserId = userId,
                         UpdatedAt = DateTime.UtcNow,
                         Message = "Profile updated successfully"
@@ -208,7 +208,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data - cần implement OwnershipService
                 var ownership = new
                 {
@@ -221,7 +221,7 @@ namespace EvCoOwnership.API.Controllers
                     TotalShares = 75,
                     TotalValue = 1500000000 // VND
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -258,7 +258,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data
                 var schedule = new
                 {
@@ -270,7 +270,7 @@ namespace EvCoOwnership.API.Controllers
                     },
                     TotalBookings = 2
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -318,14 +318,14 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method cần specific DTO type
                 return StatusCode(201, new BaseResponse<object>
                 {
                     StatusCode = 201,
                     Message = "BOOKING_CREATED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         BookingId = new Random().Next(1000, 9999),
                         UserId = userId,
                         BookedAt = DateTime.UtcNow,
@@ -361,7 +361,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data vì service method chưa tồn tại
                 var history = new
                 {
@@ -375,7 +375,7 @@ namespace EvCoOwnership.API.Controllers
                     PageIndex = pageIndex,
                     PageSize = pageSize
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -412,7 +412,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data - cần implement cost calculation service
                 var costs = new
                 {
@@ -433,7 +433,7 @@ namespace EvCoOwnership.API.Controllers
                         Depreciation = 350000
                     }
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -479,14 +479,14 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method signature khác
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "PAYMENT_PROCESSED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         PaymentId = new Random().Next(1000, 9999),
                         UserId = userId,
                         ProcessedAt = DateTime.UtcNow,
@@ -524,7 +524,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data
                 var group = new
                 {
@@ -548,7 +548,7 @@ namespace EvCoOwnership.API.Controllers
                         PendingExpenses = 15000000
                     }
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -594,14 +594,14 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "MEMBER_INVITE_SENT_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         InviteId = new Random().Next(1000, 9999),
                         SentBy = userId,
                         SentAt = DateTime.UtcNow,
@@ -638,14 +638,14 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "MEMBER_REMOVED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         RemovedMemberId = id,
                         RemovedBy = userId,
                         RemovedAt = DateTime.UtcNow
@@ -690,14 +690,14 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "VOTE_SUBMITTED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         VoteId = new Random().Next(1000, 9999),
                         VotedBy = userId,
                         VotedAt = DateTime.UtcNow
@@ -732,7 +732,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data
                 var fund = new
                 {
@@ -750,7 +750,7 @@ namespace EvCoOwnership.API.Controllers
                         new { Date = DateTime.UtcNow.AddDays(-7), Description = "Monthly contribution", Amount = 5000000, Type = "Income" }
                     }
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -787,7 +787,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock data vì service method chưa tồn tại
                 var analytics = new
                 {
@@ -818,7 +818,7 @@ namespace EvCoOwnership.API.Controllers
                         new { Hour = 19, Count = 6 }
                     }
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,

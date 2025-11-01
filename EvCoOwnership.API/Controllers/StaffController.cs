@@ -70,7 +70,7 @@ namespace EvCoOwnership.API.Controllers
             {
                 var query = new { Status = status, PageIndex = pageIndex, PageSize = pageSize };
                 var groups = await _groupService.ListAsync(query);
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -158,7 +158,7 @@ namespace EvCoOwnership.API.Controllers
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var request = new { Status = status, PageIndex = pageIndex, PageSize = pageSize };
-                
+
                 // Tạm thời sử dụng mock data vì cần update DTO
                 var contracts = new
                 {
@@ -171,7 +171,7 @@ namespace EvCoOwnership.API.Controllers
                     PageIndex = pageIndex,
                     PageSize = pageSize
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -216,7 +216,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Tạm thời mock response vì cần implement service method
                 return Ok(new BaseResponse<object>
                 {
@@ -265,16 +265,16 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method chưa tồn tại
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "CHECK_IN_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         CheckInId = new Random().Next(1000, 9999),
-                        StaffId = staffUserId, 
+                        StaffId = staffUserId,
                         CheckInTime = DateTime.UtcNow,
                         Message = "Vehicle checked in successfully"
                     }
@@ -320,16 +320,16 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method chưa tồn tại
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "CHECK_OUT_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         CheckOutId = new Random().Next(1000, 9999),
-                        StaffId = staffUserId, 
+                        StaffId = staffUserId,
                         CheckOutTime = DateTime.UtcNow,
                         Message = "Vehicle checked out successfully"
                     }
@@ -375,7 +375,7 @@ namespace EvCoOwnership.API.Controllers
                     PageIndex = pageIndex,
                     PageSize = pageSize
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -422,16 +422,16 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method chưa tồn tại
                 return StatusCode(201, new BaseResponse<object>
                 {
                     StatusCode = 201,
                     Message = "SERVICE_CREATED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         ServiceId = new Random().Next(1000, 9999),
-                        CreatedBy = staffUserId, 
+                        CreatedBy = staffUserId,
                         CreatedAt = DateTime.UtcNow,
                         Status = "Scheduled"
                     }
@@ -475,16 +475,16 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method chưa tồn tại
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "SERVICE_STATUS_UPDATED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         ServiceId = id,
-                        UpdatedBy = staffUserId, 
+                        UpdatedBy = staffUserId,
                         UpdatedAt = DateTime.UtcNow
                     }
                 });
@@ -529,7 +529,7 @@ namespace EvCoOwnership.API.Controllers
                     PageIndex = pageIndex,
                     PageSize = pageSize
                 };
-                
+
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
@@ -575,16 +575,16 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 // Mock response vì service method signature khác
                 return Ok(new BaseResponse<object>
                 {
                     StatusCode = 200,
                     Message = "DISPUTE_STATUS_UPDATED_SUCCESS",
-                    Data = new 
-                    { 
+                    Data = new
+                    {
                         DisputeId = id,
-                        UpdatedBy = staffUserId, 
+                        UpdatedBy = staffUserId,
                         UpdatedAt = DateTime.UtcNow
                     }
                 });
@@ -617,7 +617,7 @@ namespace EvCoOwnership.API.Controllers
             try
             {
                 var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                
+
                 var reports = new
                 {
                     CheckInsToday = 15,
