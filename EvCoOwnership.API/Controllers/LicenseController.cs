@@ -1,5 +1,6 @@
 using EvCoOwnership.API.Attributes;
 using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +16,17 @@ namespace EvCoOwnership.API.Controllers
     public class LicenseController : ControllerBase
     {
         private readonly ILicenseVerificationService _licenseVerificationService;
+        private readonly ILogger<LicenseController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the LicenseController
         /// </summary>
         /// <param name="licenseVerificationService">License verification service</param>
-        public LicenseController(ILicenseVerificationService licenseVerificationService)
+        /// <param name="logger">Logger</param>
+        public LicenseController(ILicenseVerificationService licenseVerificationService, ILogger<LicenseController> logger)
         {
             _licenseVerificationService = licenseVerificationService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -392,22 +396,46 @@ namespace EvCoOwnership.API.Controllers
         [AuthorizeRoles]
         public async Task<IActionResult> RegisterLicense([FromForm] VerifyLicenseRequest request)
         {
-            // Get current user ID from JWT token
-            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+            try
             {
-                return Unauthorized(new { Message = "INVALID_TOKEN" });
-            }
+                // Log all incoming request data for debugging
+                _logger.LogInformation("[RegisterLicense] Incoming request: LicenseNumber={LicenseNumber}, IssueDate={IssueDate}, IssuedBy={IssuedBy}, FirstName={FirstName}, LastName={LastName}, DateOfBirth={DateOfBirth}, LicenseImage={LicenseImageName}, LicenseImageSize={LicenseImageSize}",
+                    request.LicenseNumber,
+                    request.IssueDate,
+                    request.IssuedBy,
+                    request.FirstName,
+                    request.LastName,
+                    request.DateOfBirth,
+                    request.LicenseImage?.FileName,
+                    request.LicenseImage?.Length);
 
-            var response = await _licenseVerificationService.RegisterLicenseAsync(request, currentUserId);
-            return response.StatusCode switch
+                // Get current user ID from JWT token
+                var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+                {
+                    _logger.LogWarning("[RegisterLicense] INVALID_TOKEN: Cannot parse user ID from JWT claim. Raw claim: {Claim}", currentUserIdClaim);
+                    return Unauthorized(new { Message = "INVALID_TOKEN" });
+                }
+
+                _logger.LogInformation("[RegisterLicense] Registering license for user ID: {UserId}", currentUserId);
+                var response = await _licenseVerificationService.RegisterLicenseAsync(request, currentUserId);
+                _logger.LogInformation("[RegisterLicense] License registration response: StatusCode={StatusCode}, Message={Message}, Data={Data}, Errors={Errors}",
+                    response.StatusCode, response.Message, response.Data, response.Errors);
+
+                return response.StatusCode switch
+                {
+                    201 => Created($"/api/license/user/{currentUserId}", response),
+                    400 => BadRequest(response),
+                    409 => Conflict(response),
+                    500 => StatusCode(500, response),
+                    _ => StatusCode(response.StatusCode, response)
+                };
+            }
+            catch (Exception ex)
             {
-                201 => Created($"/api/license/user/{currentUserId}", response),
-                400 => BadRequest(response),
-                409 => Conflict(response),
-                500 => StatusCode(500, response),
-                _ => StatusCode(response.StatusCode, response)
-            };
+                _logger.LogError(ex, "[RegisterLicense] Error occurred during license registration");
+                return StatusCode(500, new BaseResponse { StatusCode = 500, Message = "Internal Server Error" });
+            }
         }
 
         /// <summary>
