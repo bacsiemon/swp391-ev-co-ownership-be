@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.DTOs;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Context;
 
@@ -19,7 +20,7 @@ public partial class EvCoOwnershipDbContext
 
             entity.Property(e => e.VerificationStatus)
                 .HasConversion<int>()
-                .HasDefaultValue(0); // Pending
+                .HasDefaultValue(EDrivingLicenseVerificationStatus.Pending);
         });
 
         // Configure VehicleUpgradeProposal
