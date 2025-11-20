@@ -1,4 +1,4 @@
-﻿using EvCoOwnership.DTOs.AuthDTOs;
+﻿using EvCoOwnership.Repositories.DTOs.AuthDTOs;
 using EvCoOwnership.Helpers.Helpers;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Http;

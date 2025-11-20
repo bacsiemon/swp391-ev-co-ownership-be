@@ -78,7 +78,7 @@ namespace EvCoOwnership.API.Hubs
 
             try
             {
-                var request = new EvCoOwnership.DTOs.Notifications.MarkNotificationAsReadRequest
+                var request = new EvCoOwnership.Repositories.DTOs.NotificationDTOs.MarkNotificationAsReadRequest
                 {
                     UserNotificationId = userNotificationId
                 };
@@ -128,7 +128,7 @@ namespace EvCoOwnership.API.Hubs
 
             try
             {
-                var request = new EvCoOwnership.DTOs.Notifications.MarkMultipleNotificationsAsReadRequest
+                var request = new EvCoOwnership.Repositories.DTOs.NotificationDTOs.MarkMultipleNotificationsAsReadRequest
                 {
                     UserNotificationIds = userNotificationIds
                 };

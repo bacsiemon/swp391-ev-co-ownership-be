@@ -1,5 +1,5 @@
 using EvCoOwnership.API.Attributes;
-using EvCoOwnership.DTOs.FileUploadDTOs;
+using EvCoOwnership.Repositories.DTOs.FileUploadDTOs;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Http;

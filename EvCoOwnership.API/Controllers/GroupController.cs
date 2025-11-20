@@ -18,7 +18,7 @@ namespace EvCoOwnership.API.Controllers
     /// API controller for group management (CRUD, members, roles, votes, fund)
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/group")]
     [Authorize]
     public class GroupController : ControllerBase
     {

@@ -37,7 +37,7 @@ namespace EvCoOwnership.Repositories.DTOs.FileUploadDTOs
         private bool BeValidFileSize(IFormFile file)
         {
             if (file == null) return false;
-            
+
             // 100MB limit
             const long maxSizeInBytes = 100 * 1024 * 1024;
             return file.Length <= maxSizeInBytes;

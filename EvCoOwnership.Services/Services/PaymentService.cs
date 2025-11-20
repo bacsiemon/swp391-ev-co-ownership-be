@@ -95,8 +95,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<PaymentUrlResponse>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = new { Details = ex.Message }
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }

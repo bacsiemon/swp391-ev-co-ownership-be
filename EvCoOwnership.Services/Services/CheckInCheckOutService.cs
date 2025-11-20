@@ -193,8 +193,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<CheckInResponse>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -378,8 +377,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<CheckOutResponse>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -456,8 +454,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<VehicleQRCodeData>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -600,8 +597,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<CheckInResponse>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -773,8 +769,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<CheckOutResponse>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -847,8 +842,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -911,8 +905,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }
@@ -986,8 +979,7 @@ namespace EvCoOwnership.Services.Services
                 return new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 };
             }
         }

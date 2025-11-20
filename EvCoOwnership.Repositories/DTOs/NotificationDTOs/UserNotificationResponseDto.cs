@@ -11,7 +11,7 @@ namespace EvCoOwnership.Repositories.DTOs.NotificationDTOs
         public int? NotificationId { get; set; }
         public int? UserId { get; set; }
         public DateTime? ReadAt { get; set; }
-        
+
         // Notification details
         public string NotificationType { get; set; }
         public string? AdditionalData { get; set; }

@@ -75,7 +75,7 @@ namespace EvCoOwnership.Repositories.DTOs.UserDTOs
 
         [Required(ErrorMessage = "NEW_PASSWORD_REQUIRED")]
         [StringLength(100, MinimumLength = 8, ErrorMessage = "NEW_PASSWORD_MIN_8_CHARACTERS")]
-        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]", 
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]",
             ErrorMessage = "NEW_PASSWORD_MUST_CONTAIN_UPPERCASE_LOWERCASE_NUMBER_SPECIAL")]
         public string NewPassword { get; set; } = string.Empty;
 

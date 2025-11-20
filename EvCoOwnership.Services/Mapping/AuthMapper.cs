@@ -23,10 +23,10 @@ namespace EvCoOwnership.Services.Mapping
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
-            
+
             if (string.IsNullOrEmpty(passwordHash))
                 throw new ArgumentException("Password hash cannot be null or empty", nameof(passwordHash));
-            
+
             if (string.IsNullOrEmpty(passwordSalt))
                 throw new ArgumentException("Password salt cannot be null or empty", nameof(passwordSalt));
 
@@ -84,18 +84,18 @@ namespace EvCoOwnership.Services.Mapping
         /// <param name="accessTokenExpires">Access token expiration date</param>
         /// <param name="refreshTokenExpires">Refresh token expiration date</param>
         /// <returns>LoginResponse DTO</returns>
-        public static LoginResponse ToLoginResponse(this User user, 
-            string accessToken, 
-            string refreshToken, 
-            DateTime accessTokenExpires, 
+        public static LoginResponse ToLoginResponse(this User user,
+            string accessToken,
+            string refreshToken,
+            DateTime accessTokenExpires,
             DateTime refreshTokenExpires)
         {
             if (user == null)
                 throw new ArgumentNullException(nameof(user));
-            
+
             if (string.IsNullOrEmpty(accessToken))
                 throw new ArgumentException("Access token cannot be null or empty", nameof(accessToken));
-            
+
             if (string.IsNullOrEmpty(refreshToken))
                 throw new ArgumentException("Refresh token cannot be null or empty", nameof(refreshToken));
 

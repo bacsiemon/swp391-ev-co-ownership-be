@@ -25,9 +25,9 @@ namespace EvCoOwnership.Services.Services
 
         public async Task<BaseResponse> UploadFileAsync(FileUploadRequest request)
         {
-            return new BaseResponse() 
-            { 
-                StatusCode = 200, 
+            return new BaseResponse()
+            {
+                StatusCode = 200,
                 Message = "SUCCESS",
                 Data = await UploadFileAsync(request.File)
             };
@@ -90,7 +90,7 @@ namespace EvCoOwnership.Services.Services
             {
                 StatusCode = 200,
                 Message = "SUCCESS"
-            };  
+            };
         }
 
         public async Task<BaseResponse> GetFileInfoAsync(int id)
