@@ -26,5 +26,9 @@ public partial class FundUsage
 
     public virtual Fund Fund { get; set; }
 
+    public virtual ICollection<FundUsageVote> FundUsageVotes { get; set; } = new List<FundUsageVote>();
+
     public virtual MaintenanceCost MaintenanceCost { get; set; }
+
+    public virtual ICollection<VehicleUpgradeProposal> VehicleUpgradeProposals { get; set; } = new List<VehicleUpgradeProposal>();
 }

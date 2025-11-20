@@ -60,11 +60,15 @@ public partial class Vehicle
 
     public virtual Fund Fund { get; set; }
 
+    public virtual ICollection<GroupVehicle> GroupVehicles { get; set; } = new List<GroupVehicle>();
+
     public virtual ICollection<MaintenanceCost> MaintenanceCosts { get; set; } = new List<MaintenanceCost>();
 
     public virtual ICollection<VehicleCoOwner> VehicleCoOwners { get; set; } = new List<VehicleCoOwner>();
 
     public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
 
-    // public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
+    public virtual ICollection<VehicleUpgradeProposal> VehicleUpgradeProposals { get; set; } = new List<VehicleUpgradeProposal>();
+
+    public virtual ICollection<VehicleUsageRecord> VehicleUsageRecords { get; set; } = new List<VehicleUsageRecord>();
 }

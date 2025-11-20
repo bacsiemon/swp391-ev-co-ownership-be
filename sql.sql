@@ -297,7 +297,7 @@ CREATE TABLE fund_usage (
 	amount DECIMAL(15, 2) NOT NULL,
 	description TEXT NOT NULL,
 	image_url VARCHAR(500),
-	maintenance_cost_id INTEGER REFERENCES maintenance_costs(id),
+	maintenance_cost_id INTEGER,
 	created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -495,70 +495,6 @@ CREATE TABLE file_uploads (
 	mime_type VARCHAR(100) NOT NULL,
 	uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
--- ==============================================================================
--- DATABASE INDEXES
--- ==============================================================================
--- Performance optimization indexes
--- ------------------------------------------------------------------------------
-
--- User indexes
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_normalized_email ON users(normalized_email);
-CREATE INDEX idx_users_role_status ON users(role_enum, status_enum);
-
--- Vehicle indexes
-CREATE INDEX idx_vehicles_status ON vehicles(status_enum);
-CREATE INDEX idx_vehicles_verification_status ON vehicles(verification_status_enum);
-CREATE INDEX idx_vehicles_fund_id ON vehicles(fund_id);
-CREATE INDEX idx_vehicles_created_by ON vehicles(created_by);
-
--- Booking indexes
-CREATE INDEX idx_bookings_co_owner_id ON bookings(co_owner_id);
-CREATE INDEX idx_bookings_vehicle_id ON bookings(vehicle_id);
-CREATE INDEX idx_bookings_status ON bookings(status_enum);
-CREATE INDEX idx_bookings_start_time ON bookings(start_time);
-CREATE INDEX idx_bookings_end_time ON bookings(end_time);
-
--- License indexes
-CREATE INDEX idx_driving_licenses_co_owner_id ON driving_licenses(co_owner_id);
-CREATE INDEX idx_driving_licenses_verification_status ON driving_licenses(verification_status);
-CREATE INDEX idx_driving_licenses_license_number ON driving_licenses(license_number);
-
--- Fund indexes
-CREATE INDEX idx_fund_additions_fund_id ON fund_additions(fund_id);
-CREATE INDEX idx_fund_additions_co_owner_id ON fund_additions(co_owner_id);
-CREATE INDEX idx_fund_usage_fund_id ON fund_usage(fund_id);
-
--- Usage records indexes
-CREATE INDEX idx_vehicle_usage_records_vehicle_id ON vehicle_usage_records(vehicle_id);
-CREATE INDEX idx_vehicle_usage_records_co_owner_id ON vehicle_usage_records(co_owner_id);
-CREATE INDEX idx_vehicle_usage_records_booking_id ON vehicle_usage_records(booking_id);
-CREATE INDEX idx_vehicle_usage_records_start_time ON vehicle_usage_records(start_time);
-
--- Check-in/out indexes
-CREATE INDEX idx_check_ins_booking_id ON check_ins(booking_id);
-CREATE INDEX idx_check_outs_booking_id ON check_outs(booking_id);
-
--- Notification indexes
-CREATE INDEX idx_user_notifications_user_id ON user_notifications(user_id);
-CREATE INDEX idx_user_notifications_read_at ON user_notifications(read_at);
-
--- Group indexes
-CREATE INDEX idx_groups_created_by ON groups(created_by);
-CREATE INDEX idx_groups_status ON groups(status_enum);
-CREATE INDEX idx_group_members_group_id ON group_members(group_id);
-CREATE INDEX idx_group_members_user_id ON group_members(user_id);
-CREATE INDEX idx_group_members_role ON group_members(role_enum);
-CREATE INDEX idx_group_vehicles_group_id ON group_vehicles(group_id);
-CREATE INDEX idx_group_vehicles_vehicle_id ON group_vehicles(vehicle_id);
-CREATE INDEX idx_group_votes_group_id ON group_votes(group_id);
-CREATE INDEX idx_group_votes_status ON group_votes(status_enum);
-CREATE INDEX idx_group_votes_created_by ON group_votes(created_by);
-CREATE INDEX idx_group_vote_responses_vote_id ON group_vote_responses(vote_id);
-CREATE INDEX idx_group_vote_responses_user_id ON group_vote_responses(user_id);
-CREATE INDEX idx_group_funds_group_id ON group_funds(group_id);
-CREATE INDEX idx_group_funds_fund_id ON group_funds(fund_id);
 
 -- ==============================================================================
 -- SAMPLE DATA - USERS & CONFIGURATION
@@ -1160,62 +1096,6 @@ VALUES (
 		TRUE,
 		2
 	);
--- Insert fund usage votes
-INSERT INTO fund_usage_votes (fund_usage_id, user_id, is_agree)
-VALUES (1, 3, TRUE),
-	-- John agrees to Tesla maintenance
-	(1, 4, TRUE),
-	-- Jane agrees to Tesla maintenance
-	(2, 3, TRUE),
-	-- John agrees to VinFast service
-	(2, 5, FALSE),
-	-- Mike disagrees with VinFast service cost
-	(3, 3, TRUE),
-	-- John agrees to charging subscription
-	(4, 5, TRUE);
--- Mike agrees to parking fees
--- Insert vehicle upgrade proposals
-INSERT INTO vehicle_upgrade_proposals (
-		vehicle_id,
-		upgrade_type_enum,
-		title,
-		description,
-		estimated_cost,
-		justification,
-		proposed_by_user_id,
-		proposed_at
-	)
-VALUES (
-		1,
-		2,
-		'Install Dash Camera System',
-		'High-quality front and rear dash cameras for security',
-		5000000.00,
-		'Enhance security and insurance coverage',
-		3,
-		NOW() - INTERVAL '5 days'
-	),
-	(
-		2,
-		0,
-		'Battery Capacity Upgrade',
-		'Upgrade to higher capacity battery pack',
-		25000000.00,
-		'Increase range from 450km to 550km for longer trips',
-		5,
-		NOW() - INTERVAL '3 days'
-	);
--- Insert vehicle upgrade votes
-INSERT INTO vehicle_upgrade_votes (proposal_id, user_id, is_agree, comments)
-VALUES (1, 3, TRUE, 'Great idea for security'),
-	(1, 4, TRUE, 'Will help with insurance claims'),
-	(2, 3, FALSE, 'Too expensive for now'),
-	(
-		2,
-		5,
-		TRUE,
-		'Worth the investment for longer range'
-	);
 
 -- ==============================================================================
 -- SAMPLE DATA - MAINTENANCE & UPGRADES
@@ -1301,6 +1181,11 @@ VALUES (1, 3, TRUE, 'Great idea for security'),
 		TRUE,
 		'Worth the investment for longer range'
 	);
+
+-- Add foreign key constraint for maintenance_costs after table creation
+ALTER TABLE fund_usage
+ADD CONSTRAINT fk_fund_usage_maintenance_cost
+FOREIGN KEY (maintenance_cost_id) REFERENCES maintenance_costs(id);
 
 -- ==============================================================================
 -- SAMPLE DATA - NOTIFICATIONS & FILES

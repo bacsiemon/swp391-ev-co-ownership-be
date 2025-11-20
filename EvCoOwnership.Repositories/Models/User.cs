@@ -46,6 +46,26 @@ public partial class User
 
     public virtual CoOwner CoOwner { get; set; }
 
+    public virtual ICollection<ContractTemplate> ContractTemplateApprovedByNavigations { get; set; } = new List<ContractTemplate>();
+
+    public virtual ICollection<ContractTemplate> ContractTemplateCreatedByNavigations { get; set; } = new List<ContractTemplate>();
+
+    public virtual ICollection<DrivingLicense> DrivingLicenses { get; set; } = new List<DrivingLicense>();
+
+    public virtual ICollection<FundUsageVote> FundUsageVotes { get; set; } = new List<FundUsageVote>();
+
+    public virtual ICollection<GroupContract> GroupContractApprovedByNavigations { get; set; } = new List<GroupContract>();
+
+    public virtual ICollection<GroupContract> GroupContractCreatedByNavigations { get; set; } = new List<GroupContract>();
+
+    public virtual ICollection<GroupMember> GroupMembers { get; set; } = new List<GroupMember>();
+
+    public virtual ICollection<GroupVoteResponse> GroupVoteResponses { get; set; } = new List<GroupVoteResponse>();
+
+    public virtual ICollection<GroupVote> GroupVotes { get; set; } = new List<GroupVote>();
+
+    public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
+
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual ICollection<UserNotification> UserNotifications { get; set; } = new List<UserNotification>();
@@ -54,7 +74,11 @@ public partial class User
 
     public virtual ICollection<VehicleCondition> VehicleConditions { get; set; } = new List<VehicleCondition>();
 
-    // public virtual ICollection<VehicleVerificationHistory> VehicleVerificationHistories { get; set; } = new List<VehicleVerificationHistory>();
+    public virtual ICollection<VehicleUpgradeProposal> VehicleUpgradeProposals { get; set; } = new List<VehicleUpgradeProposal>();
+
+    public virtual ICollection<VehicleUpgradeVote> VehicleUpgradeVotes { get; set; } = new List<VehicleUpgradeVote>();
+
+    public virtual ICollection<VehicleUsageRecord> VehicleUsageRecords { get; set; } = new List<VehicleUsageRecord>();
 
     public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 }

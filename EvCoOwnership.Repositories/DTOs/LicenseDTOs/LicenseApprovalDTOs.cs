@@ -58,7 +58,7 @@ namespace EvCoOwnership.Repositories.DTOs.LicenseDTOs
         /// <summary>
         /// New verification status
         /// </summary>
-        public EDrivingLicenseVerificationStatus VerificationStatus { get; set; }
+        public EDrivingLicenseVerificationStatus? VerificationStatus { get; set; }
 
         /// <summary>
         /// Reason for rejection (if applicable)
@@ -114,7 +114,7 @@ namespace EvCoOwnership.Repositories.DTOs.LicenseDTOs
         /// <summary>
         /// Verification status
         /// </summary>
-        public EDrivingLicenseVerificationStatus VerificationStatus { get; set; }
+        public EDrivingLicenseVerificationStatus? VerificationStatus { get; set; }
 
         /// <summary>
         /// Reason for rejection (if applicable)

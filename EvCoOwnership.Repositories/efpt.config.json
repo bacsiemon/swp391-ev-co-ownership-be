@@ -4,14 +4,18 @@
    "ContextNamespace": null,
    "FilterSchemas": false,
    "IncludeConnectionString": false,
+   "IrregularWords": null,
+   "MinimumProductVersion": "2.6.1224",
    "ModelNamespace": null,
    "OutputContextPath": null,
    "OutputPath": "Models",
+   "PluralRules": null,
    "PreserveCasingWithRegex": true,
    "ProjectRootNamespace": "EvCoOwnership.Repositories",
    "Schemas": null,
    "SelectedHandlebarsLanguage": 2,
    "SelectedToBeGenerated": 0,
+   "SingularRules": null,
    "T4TemplatePath": null,
    "Tables": [
       {
@@ -32,6 +36,10 @@
       },
       {
          "Name": "public.configurations",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.contract_templates",
          "ObjectType": 0
       },
       {
@@ -56,6 +64,34 @@
       },
       {
          "Name": "public.funds",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.group_contracts",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.group_funds",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.group_members",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.group_vehicles",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.group_vote_responses",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.group_votes",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.groups",
          "ObjectType": 0
       },
       {
@@ -95,7 +131,15 @@
          "ObjectType": 0
       },
       {
-         "Name": "public.vehicle_verification_history",
+         "Name": "public.vehicle_upgrade_proposals",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.vehicle_upgrade_votes",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.vehicle_usage_records",
          "ObjectType": 0
       },
       {
