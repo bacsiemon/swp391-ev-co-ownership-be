@@ -2,7 +2,6 @@ using EvCoOwnership.API.Attributes;
 using EvCoOwnership.Repositories.DTOs.FileUploadDTOs;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EvCoOwnership.API.Controllers
@@ -63,9 +62,9 @@ namespace EvCoOwnership.API.Controllers
                 return BadRequest(new { StatusCode = 400, Message = "FILE_REQUIRED" });
             }
             var request = new FileUploadRequest { File = file };
-            
+
             var response = await _fileUploadService.UploadFileAsync(request);
-            
+
             return response.StatusCode switch
             {
                 201 => StatusCode(201, response),
@@ -91,12 +90,12 @@ namespace EvCoOwnership.API.Controllers
         public async Task<IActionResult> DownloadFile(int id)
         {
             var response = await _fileUploadService.GetFileAsync(id);
-            
+
             if (response.StatusCode == 200 && response.Data is FileDownloadResponse fileData)
             {
                 return File(fileData.Data, fileData.MimeType, fileData.FileName);
             }
-            
+
             return response.StatusCode switch
             {
                 404 => NotFound(response),
@@ -172,7 +171,7 @@ namespace EvCoOwnership.API.Controllers
         public async Task<IActionResult> DeleteFile(int id)
         {
             var response = await _fileUploadService.DeleteFileAsync(id);
-            
+
             return response.StatusCode switch
             {
                 200 => Ok(response),

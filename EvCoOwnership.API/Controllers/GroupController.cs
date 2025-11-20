@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.DTOs.GroupDTOs;
 using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging;
 using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Repositories.Models;
 using Microsoft.EntityFrameworkCore;

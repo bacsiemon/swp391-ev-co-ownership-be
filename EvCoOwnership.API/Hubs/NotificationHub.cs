@@ -33,7 +33,7 @@ namespace EvCoOwnership.API.Hubs
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId.Value}");
                 _logger.LogInformation("User {UserId} connected with connection {ConnectionId}", userId.Value, Context.ConnectionId);
-                
+
                 // Send current unread count when user connects
                 var unreadCountResponse = await _notificationService.GetUnreadCountAsync(userId.Value);
                 if (unreadCountResponse.StatusCode == 200)
@@ -78,18 +78,18 @@ namespace EvCoOwnership.API.Hubs
 
             try
             {
-                var request = new EvCoOwnership.Repositories.DTOs.NotificationDTOs.MarkNotificationAsReadRequest
+                var request = new Repositories.DTOs.NotificationDTOs.MarkNotificationAsReadRequest
                 {
                     UserNotificationId = userNotificationId
                 };
 
                 var result = await _notificationService.MarkNotificationAsReadAsync(userId.Value, request);
-                
+
                 if (result.StatusCode == 200 && result.Data)
                 {
                     // Notify the client that the notification read status changed
                     await Clients.Caller.NotificationReadStatusChanged(userNotificationId, true);
-                    
+
                     // Send updated unread count
                     var unreadCountResponse = await _notificationService.GetUnreadCountAsync(userId.Value);
                     if (unreadCountResponse.StatusCode == 200)
@@ -101,13 +101,13 @@ namespace EvCoOwnership.API.Hubs
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to mark notification {NotificationId} as read for user {UserId}: {Message}", 
+                    _logger.LogWarning("Failed to mark notification {NotificationId} as read for user {UserId}: {Message}",
                         userNotificationId, userId.Value, result.Message);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking notification {NotificationId} as read for user {UserId}", 
+                _logger.LogError(ex, "Error marking notification {NotificationId} as read for user {UserId}",
                     userNotificationId, userId.Value);
             }
         }
@@ -128,13 +128,13 @@ namespace EvCoOwnership.API.Hubs
 
             try
             {
-                var request = new EvCoOwnership.Repositories.DTOs.NotificationDTOs.MarkMultipleNotificationsAsReadRequest
+                var request = new Repositories.DTOs.NotificationDTOs.MarkMultipleNotificationsAsReadRequest
                 {
                     UserNotificationIds = userNotificationIds
                 };
 
                 var result = await _notificationService.MarkMultipleNotificationsAsReadAsync(userId.Value, request);
-                
+
                 if (result.StatusCode == 200 && result.Data > 0)
                 {
                     // Notify the client that notifications read status changed
@@ -142,7 +142,7 @@ namespace EvCoOwnership.API.Hubs
                     {
                         await Clients.Caller.NotificationReadStatusChanged(notificationId, true);
                     }
-                    
+
                     // Send updated unread count
                     var unreadCountResponse = await _notificationService.GetUnreadCountAsync(userId.Value);
                     if (unreadCountResponse.StatusCode == 200)
@@ -154,7 +154,7 @@ namespace EvCoOwnership.API.Hubs
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to mark multiple notifications as read for user {UserId}: {Message}", 
+                    _logger.LogWarning("Failed to mark multiple notifications as read for user {UserId}: {Message}",
                         userId.Value, result.Message);
                 }
             }
@@ -180,7 +180,7 @@ namespace EvCoOwnership.API.Hubs
             try
             {
                 var result = await _notificationService.MarkAllNotificationsAsReadAsync(userId.Value);
-                
+
                 if (result.StatusCode == 200)
                 {
                     // Send updated unread count (should be 0)
@@ -190,7 +190,7 @@ namespace EvCoOwnership.API.Hubs
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to mark all notifications as read for user {UserId}: {Message}", 
+                    _logger.LogWarning("Failed to mark all notifications as read for user {UserId}: {Message}",
                         userId.Value, result.Message);
                 }
             }
@@ -216,7 +216,7 @@ namespace EvCoOwnership.API.Hubs
             try
             {
                 var result = await _notificationService.GetUnreadCountAsync(userId.Value);
-                
+
                 if (result.StatusCode == 200)
                 {
                     await Clients.Caller.UnreadCountChanged(result.Data);
@@ -238,10 +238,10 @@ namespace EvCoOwnership.API.Hubs
         /// <returns>User ID if found, null otherwise</returns>
         private int? GetUserIdFromContext()
         {
-            var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? 
+            var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
                               Context.User?.FindFirst("UserId")?.Value ??
                               Context.User?.FindFirst("sub")?.Value;
-            
+
             if (int.TryParse(userIdClaim, out var userId))
             {
                 return userId;
