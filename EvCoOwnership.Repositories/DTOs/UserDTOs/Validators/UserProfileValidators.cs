@@ -1,5 +1,5 @@
 using FluentValidation;
-using EvCoOwnership.DTOs.UserDTOs;
+using EvCoOwnership.Repositories.DTOs.UserDTOs;
 
 namespace EvCoOwnership.Repositories.DTOs.UserDTOs.Validators
 {

@@ -2,7 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
-namespace EvCoOwnership.DTOs.AuthDTOs
+namespace EvCoOwnership.Repositories.DTOs.AuthDTOs
 {
     /// <summary>
     /// Request DTO for verifying driving license

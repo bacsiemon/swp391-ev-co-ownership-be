@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.VehicleDTOs;
+using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 
 namespace EvCoOwnership.Services.Interfaces

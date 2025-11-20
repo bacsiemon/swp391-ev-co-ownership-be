@@ -1,6 +1,6 @@
 using EvCoOwnership.Repositories.Enums;
 
-namespace EvCoOwnership.DTOs.Notifications
+namespace EvCoOwnership.Repositories.DTOs.NotificationDTOs
 {
     /// <summary>
     /// Response DTO for user-specific notification data (combines Notification and UserNotification)

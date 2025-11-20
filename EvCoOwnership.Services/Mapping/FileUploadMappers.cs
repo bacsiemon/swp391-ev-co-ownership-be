@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.FileUploadDTOs;
+using EvCoOwnership.Repositories.DTOs.FileUploadDTOs;
 using EvCoOwnership.Repositories.Models;
 
 namespace EvCoOwnership.Services.Mapping

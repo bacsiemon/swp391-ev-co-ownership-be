@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.Repositories.DTOs.AuthDTOs;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
 using System;

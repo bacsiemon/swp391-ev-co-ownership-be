@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace EvCoOwnership.DTOs.VehicleDTOs
+namespace EvCoOwnership.Repositories.DTOs.VehicleDTOs
 {
     /// <summary>
     /// Request DTO for adding a co-owner to a vehicle

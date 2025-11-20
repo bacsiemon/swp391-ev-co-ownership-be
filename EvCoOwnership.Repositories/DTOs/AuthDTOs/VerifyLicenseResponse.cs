@@ -1,4 +1,4 @@
-namespace EvCoOwnership.DTOs.AuthDTOs
+namespace EvCoOwnership.Repositories.DTOs.AuthDTOs
 {
     /// <summary>
     /// Response DTO for license verification result

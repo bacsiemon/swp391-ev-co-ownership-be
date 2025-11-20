@@ -1,5 +1,5 @@
 using EvCoOwnership.Helpers.BaseClasses;
-using EvCoOwnership.DTOs.UserDTOs;
+using EvCoOwnership.Repositories.DTOs.UserDTOs;
 using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
 
 namespace EvCoOwnership.Services.Interfaces

@@ -188,7 +188,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<CheckInResponse>
                 {
@@ -373,7 +373,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<CheckOutResponse>
                 {
@@ -451,7 +451,7 @@ namespace EvCoOwnership.Services.Services
                     Data = qrData
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<VehicleQRCodeData>
                 {
@@ -595,7 +595,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<CheckInResponse>
                 {
@@ -768,7 +768,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<CheckOutResponse>
                 {
@@ -842,7 +842,7 @@ namespace EvCoOwnership.Services.Services
                     }
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<object>
                 {
@@ -906,7 +906,7 @@ namespace EvCoOwnership.Services.Services
                     }
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<object>
                 {
@@ -981,7 +981,7 @@ namespace EvCoOwnership.Services.Services
                     Data = history
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<object>
                 {

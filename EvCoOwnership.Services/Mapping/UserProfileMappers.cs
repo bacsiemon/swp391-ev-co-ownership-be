@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.UserDTOs;
+using EvCoOwnership.Repositories.DTOs.UserDTOs;
 using EvCoOwnership.Repositories.Models;
 
 namespace EvCoOwnership.Services.Mapping

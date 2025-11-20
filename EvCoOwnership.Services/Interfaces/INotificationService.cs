@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.Notifications;
+using EvCoOwnership.Repositories.DTOs.NotificationDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 
 namespace EvCoOwnership.Services.Interfaces

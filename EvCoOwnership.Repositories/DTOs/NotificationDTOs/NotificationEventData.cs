@@ -1,4 +1,4 @@
-namespace EvCoOwnership.DTOs.Notifications
+namespace EvCoOwnership.Repositories.DTOs.NotificationDTOs
 {
     /// <summary>
     /// Event data for notification events communicated through the application

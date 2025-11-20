@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.FileUploadDTOs;
+using EvCoOwnership.Repositories.DTOs.FileUploadDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.UoW;

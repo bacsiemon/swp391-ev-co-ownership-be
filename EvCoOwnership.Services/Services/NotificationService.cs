@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.Notifications;
+using EvCoOwnership.Repositories.DTOs.Notifications;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.UoW;

@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.Repositories.DTOs.AuthDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;

@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace EvCoOwnership.DTOs.Notifications
+namespace EvCoOwnership.Repositories.DTOs.NotificationDTOs
 {
     /// <summary>
     /// Request DTO for marking a single notification as read

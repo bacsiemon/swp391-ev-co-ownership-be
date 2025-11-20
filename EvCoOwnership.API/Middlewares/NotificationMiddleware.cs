@@ -20,7 +20,7 @@ namespace EvCoOwnership.API.Middlewares
             _next = next;
             _serviceProvider = serviceProvider;
             _logger = logger;
-            
+
             // Subscribe to notification events
             NotificationEventPublisher.NotificationCreated += OnNotificationCreated;
         }
@@ -40,38 +40,42 @@ namespace EvCoOwnership.API.Middlewares
         /// </summary>
         /// <param name="sender">Event sender</param>
         /// <param name="e">Event arguments containing notification data</param>
-        private async void OnNotificationCreated(object? sender, NotificationEventArgs e)
+        private void OnNotificationCreated(object? sender, NotificationEventArgs e)
         {
-            try
+            // Fire and forget approach to avoid blocking the main thread
+            _ = Task.Run(async () =>
             {
-                using var scope = _serviceProvider.CreateScope();
-                var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub, INotificationClient>>();
-
-                var eventData = e.EventData;
-                
-                // Create user notification response DTO (since this is for a specific user)
-                var notificationDto = new UserNotificationResponseDto
+                try
                 {
-                    NotificationId = eventData.NotificationId,
-                    UserId = eventData.UserId,
-                    NotificationType = eventData.NotificationType,
-                    AdditionalData = eventData.AdditionalData,
-                    CreatedAt = eventData.CreatedAt,
-                    ReadAt = null // New notification, not read yet
-                };
+                    using var scope = _serviceProvider.CreateScope();
+                    var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub, INotificationClient>>();
 
-                // Send notification to the specific user's group
-                var userGroup = $"User_{eventData.UserId}";
-                await hubContext.Clients.Group(userGroup).ReceiveNotification(notificationDto);
+                    var eventData = e.EventData;
 
-                _logger.LogInformation("Notification {NotificationId} broadcasted to user {UserId} via SignalR", 
-                    eventData.NotificationId, eventData.UserId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error broadcasting notification {NotificationId} to user {UserId} via SignalR", 
-                    e.EventData.NotificationId, e.EventData.UserId);
-            }
+                    // Create user notification response DTO (since this is for a specific user)
+                    var notificationDto = new UserNotificationResponseDto
+                    {
+                        NotificationId = eventData.NotificationId,
+                        UserId = eventData.UserId,
+                        NotificationType = eventData.NotificationType,
+                        AdditionalData = eventData.AdditionalData,
+                        CreatedAt = eventData.CreatedAt,
+                        ReadAt = null // New notification, not read yet
+                    };
+
+                    // Send notification to the specific user's group
+                    var userGroup = $"User_{eventData.UserId}";
+                    await hubContext.Clients.Group(userGroup).ReceiveNotification(notificationDto);
+
+                    _logger.LogInformation("Notification {NotificationId} broadcasted to user {UserId} via SignalR",
+                        eventData.NotificationId, eventData.UserId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error broadcasting notification {NotificationId} to user {UserId} via SignalR",
+                        e.EventData.NotificationId, e.EventData.UserId);
+                }
+            });
         }
     }
 

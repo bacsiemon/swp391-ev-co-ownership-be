@@ -1,10 +1,9 @@
-using EvCoOwnership.DTOs.VehicleDTOs;
+using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
-using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

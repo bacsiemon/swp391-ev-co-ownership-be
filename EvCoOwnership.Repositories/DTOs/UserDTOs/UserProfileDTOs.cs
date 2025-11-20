@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace EvCoOwnership.DTOs.UserDTOs
+namespace EvCoOwnership.Repositories.DTOs.UserDTOs
 {
     /// <summary>
     /// Response DTO for user profile information

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EvCoOwnership.DTOs.AuthDTOs
+namespace EvCoOwnership.Repositories.DTOs.AuthDTOs
 {
     public class ResetPasswordRequest
     {

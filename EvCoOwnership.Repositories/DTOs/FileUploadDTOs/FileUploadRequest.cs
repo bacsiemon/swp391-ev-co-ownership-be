@@ -1,7 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 
-namespace EvCoOwnership.DTOs.FileUploadDTOs
+namespace EvCoOwnership.Repositories.DTOs.FileUploadDTOs
 {
     public class FileUploadRequest
     {

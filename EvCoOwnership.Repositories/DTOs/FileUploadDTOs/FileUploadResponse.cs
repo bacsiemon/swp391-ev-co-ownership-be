@@ -1,4 +1,4 @@
-namespace EvCoOwnership.DTOs.FileUploadDTOs
+namespace EvCoOwnership.Repositories.DTOs.FileUploadDTOs
 {
     public class FileUploadResponse
     {

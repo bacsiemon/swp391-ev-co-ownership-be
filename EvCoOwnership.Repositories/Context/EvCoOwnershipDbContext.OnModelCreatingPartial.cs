@@ -18,8 +18,8 @@ public partial class EvCoOwnershipDbContext
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.Property(e => e.VerificationStatus)
-                .HasConversion<int>()
-                .HasDefaultValue(0); // Pending
+                .HasDefaultValue(EvCoOwnership.Repositories.Enums.EDrivingLicenseVerificationStatus.Pending)
+                .HasConversion<int>();
         });
 
         // Configure VehicleUpgradeProposal

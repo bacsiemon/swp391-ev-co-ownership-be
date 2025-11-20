@@ -73,7 +73,7 @@ namespace EvCoOwnership.Services.Services
                     Data = maintenanceResponse
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<MaintenanceResponse>
                 {
@@ -104,7 +104,7 @@ namespace EvCoOwnership.Services.Services
                     Data = maintenanceResponse
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<MaintenanceResponse>
                 {
@@ -139,7 +139,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<MaintenanceResponse>>
                 {
@@ -200,7 +200,7 @@ namespace EvCoOwnership.Services.Services
                     Data = history
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<VehicleMaintenanceHistoryResponse>
                 {
@@ -234,7 +234,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<MaintenanceResponse>>
                 {
@@ -288,7 +288,7 @@ namespace EvCoOwnership.Services.Services
                     Data = maintenanceResponse
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<MaintenanceResponse>
                 {
@@ -355,7 +355,7 @@ namespace EvCoOwnership.Services.Services
                     Message = "MAINTENANCE_MARKED_AS_PAID"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<string>
                 {
@@ -394,7 +394,7 @@ namespace EvCoOwnership.Services.Services
                     Data = statistics
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<MaintenanceStatisticsResponse>
                 {
@@ -445,7 +445,7 @@ namespace EvCoOwnership.Services.Services
                     Data = statistics
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<MaintenanceStatisticsResponse>
                 {

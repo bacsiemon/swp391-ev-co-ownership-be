@@ -90,7 +90,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PaymentUrlResponse>
                 {
@@ -151,7 +151,7 @@ namespace EvCoOwnership.Services.Services
                     Data = paymentResponse
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PaymentResponse>
                 {
@@ -182,7 +182,7 @@ namespace EvCoOwnership.Services.Services
                     Data = paymentResponse
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PaymentResponse>
                 {
@@ -217,7 +217,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<PaymentResponse>>
                 {
@@ -251,7 +251,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<PaymentResponse>>
                 {
@@ -303,7 +303,7 @@ namespace EvCoOwnership.Services.Services
                     Message = "PAYMENT_CANCELLED_SUCCESSFULLY"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<string>
                 {
@@ -337,7 +337,7 @@ namespace EvCoOwnership.Services.Services
                     Data = statistics
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PaymentStatisticsResponse>
                 {
@@ -438,7 +438,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PaymentGatewaysResponse>
                 {

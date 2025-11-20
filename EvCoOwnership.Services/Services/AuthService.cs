@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.Repositories.DTOs.AuthDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Helpers.Helpers;
 using EvCoOwnership.Repositories.UoW;
@@ -415,7 +415,7 @@ namespace EvCoOwnership.Services.Services
                     Data = verificationResponse
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse
                 {

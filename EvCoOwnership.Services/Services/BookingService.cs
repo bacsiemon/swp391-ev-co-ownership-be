@@ -108,7 +108,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingResponse>
                 {
@@ -162,7 +162,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingResponse>
                 {
@@ -211,7 +211,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<BookingResponse>>
                 {
@@ -248,7 +248,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<BookingResponse>>
                 {
@@ -284,7 +284,7 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PagedResult<BookingResponse>>
                 {
@@ -358,7 +358,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingResponse>
                 {
@@ -413,7 +413,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingResponse>
                 {
@@ -470,7 +470,7 @@ namespace EvCoOwnership.Services.Services
                     Message = "BOOKING_CANCELLED_SUCCESSFULLY"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<string>
                 {
@@ -503,7 +503,7 @@ namespace EvCoOwnership.Services.Services
                     Message = "BOOKING_DELETED_SUCCESSFULLY"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<string>
                 {
@@ -537,7 +537,7 @@ namespace EvCoOwnership.Services.Services
                     Data = statistics
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingStatisticsResponse>
                 {
@@ -704,7 +704,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingCalendarResponse>
                 {
@@ -788,7 +788,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<VehicleAvailabilityResponse>
                 {
@@ -1024,7 +1024,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingSlotRequestResponse>
                 {
@@ -1138,7 +1138,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingSlotRequestResponse>
                 {
@@ -1201,7 +1201,7 @@ namespace EvCoOwnership.Services.Services
                     Data = $"Request #{requestId} cancelled: {request.Reason}"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<string>
                 {
@@ -1292,7 +1292,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PendingSlotRequestsResponse>
                 {
@@ -1408,7 +1408,7 @@ namespace EvCoOwnership.Services.Services
                     Data = analytics
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<SlotRequestAnalytics>
                 {
@@ -1865,7 +1865,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingConflictResolutionResponse>
                 {
@@ -2072,7 +2072,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<PendingConflictsResponse>
                 {
@@ -2181,7 +2181,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<BookingConflictAnalyticsResponse>
                 {
@@ -2793,7 +2793,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<ModifyBookingResponse>
                 {
@@ -3002,7 +3002,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<CancelBookingResponse>
                 {
@@ -3138,7 +3138,7 @@ namespace EvCoOwnership.Services.Services
                     Data = result
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<ModificationValidationResult>
                 {
@@ -3170,7 +3170,7 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new BaseResponse<ModificationHistoryResponse>
                 {
