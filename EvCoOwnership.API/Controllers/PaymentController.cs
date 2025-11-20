@@ -81,8 +81,8 @@ namespace EvCoOwnership.API.Controllers
                 var invoices = userPayments.Select(p =>
                 {
                     var user = users.FirstOrDefault(u => u.Id == p.UserId);
-                    var fundAddition = p.FundAdditionId.HasValue 
-                        ? fundAdditions.FirstOrDefault(fa => fa.Id == p.FundAdditionId) 
+                    var fundAddition = p.FundAdditionId.HasValue
+                        ? fundAdditions.FirstOrDefault(fa => fa.Id == p.FundAdditionId)
                         : null;
 
                     return new InvoiceResponse
@@ -143,7 +143,7 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting invoices");
                 return StatusCode(500, new BaseResponse<object>
@@ -199,7 +199,7 @@ namespace EvCoOwnership.API.Controllers
                 }
 
                 var user = await _unitOfWork.UserRepository.GetByIdAsync(payment.UserId ?? 0);
-                var fundAddition = payment.FundAdditionId.HasValue 
+                var fundAddition = payment.FundAdditionId.HasValue
                     ? await _unitOfWork.FundAdditionRepository.GetByIdAsync(payment.FundAdditionId.Value)
                     : null;
 
@@ -234,7 +234,7 @@ namespace EvCoOwnership.API.Controllers
                     Data = invoice
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting invoice details");
                 return StatusCode(500, new BaseResponse<object>
@@ -345,7 +345,7 @@ namespace EvCoOwnership.API.Controllers
 
                 return StatusCode(response.StatusCode, response);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing invoice payment");
                 return StatusCode(500, new BaseResponse<object>
@@ -459,7 +459,7 @@ namespace EvCoOwnership.API.Controllers
                     Data = receipt
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating receipt");
                 return StatusCode(500, new BaseResponse<object>
@@ -523,7 +523,7 @@ namespace EvCoOwnership.API.Controllers
                     var allPayments = await _unitOfWork.PaymentRepository.GetAllAsync();
                     var targetUserId = request.UserId ?? userId;
                     paymentsToRemind = allPayments
-                        .Where(p => p.UserId == targetUserId && 
+                        .Where(p => p.UserId == targetUserId &&
                                    p.StatusEnum == EPaymentStatus.Pending &&
                                    p.CreatedAt < DateTime.UtcNow.AddDays(-7))
                         .ToList();
@@ -555,7 +555,7 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending payment reminders");
                 return StatusCode(500, new BaseResponse<object>
@@ -726,7 +726,7 @@ namespace EvCoOwnership.API.Controllers
                     Data = summary
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting group finance");
                 return StatusCode(500, new BaseResponse<object>

@@ -421,7 +421,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Data = new { Error = ex.Message }
+                    Data = new { Error = "An unexpected error occurred." }
                 };
             }
         }

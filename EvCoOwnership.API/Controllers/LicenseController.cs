@@ -1,5 +1,5 @@
 using EvCoOwnership.API.Attributes;
-using EvCoOwnership.DTOs.AuthDTOs;
+using EvCoOwnership.Repositories.DTOs.AuthDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
@@ -431,9 +431,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(response.StatusCode, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "[RegisterLicense] Error occurred during license registration");
+                _logger.LogError("[RegisterLicense] Error occurred during license registration");
                 return StatusCode(500, new BaseResponse { StatusCode = 500, Message = "Internal Server Error" });
             }
         }

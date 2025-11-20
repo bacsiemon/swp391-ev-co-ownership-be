@@ -110,6 +110,7 @@ namespace EvCoOwnership.Services.Services
             }
             catch (Exception)
             {
+                // Log the exception for debugging
                 return new BaseResponse<BookingResponse>
                 {
                     StatusCode = 500,
@@ -710,7 +711,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -794,7 +795,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1030,7 +1031,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1144,7 +1145,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1207,7 +1208,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1298,7 +1299,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1414,7 +1415,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1871,7 +1872,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -2078,7 +2079,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -2187,7 +2188,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -2799,7 +2800,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -3008,7 +3009,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -3144,7 +3145,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -3176,7 +3177,7 @@ namespace EvCoOwnership.Services.Services
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }

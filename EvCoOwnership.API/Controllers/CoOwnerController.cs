@@ -6,7 +6,7 @@ using EvCoOwnership.Repositories.DTOs.PaymentDTOs;
 using EvCoOwnership.Repositories.DTOs.UsageAnalyticsDTOs;
 using EvCoOwnership.Repositories.DTOs.ScheduleDTOs;
 using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
-using EvCoOwnership.DTOs.UserDTOs;
+using EvCoOwnership.Repositories.DTOs.UserDTOs;
 using EvCoOwnership.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;

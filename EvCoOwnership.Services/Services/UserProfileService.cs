@@ -56,7 +56,7 @@ namespace EvCoOwnership.Services.Services
                 var userPayments = allPayments.Where(p => p.UserId == userId).ToList();
 
                 var response = UserProfileMappers.ToUserProfileResponse(user);
-                
+
                 // Update stats with calculated values
                 response.Stats.TotalBookings = userBookings.Count;
                 response.Stats.TotalPayments = userPayments.Count;
@@ -375,7 +375,7 @@ namespace EvCoOwnership.Services.Services
                 // Simple implementation - just find user by email
                 var users = await _unitOfWork.UserRepository.GetAllAsync();
                 var user = users.FirstOrDefault(u => u.Email == email);
-                
+
                 if (user == null)
                 {
                     return new BaseResponse<UserProfileResponse>

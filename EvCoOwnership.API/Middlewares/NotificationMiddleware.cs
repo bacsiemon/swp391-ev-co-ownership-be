@@ -1,6 +1,6 @@
 using EvCoOwnership.API.Hubs;
 using EvCoOwnership.API.Hubs.Clients;
-using EvCoOwnership.DTOs.Notifications;
+using EvCoOwnership.Repositories.DTOs.NotificationDTOs;
 using EvCoOwnership.Services.Events;
 using Microsoft.AspNetCore.SignalR;
 

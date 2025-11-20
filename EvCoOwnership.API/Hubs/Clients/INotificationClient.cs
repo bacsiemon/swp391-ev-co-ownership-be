@@ -1,4 +1,4 @@
-using EvCoOwnership.DTOs.Notifications;
+using EvCoOwnership.Repositories.DTOs.NotificationDTOs;
 
 namespace EvCoOwnership.API.Hubs.Clients
 {

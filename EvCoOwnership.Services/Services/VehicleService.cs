@@ -1,9 +1,9 @@
-using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.UoW;
 using EvCoOwnership.Services.Interfaces;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.Enums;
+using EvCoOwnership.Repositories.DTOs.VehicleDTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -155,16 +155,16 @@ namespace EvCoOwnership.Services.Services
                         Data = response
                     };
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Error creating vehicle for user {UserId}", createdById);
+                    _logger.LogError("Error creating vehicle for user {UserId}", createdById);
                     throw;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error in CreateVehicleAsync for user {UserId}", createdById);
+                _logger.LogError("Error in CreateVehicleAsync for user {UserId}", createdById);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -295,9 +295,9 @@ namespace EvCoOwnership.Services.Services
                     }
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error adding co-owner to vehicle {VehicleId}", vehicleId);
+                _logger.LogError("Error adding co-owner to vehicle {VehicleId}", vehicleId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -382,9 +382,9 @@ namespace EvCoOwnership.Services.Services
                     }
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error responding to invitation for vehicle {VehicleId}, user {UserId}", vehicleId, userId);
+                _logger.LogError("Error responding to invitation for vehicle {VehicleId}, user {UserId}", vehicleId, userId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -434,9 +434,9 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting vehicle {VehicleId}", vehicleId);
+                _logger.LogError("Error getting vehicle {VehicleId}", vehicleId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -478,9 +478,9 @@ namespace EvCoOwnership.Services.Services
                     Data = vehicleResponses
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting vehicles for user {UserId}", userId);
+                _logger.LogError("Error getting vehicles for user {UserId}", userId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -546,9 +546,9 @@ namespace EvCoOwnership.Services.Services
                     Data = invitationResponses
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting pending invitations for user {UserId}", userId);
+                _logger.LogError("Error getting pending invitations for user {UserId}", userId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -625,9 +625,9 @@ namespace EvCoOwnership.Services.Services
                     Message = "USER_ELIGIBLE_TO_CREATE_VEHICLE"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error validating vehicle creation eligibility for user {UserId}", userId);
+                _logger.LogError("Error validating vehicle creation eligibility for user {UserId}", userId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -686,9 +686,9 @@ namespace EvCoOwnership.Services.Services
                     Message = "OWNERSHIP_PERCENTAGE_VALID"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error validating ownership percentage for vehicle {VehicleId}", vehicleId);
+                _logger.LogError("Error validating ownership percentage for vehicle {VehicleId}", vehicleId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -767,9 +767,9 @@ namespace EvCoOwnership.Services.Services
                     Message = "CO_OWNER_REMOVED_SUCCESSFULLY"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error removing co-owner from vehicle {VehicleId}", vehicleId);
+                _logger.LogError("Error removing co-owner from vehicle {VehicleId}", vehicleId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -841,9 +841,9 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating vehicle {VehicleId}", vehicleId);
+                _logger.LogError("Error updating vehicle {VehicleId}", vehicleId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -980,9 +980,9 @@ namespace EvCoOwnership.Services.Services
                     Data = pagedResult
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting available vehicles");
+                _logger.LogError("Error getting available vehicles");
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -1125,9 +1125,9 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting vehicle detail for vehicleId: {VehicleId}", vehicleId);
+                _logger.LogError("Error getting vehicle detail for vehicleId: {VehicleId}", vehicleId);
                 return new BaseResponse
                 {
                     StatusCode = 500,
@@ -1420,14 +1420,14 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting vehicle availability schedule");
+                _logger.LogError("Error getting vehicle availability schedule");
                 return new BaseResponse
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1589,14 +1589,14 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error finding available time slots");
+                _logger.LogError("Error finding available time slots");
                 return new BaseResponse
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }
@@ -1748,14 +1748,14 @@ namespace EvCoOwnership.Services.Services
                     Data = response
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error comparing vehicle utilization");
+                _logger.LogError("Error comparing vehicle utilization");
                 return new BaseResponse
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An error occurred while processing the request."
                 };
             }
         }

@@ -1,4 +1,4 @@
-using EvCoOwnership.Repositories.DTOs.Notifications;
+using EvCoOwnership.Repositories.DTOs.NotificationDTOs;
 using EvCoOwnership.Helpers.BaseClasses;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.UoW;
@@ -29,7 +29,7 @@ namespace EvCoOwnership.Services.Services
         /// <returns>Base response indicating success or failure</returns>
         public async Task<BaseResponse<int>> SendNotificationToUsersAsync(CreateNotificationRequest request)
         {
-            _logger.LogInformation("Sending notification to {UserCount} users. Type: {NotificationType}", 
+            _logger.LogInformation("Sending notification to {UserCount} users. Type: {NotificationType}",
                 request.UserIds.Count, request.NotificationType);
 
             // Validate that users exist
@@ -88,7 +88,7 @@ namespace EvCoOwnership.Services.Services
                 NotificationEventPublisher.PublishNotificationCreated(eventData);
             }
 
-            _logger.LogInformation("Successfully sent notification {NotificationId} to {UserCount} users", 
+            _logger.LogInformation("Successfully sent notification {NotificationId} to {UserCount} users",
                 notification.Id, existingUserIds.Count);
 
             return new BaseResponse<int>
@@ -126,7 +126,7 @@ namespace EvCoOwnership.Services.Services
         /// <returns>Paginated list of user notification response DTOs</returns>
         public async Task<BaseResponse<PaginatedList<UserNotificationResponseDto>>> GetUserNotificationsAsync(int userId, int pageIndex = 1, int pageSize = 10, bool includeRead = true)
         {
-            _logger.LogInformation("Getting notifications for user {UserId}, Page: {Page}, Size: {Size}", 
+            _logger.LogInformation("Getting notifications for user {UserId}, Page: {Page}, Size: {Size}",
                 userId, pageIndex, pageSize);
 
             // Validate user exists
@@ -180,7 +180,7 @@ namespace EvCoOwnership.Services.Services
         /// <returns>Base response indicating success or failure</returns>
         public async Task<BaseResponse<bool>> MarkNotificationAsReadAsync(int userId, MarkNotificationAsReadRequest request)
         {
-            _logger.LogInformation("Marking notification {UserNotificationId} as read for user {UserId}", 
+            _logger.LogInformation("Marking notification {UserNotificationId} as read for user {UserId}",
                 request.UserNotificationId, userId);
 
             var userNotification = await _unitOfWork.UserNotificationRepository.GetByIdAsync(request.UserNotificationId);
@@ -223,7 +223,7 @@ namespace EvCoOwnership.Services.Services
         /// <returns>Base response with count of notifications marked as read</returns>
         public async Task<BaseResponse<int>> MarkMultipleNotificationsAsReadAsync(int userId, MarkMultipleNotificationsAsReadRequest request)
         {
-            _logger.LogInformation("Marking {Count} notifications as read for user {UserId}", 
+            _logger.LogInformation("Marking {Count} notifications as read for user {UserId}",
                 request.UserNotificationIds.Count, userId);
 
             // Verify all notifications belong to the user

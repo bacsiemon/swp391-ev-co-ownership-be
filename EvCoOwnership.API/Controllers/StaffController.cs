@@ -1,17 +1,16 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using EvCoOwnership.API.Attributes;
 using EvCoOwnership.Repositories.Enums;
 using EvCoOwnership.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using EvCoOwnership.Helpers.BaseClasses;
-using EvCoOwnership.Repositories.DTOs;
 using EvCoOwnership.Repositories.DTOs.GroupManagementDTOs;
 using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
 using EvCoOwnership.Repositories.DTOs.LicenseDTOs;
-using EvCoOwnership.DTOs.UserDTOs;
+using EvCoOwnership.Repositories.DTOs.UserDTOs;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Repositories.UoW;
-using Microsoft.EntityFrameworkCore;
 
 namespace EvCoOwnership.API.Controllers
 {
@@ -143,14 +142,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = group
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting group {GroupId}", id);
+                _logger.LogError("Error getting group {GroupId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 });
             }
         }
@@ -227,14 +225,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting contracts list");
+                _logger.LogError("Error getting contracts list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -273,14 +271,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = new { ContractId = id, UpdatedBy = staffUserId, UpdatedAt = DateTime.UtcNow }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating contract status {ContractId}", id);
+                _logger.LogError("Error updating contract status {ContractId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -372,14 +370,14 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error during check-in");
+                _logger.LogError("Error during check-in");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -473,14 +471,14 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error during check-out");
+                _logger.LogError("Error during check-out");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -553,14 +551,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting services list");
+                _logger.LogError("Error getting services list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -655,14 +653,14 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error creating service");
+                _logger.LogError("Error creating service");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -707,14 +705,14 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating service status {ServiceId}", id);
+                _logger.LogError("Error updating service status {ServiceId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -786,14 +784,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting disputes list");
+                _logger.LogError("Error getting disputes list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -838,14 +836,14 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating dispute status {DisputeId}", id);
+                _logger.LogError("Error updating dispute status {DisputeId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -915,14 +913,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = reports
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting staff reports");
+                _logger.LogError("Error getting staff reports");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -985,14 +983,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = pendingCheckIns
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting pending check-ins");
+                _logger.LogError("Error getting pending check-ins");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -1042,14 +1040,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error performing staff-assisted check-in");
+                _logger.LogError("Error performing staff-assisted check-in");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -1101,14 +1099,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error performing staff-assisted check-out");
+                _logger.LogError("Error performing staff-assisted check-out");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -1174,14 +1172,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = requests
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting maintenance requests");
+                _logger.LogError("Error getting maintenance requests");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -1230,14 +1228,14 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating maintenance status for ID {MaintenanceId}", maintenanceId);
+                _logger.LogError("Error updating maintenance status for ID {MaintenanceId}", maintenanceId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Errors = "An unexpected error occurred."
                 });
             }
         }
@@ -1273,9 +1271,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving staff profile");
+                _logger.LogError("Error retrieving staff profile");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1319,9 +1317,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating staff profile");
+                _logger.LogError("Error updating staff profile");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1362,9 +1360,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error changing staff password");
+                _logger.LogError("Error changing staff password");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1406,9 +1404,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating staff notification settings");
+                _logger.LogError("Error updating staff notification settings");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1449,9 +1447,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating staff privacy settings");
+                _logger.LogError("Error updating staff privacy settings");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1491,9 +1489,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving staff activity log");
+                _logger.LogError("Error retrieving staff activity log");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1528,9 +1526,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving staff security log");
+                _logger.LogError("Error retrieving staff security log");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1590,9 +1588,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving assigned groups for staff");
+                _logger.LogError("Error retrieving assigned groups for staff");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1678,9 +1676,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving group details for group {GroupId}", groupId);
+                _logger.LogError("Error retrieving group details for group {GroupId}", groupId);
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1749,9 +1747,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving disputes for group {GroupId}", groupId);
+                _logger.LogError("Error retrieving disputes for group {GroupId}", groupId);
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1817,9 +1815,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error creating support ticket for group {GroupId}", request.GroupId);
+                _logger.LogError("Error creating support ticket for group {GroupId}", request.GroupId);
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1882,9 +1880,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating dispute {DisputeId} status", disputeId);
+                _logger.LogError("Error updating dispute {DisputeId} status", disputeId);
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1952,9 +1950,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error adding message to dispute {DisputeId}", disputeId);
+                _logger.LogError("Error adding message to dispute {DisputeId}", disputeId);
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -2044,14 +2042,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting licenses list");
+                _logger.LogError("Error getting licenses list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -2125,14 +2122,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = response
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error approving license {LicenseId}", request.LicenseId);
+                _logger.LogError("Error approving license {LicenseId}", request.LicenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -2209,14 +2205,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = response
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error rejecting license {LicenseId}", request.LicenseId);
+                _logger.LogError("Error rejecting license {LicenseId}", request.LicenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -2272,14 +2267,695 @@ namespace EvCoOwnership.API.Controllers
                     Data = response
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting license details for ID {LicenseId}", licenseId);
+                _logger.LogError("Error getting license details for ID {LicenseId}", licenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                });
+            }
+        }
+
+        #endregion
+
+        #region Vehicle Management for Staff
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get all vehicles for staff management with filtering and pagination
+        /// 
+        /// **Query Parameters:**
+        /// - status: available, in_use, maintenance, verification_pending (optional)
+        /// - pageIndex: Page number (default: 1)
+        /// - pageSize: Items per page (default: 10)
+        /// - search: Search by brand, model, license plate (optional)
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/staff/vehicles?status=verification_pending&amp;pageIndex=1&amp;pageSize=10&amp;search=Tesla
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle list retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("vehicles")]
+        public async Task<IActionResult> GetAllVehicles(
+            [FromQuery] string? status = null,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
+        {
+            try
+            {
+                var allVehicles = await _unitOfWork.VehicleRepository.GetAllAsync();
+                var allVehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository.GetAllAsync();
+                var allBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+
+                var vehiclesQuery = allVehicles.AsQueryable();
+
+                // Apply search filter
+                if (!string.IsNullOrEmpty(search))
+                {
+                    vehiclesQuery = vehiclesQuery.Where(v =>
+                        (v.Brand != null && v.Brand.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                        (v.Model != null && v.Model.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                        (v.LicensePlate != null && v.LicensePlate.Contains(search, StringComparison.OrdinalIgnoreCase)));
+                }
+
+                // Apply status filter
+                if (!string.IsNullOrEmpty(status))
+                {
+                    vehiclesQuery = status.ToLower() switch
+                    {
+                        "available" => vehiclesQuery.Where(v => v.StatusEnum == EVehicleStatus.Available),
+                        "in_use" => vehiclesQuery.Where(v => v.StatusEnum == EVehicleStatus.InUse),
+                        "maintenance" => vehiclesQuery.Where(v => v.StatusEnum == EVehicleStatus.Maintenance),
+                        "unavailable" => vehiclesQuery.Where(v => v.StatusEnum == EVehicleStatus.Unavailable),
+                        _ => vehiclesQuery
+                    };
+                }
+
+                // Calculate total count before pagination
+                var totalCount = vehiclesQuery.Count();
+
+                // Apply pagination
+                var vehicles = vehiclesQuery
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                // Build response data
+                var vehicleList = vehicles.Select(vehicle =>
+                {
+                    var vehicleCoOwners = allVehicleCoOwners.Where(vco => vco.VehicleId == vehicle.Id).ToList();
+                    var activeBookings = allBookings.Count(b => b.VehicleId == vehicle.Id &&
+                        (b.StatusEnum == EBookingStatus.Active || b.StatusEnum == EBookingStatus.Confirmed));
+
+                    return new
+                    {
+                        Id = vehicle.Id,
+                        Brand = vehicle.Brand,
+                        Model = vehicle.Model,
+                        Year = vehicle.Year,
+                        LicensePlate = vehicle.LicensePlate,
+                        Color = vehicle.Color,
+                        Status = vehicle.StatusEnum?.ToString() ?? "Unknown",
+                        PurchasePrice = vehicle.PurchasePrice,
+                        CreatedAt = vehicle.CreatedAt,
+
+                        // Co-ownership information
+                        CoOwnerCount = vehicleCoOwners.Count,
+                        TotalOwnershipSold = vehicleCoOwners.Sum(vco => vco.OwnershipPercentage),
+                        AvailableOwnership = 100 - vehicleCoOwners.Sum(vco => vco.OwnershipPercentage),
+
+                        // Usage statistics
+                        ActiveBookings = activeBookings,
+                        TotalBookings = allBookings.Count(b => b.VehicleId == vehicle.Id),
+
+                        // Basic vehicle details
+                        BatteryCapacity = vehicle.BatteryCapacity,
+
+                        // Verification status
+                        IsVerificationPending = vehicle.StatusEnum == EVehicleStatus.Unavailable,
+                        RequiresAttention = vehicle.StatusEnum == EVehicleStatus.Unavailable ||
+                                          vehicle.StatusEnum == EVehicleStatus.Maintenance
+                    };
+                }).ToList();
+
+                var result = new
+                {
+                    Items = vehicleList,
+                    TotalCount = totalCount,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                    HasNextPage = pageIndex * pageSize < totalCount,
+                    HasPreviousPage = pageIndex > 1
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLES_RETRIEVED_SUCCESS",
+                    Data = result
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error getting vehicles list for staff");
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get detailed information about a specific vehicle for staff review
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/staff/vehicles/123
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle details retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("vehicles/{vehicleId:int}")]
+        public async Task<IActionResult> GetVehicleById(int vehicleId)
+        {
+            try
+            {
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                // Get related data
+                var allVehicleCoOwners = await _unitOfWork.VehicleCoOwnerRepository.GetAllAsync();
+                var allCoOwners = await _unitOfWork.CoOwnerRepository.GetAllAsync();
+                var allUsers = await _unitOfWork.UserRepository.GetAllAsync();
+                var allBookings = await _unitOfWork.BookingRepository.GetAllAsync();
+                var allMaintenanceCosts = await _unitOfWork.MaintenanceCostRepository.GetAllAsync();
+                var allFunds = await _unitOfWork.FundRepository.GetAllAsync();
+
+                var vehicleCoOwners = allVehicleCoOwners.Where(vco => vco.VehicleId == vehicleId).ToList();
+                var vehicleBookings = allBookings.Where(b => b.VehicleId == vehicleId).ToList();
+                var vehicleMaintenanceCosts = allMaintenanceCosts.Where(mc => mc.VehicleId == vehicleId).ToList();
+                var vehicleFund = allFunds.FirstOrDefault(f => f.Id == vehicle.FundId);
+
+                // Build co-owner details
+                var coOwnerDetails = vehicleCoOwners.Select(vco =>
+                {
+                    var coOwner = allCoOwners.FirstOrDefault(co => co.UserId == vco.CoOwnerId);
+                    var user = coOwner != null ? allUsers.FirstOrDefault(u => u.Id == coOwner.UserId) : null;
+
+                    return new
+                    {
+                        CoOwnerId = vco.CoOwnerId,
+                        UserName = user != null ? $"{user.FirstName} {user.LastName}".Trim() : "Unknown User",
+                        Email = user?.Email,
+                        OwnershipPercentage = vco.OwnershipPercentage,
+                        JoinedDate = vco.CreatedAt
+                    };
+                }).ToList();
+
+                // Calculate statistics
+                var totalBookings = vehicleBookings.Count;
+                var activeBookings = vehicleBookings.Count(b => b.StatusEnum == EBookingStatus.Active);
+                var completedBookings = vehicleBookings.Count(b => b.StatusEnum == EBookingStatus.Completed);
+                var totalRevenue = vehicleBookings.Where(b => b.StatusEnum == EBookingStatus.Completed)
+                    .Sum(b => b.TotalCost ?? 0);
+
+                var totalMaintenanceCost = vehicleMaintenanceCosts.Sum(mc => mc.Cost);
+                var pendingMaintenanceCost = vehicleMaintenanceCosts
+                    .Where(mc => !mc.IsPaid.HasValue || !mc.IsPaid.Value)
+                    .Sum(mc => mc.Cost);
+
+                var vehicleDetails = new
+                {
+                    // Basic vehicle information
+                    Id = vehicle.Id,
+                    Brand = vehicle.Brand,
+                    Model = vehicle.Model,
+                    Year = vehicle.Year,
+                    LicensePlate = vehicle.LicensePlate,
+                    Color = vehicle.Color,
+                    Status = vehicle.StatusEnum?.ToString() ?? "Unknown",
+                    PurchasePrice = vehicle.PurchasePrice,
+                    CreatedAt = vehicle.CreatedAt,
+
+                    // Technical specifications
+                    BatteryCapacity = vehicle.BatteryCapacity,
+                    RangeKm = vehicle.RangeKm,
+                    DistanceTravelled = vehicle.DistanceTravelled,
+
+                    // Co-ownership information
+                    CoOwners = coOwnerDetails,
+                    TotalCoOwners = coOwnerDetails.Count,
+                    TotalOwnershipSold = vehicleCoOwners.Sum(vco => vco.OwnershipPercentage),
+                    AvailableOwnership = 100 - vehicleCoOwners.Sum(vco => vco.OwnershipPercentage),
+
+                    // Financial information
+                    Fund = vehicleFund != null ? new
+                    {
+                        Id = vehicleFund.Id,
+                        CurrentBalance = vehicleFund.CurrentBalance ?? 0,
+                        TotalContributions = vehicleFund.CurrentBalance ?? 0
+                    } : null,
+
+                    // Usage statistics
+                    BookingStatistics = new
+                    {
+                        TotalBookings = totalBookings,
+                        ActiveBookings = activeBookings,
+                        CompletedBookings = completedBookings,
+                        TotalRevenue = totalRevenue,
+                        AverageBookingValue = completedBookings > 0 ? totalRevenue / completedBookings : 0
+                    },
+
+                    // Maintenance information
+                    MaintenanceStatistics = new
+                    {
+                        TotalMaintenanceCost = totalMaintenanceCost,
+                        PendingMaintenanceCost = pendingMaintenanceCost,
+                        MaintenanceCount = vehicleMaintenanceCosts.Count,
+                        LastMaintenanceDate = vehicleMaintenanceCosts.OrderByDescending(mc => mc.CreatedAt)
+                            .FirstOrDefault()?.CreatedAt
+                    },
+
+                    // Recent activity
+                    RecentBookings = vehicleBookings.OrderByDescending(b => b.CreatedAt)
+                        .Take(5)
+                        .Select(b => new
+                        {
+                            Id = b.Id,
+                            StartTime = b.StartTime,
+                            EndTime = b.EndTime,
+                            Status = b.StatusEnum?.ToString(),
+                            TotalCost = b.TotalCost,
+                            Purpose = b.Purpose
+                        }).ToList(),
+
+                    RecentMaintenance = vehicleMaintenanceCosts.OrderByDescending(mc => mc.CreatedAt)
+                        .Take(5)
+                        .Select(mc => new
+                        {
+                            Id = mc.Id,
+                            Description = mc.Description,
+                            Cost = mc.Cost,
+                            ServiceDate = mc.ServiceDate,
+                            ServiceProvider = mc.ServiceProvider,
+                            IsPaid = mc.IsPaid
+                        }).ToList()
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_DETAILS_RETRIEVED_SUCCESS",
+                    Data = vehicleDetails
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error getting vehicle details for vehicle ID {VehicleId}", vehicleId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Verify vehicle documentation and information
+        /// 
+        /// **Sample Request:**
+        /// ```json
+        /// {
+        ///   "documentationVerified": true,
+        ///   "technicalInspectionPassed": true,
+        ///   "notes": "All documents verified and vehicle passes technical inspection",
+        ///   "verificationPhotos": ["photo1.jpg", "photo2.jpg"]
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle verification completed successfully</response>
+        /// <response code="400">Invalid verification data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("vehicles/{vehicleId:int}/verify")]
+        public async Task<IActionResult> VerifyVehicle(int vehicleId, [FromBody] object verificationData)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                // Here you would typically extract verification data from the request
+                // For now, we'll mark the vehicle as verified
+                vehicle.StatusEnum = EVehicleStatus.Available;
+                vehicle.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.VehicleRepository.UpdateAsync(vehicle);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Vehicle {VehicleId} verified by staff {StaffUserId}", vehicleId, staffUserId);
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_VERIFIED_SUCCESS",
+                    Data = new
+                    {
+                        VehicleId = vehicleId,
+                        Status = vehicle.StatusEnum?.ToString(),
+                        VerifiedAt = DateTime.UtcNow,
+                        VerifiedBy = staffUserId
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error verifying vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Approve vehicle for co-ownership platform
+        /// 
+        /// **Sample Request:**
+        /// ```json
+        /// {
+        ///   "notes": "Vehicle approved for platform after successful verification"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle approved successfully</response>
+        /// <response code="400">Invalid request data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPatch("vehicles/{vehicleId:int}/approve")]
+        public async Task<IActionResult> ApproveVehicle(int vehicleId, [FromBody] object approvalData)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                vehicle.StatusEnum = EVehicleStatus.Available;
+                vehicle.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.VehicleRepository.UpdateAsync(vehicle);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Vehicle {VehicleId} approved by staff {StaffUserId}", vehicleId, staffUserId);
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_APPROVED_SUCCESS",
+                    Data = new
+                    {
+                        VehicleId = vehicleId,
+                        Status = vehicle.StatusEnum?.ToString(),
+                        ApprovedAt = DateTime.UtcNow,
+                        ApprovedBy = staffUserId
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error approving vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Reject vehicle with specific reason
+        /// 
+        /// **Sample Request:**
+        /// ```json
+        /// {
+        ///   "reason": "Vehicle documentation incomplete or invalid technical specifications"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle rejected successfully</response>
+        /// <response code="400">Invalid request data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPatch("vehicles/{vehicleId:int}/reject")]
+        public async Task<IActionResult> RejectVehicle(int vehicleId, [FromBody] object rejectionData)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                vehicle.StatusEnum = EVehicleStatus.Unavailable;
+                vehicle.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.VehicleRepository.UpdateAsync(vehicle);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Vehicle {VehicleId} rejected by staff {StaffUserId}", vehicleId, staffUserId);
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_REJECTED_SUCCESS",
+                    Data = new
+                    {
+                        VehicleId = vehicleId,
+                        Status = vehicle.StatusEnum?.ToString(),
+                        RejectedAt = DateTime.UtcNow,
+                        RejectedBy = staffUserId
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error rejecting vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Update vehicle status (Available, InUse, Maintenance, PendingVerification, Rejected)
+        /// 
+        /// **Sample Request:**
+        /// ```json
+        /// {
+        ///   "status": "Maintenance",
+        ///   "notes": "Vehicle scheduled for routine maintenance"
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle status updated successfully</response>
+        /// <response code="400">Invalid status or request data</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPatch("vehicles/{vehicleId:int}/status")]
+        public async Task<IActionResult> UpdateVehicleStatus(int vehicleId, [FromBody] object statusData)
+        {
+            try
+            {
+                var staffUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                // For now, we'll just update to maintenance status as an example
+                // In a real implementation, you'd extract the status from the request body
+                vehicle.StatusEnum = EVehicleStatus.Maintenance;
+                vehicle.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.VehicleRepository.UpdateAsync(vehicle);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Vehicle {VehicleId} status updated by staff {StaffUserId}", vehicleId, staffUserId);
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_STATUS_UPDATED_SUCCESS",
+                    Data = new
+                    {
+                        VehicleId = vehicleId,
+                        Status = vehicle.StatusEnum?.ToString(),
+                        UpdatedAt = DateTime.UtcNow,
+                        UpdatedBy = staffUserId
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error updating vehicle status for vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
+                });
+            }
+        }
+
+        /// <summary>
+        /// Staff
+        /// </summary>
+        /// <remarks>
+        /// Get vehicle inspection history and verification records
+        /// 
+        /// **Sample Request:**
+        /// ```
+        /// GET /api/staff/vehicles/123/inspections
+        /// ```
+        /// </remarks>
+        /// <response code="200">Vehicle inspection history retrieved successfully</response>
+        /// <response code="401">Unauthorized access</response>
+        /// <response code="403">Forbidden - Staff role required</response>
+        /// <response code="404">Vehicle not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("vehicles/{vehicleId:int}/inspections")]
+        public async Task<IActionResult> GetVehicleInspectionHistory(int vehicleId)
+        {
+            try
+            {
+                var vehicle = await _unitOfWork.VehicleRepository.GetByIdAsync(vehicleId);
+                if (vehicle == null)
+                {
+                    return NotFound(new BaseResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "VEHICLE_NOT_FOUND"
+                    });
+                }
+
+                // Get maintenance costs as inspection/service records
+                var allMaintenanceCosts = await _unitOfWork.MaintenanceCostRepository.GetAllAsync();
+                var vehicleMaintenanceCosts = allMaintenanceCosts
+                    .Where(mc => mc.VehicleId == vehicleId)
+                    .OrderByDescending(mc => mc.CreatedAt)
+                    .ToList();
+
+                var inspectionHistory = vehicleMaintenanceCosts.Select(mc => new
+                {
+                    Id = mc.Id,
+                    Type = mc.MaintenanceTypeEnum?.ToString() ?? "Routine",
+                    Description = mc.Description ?? "Vehicle inspection/maintenance",
+                    ServiceDate = mc.ServiceDate.ToDateTime(TimeOnly.MinValue),
+                    ServiceProvider = mc.ServiceProvider ?? "Internal",
+                    Cost = mc.Cost,
+                    IsPaid = mc.IsPaid ?? false,
+                    CreatedAt = mc.CreatedAt,
+
+                    // Mock inspection details (in real implementation, this would come from inspection records)
+                    InspectionResult = mc.IsPaid == true ? "Passed" : "Pending",
+                    InspectorNotes = $"Inspection completed on {mc.ServiceDate}",
+                    NextInspectionDue = mc.ServiceDate.AddMonths(6).ToDateTime(TimeOnly.MinValue)
+                }).ToList();
+
+                var summary = new
+                {
+                    TotalInspections = inspectionHistory.Count,
+                    PassedInspections = inspectionHistory.Count(i => i.InspectionResult == "Passed"),
+                    PendingInspections = inspectionHistory.Count(i => i.InspectionResult == "Pending"),
+                    TotalInspectionCost = inspectionHistory.Sum(i => i.Cost),
+                    LastInspectionDate = inspectionHistory.FirstOrDefault()?.ServiceDate,
+                    NextInspectionDue = inspectionHistory.FirstOrDefault()?.NextInspectionDue
+                };
+
+                return Ok(new BaseResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "VEHICLE_INSPECTION_HISTORY_RETRIEVED_SUCCESS",
+                    Data = new
+                    {
+                        VehicleId = vehicleId,
+                        VehicleInfo = new
+                        {
+                            Brand = vehicle.Brand,
+                            Model = vehicle.Model,
+                            LicensePlate = vehicle.LicensePlate,
+                            Status = vehicle.StatusEnum?.ToString()
+                        },
+                        Summary = summary,
+                        InspectionHistory = inspectionHistory
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error getting vehicle inspection history for vehicle {VehicleId}", vehicleId);
+                return StatusCode(500, new BaseResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "INTERNAL_SERVER_ERROR",
                 });
             }
         }

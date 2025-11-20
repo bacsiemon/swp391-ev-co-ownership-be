@@ -5,12 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using EvCoOwnership.Repositories.Models;
 using EvCoOwnership.Helpers.BaseClasses;
-using EvCoOwnership.Repositories.DTOs;
 using EvCoOwnership.Repositories.DTOs.GroupManagementDTOs;
 using EvCoOwnership.Repositories.DTOs.ProfileDTOs;
 using EvCoOwnership.Repositories.DTOs.LicenseDTOs;
-using EvCoOwnership.DTOs.UserDTOs;
-using EvCoOwnership.Repositories.Interfaces;
+using EvCoOwnership.Repositories.DTOs.UserDTOs;
 using EvCoOwnership.Repositories.UoW;
 using Microsoft.EntityFrameworkCore;
 
@@ -93,14 +91,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting users list");
+                _logger.LogError("Error getting users list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -139,14 +136,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = createdUser
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error creating user");
+                _logger.LogError("Error creating user");
                 return BadRequest(new BaseResponse<object>
                 {
                     StatusCode = 400,
                     Message = "USER_CREATION_FAILED",
-                    Errors = ex.Message
                 });
             }
         }
@@ -194,14 +190,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = updatedUser
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating user {UserId}", id);
+                _logger.LogError("Error updating user {UserId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -238,14 +233,13 @@ namespace EvCoOwnership.API.Controllers
                     Message = "USER_DELETED_SUCCESS"
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error deleting user {UserId}", id);
+                _logger.LogError("Error deleting user {UserId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -332,14 +326,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting licenses list");
+                _logger.LogError("Error getting licenses list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 });
             }
         }
@@ -413,14 +406,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = response
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error approving license {LicenseId}", request.LicenseId);
+                _logger.LogError("Error approving license {LicenseId}", request.LicenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 });
             }
         }
@@ -497,14 +489,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = response
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error rejecting license {LicenseId}", request.LicenseId);
+                _logger.LogError("Error rejecting license {LicenseId}", request.LicenseId);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -533,14 +524,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = groups
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting groups list");
+                _logger.LogError("Error getting groups list");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -596,14 +586,13 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating group status {GroupId}", id);
+                _logger.LogError("Error updating group status {GroupId}", id);
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -672,14 +661,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = settings
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting system settings");
+                _logger.LogError("Error getting system settings");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -749,14 +737,13 @@ namespace EvCoOwnership.API.Controllers
                     Data = new { UpdatedAt = DateTime.UtcNow, UpdatedCount = settings.Count }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating system settings");
+                _logger.LogError("Error updating system settings");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -831,14 +818,13 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting system reports");
+                _logger.LogError("Error getting system reports");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -923,14 +909,13 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error getting audit logs");
+                _logger.LogError("Error getting audit logs");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
+                    Message = "INTERNAL_SERVER_ERROR"
                 });
             }
         }
@@ -1031,14 +1016,13 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error sending notification to user");
+                _logger.LogError("Error sending notification to user");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -1142,9 +1126,9 @@ namespace EvCoOwnership.API.Controllers
                             successCount++;
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        _logger.LogWarning(ex, "Failed to create notification for user {UserId}", userId);
+                        _logger.LogWarning("Failed to create notification for user {UserId}", userId);
                     }
                 }
 
@@ -1168,14 +1152,13 @@ namespace EvCoOwnership.API.Controllers
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error creating notification");
+                _logger.LogError("Error creating notification");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
                     Message = "INTERNAL_SERVER_ERROR",
-                    Errors = ex.Message
                 });
             }
         }
@@ -1246,14 +1229,13 @@ namespace EvCoOwnership.API.Controllers
 
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving all notifications");
+                _logger.LogError("Error retrieving all notifications");
                 return StatusCode(500, new BaseResponse<object>
                 {
                     StatusCode = 500,
-                    Message = "An error occurred while retrieving notifications",
-                    Errors = ex.Message
+                    Message = "An error occurred while retrieving notifications"
                 });
             }
         }
@@ -1289,9 +1271,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving admin profile");
+                _logger.LogError("Error retrieving admin profile");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1335,9 +1317,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating admin profile");
+                _logger.LogError("Error updating admin profile");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1378,9 +1360,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error changing admin password");
+                _logger.LogError("Error changing admin password");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1422,9 +1404,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating admin notification settings");
+                _logger.LogError("Error updating admin notification settings");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1465,9 +1447,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating admin privacy settings");
+                _logger.LogError("Error updating admin privacy settings");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1507,9 +1489,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving admin activity log");
+                _logger.LogError("Error retrieving admin activity log");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1544,9 +1526,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving admin security log");
+                _logger.LogError("Error retrieving admin security log");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1582,9 +1564,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving user profile for admin view");
+                _logger.LogError("Error retrieving user profile for admin view");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1655,9 +1637,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving groups overview for admin");
+                _logger.LogError("Error retrieving groups overview for admin");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1747,9 +1729,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error creating group");
+                _logger.LogError("Error creating group");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1817,9 +1799,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error updating group status for group {GroupId}", request.GroupId);
+                _logger.LogError("Error updating group status for group {GroupId}", request.GroupId);
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
@@ -1915,9 +1897,9 @@ namespace EvCoOwnership.API.Controllers
                     _ => StatusCode(500, response)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error retrieving group analytics for admin");
+                _logger.LogError("Error retrieving group analytics for admin");
                 return StatusCode(500, new { message = "INTERNAL_SERVER_ERROR" });
             }
         }
