@@ -8,36 +8,36 @@ namespace EvCoOwnership.Repositories.Enums
         /// <summary>
         /// Dispute has been opened and awaiting review
         /// </summary>
-        Open = 1,
+        Open = 0,
 
         /// <summary>
         /// Dispute is under investigation
         /// </summary>
-        UnderReview = 2,
+        UnderReview = 1,
 
         /// <summary>
         /// Dispute requires mediation from admin or third party
         /// </summary>
-        InMediation = 3,
+        InMediation = 2,
 
         /// <summary>
         /// Dispute has been resolved successfully
         /// </summary>
-        Resolved = 4,
+        Resolved = 3,
 
         /// <summary>
         /// Dispute was rejected/dismissed
         /// </summary>
-        Rejected = 5,
+        Rejected = 4,
 
         /// <summary>
         /// Dispute was withdrawn by the initiator
         /// </summary>
-        Withdrawn = 6,
+        Withdrawn = 5,
 
         /// <summary>
         /// Dispute requires escalation to higher authority
         /// </summary>
-        Escalated = 7
+        Escalated = 6
     }
 }

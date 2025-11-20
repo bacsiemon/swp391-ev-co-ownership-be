@@ -1,7 +1,7 @@
 #nullable disable
 using Microsoft.EntityFrameworkCore;
 using EvCoOwnership.Repositories.Models;
-using EvCoOwnership.Repositories.DTOs;
+using EvCoOwnership.Repositories.Enums;
 
 namespace EvCoOwnership.Repositories.Context;
 
@@ -9,6 +9,14 @@ public partial class EvCoOwnershipDbContext
 {
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        // Configure ContractTemplate
+        modelBuilder.Entity<ContractTemplate>(entity =>
+        {
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EContractTemplateStatus.Draft);
+        });
+
         // Configure DrivingLicense verification relationship
         modelBuilder.Entity<DrivingLicense>(entity =>
         {
@@ -18,8 +26,73 @@ public partial class EvCoOwnershipDbContext
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.Property(e => e.VerificationStatus)
+<<<<<<< HEAD
                 .HasDefaultValue(EvCoOwnership.Repositories.Enums.EDrivingLicenseVerificationStatus.Pending)
                 .HasConversion<int>();
+=======
+                .HasConversion<int>()
+                .HasDefaultValue(EDrivingLicenseVerificationStatus.Pending);
+        });
+
+        // Configure Group
+        modelBuilder.Entity<Group>(entity =>
+        {
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupStatus.Active);
+
+            entity.Property(e => e.GroupTypeEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupType.VehicleCoOwnership);
+        });
+
+        // Configure GroupContract
+        modelBuilder.Entity<GroupContract>(entity =>
+        {
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EEContractStatus.Draft);
+        });
+
+        // Configure GroupFund
+        modelBuilder.Entity<GroupFund>(entity =>
+        {
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupFundStatus.Active);
+        });
+
+        // Configure GroupMember
+        modelBuilder.Entity<GroupMember>(entity =>
+        {
+            entity.Property(e => e.RoleEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupMemberRole.Member);
+
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupMemberStatus.Active);
+        });
+
+        // Configure GroupVehicle
+        modelBuilder.Entity<GroupVehicle>(entity =>
+        {
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupStatus.Active);
+        });
+
+        // Configure GroupVote
+        modelBuilder.Entity<GroupVote>(entity =>
+        {
+            entity.Property(e => e.VoteTypeEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupVoteType.General);
+
+            entity.Property(e => e.StatusEnum)
+                .HasConversion<int>()
+                .HasDefaultValue(EGroupVoteStatus.Active);
+>>>>>>> 86bafc2d907c94136e5ef47747a072e45fadd6b9
         });
 
         // Configure VehicleUpgradeProposal
@@ -30,8 +103,8 @@ public partial class EvCoOwnershipDbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
-            entity.Property(e => e.UpgradeType)
-                .HasColumnName("upgrade_type")
+            entity.Property(e => e.UpgradeTypeEnum)
+                .HasColumnName("upgrade_type_enum")
                 .HasConversion<int>();
             entity.Property(e => e.Title)
                 .IsRequired()
@@ -55,7 +128,6 @@ public partial class EvCoOwnershipDbContext
                 .HasMaxLength(100)
                 .HasColumnName("vendor_contact");
             entity.Property(e => e.ProposedInstallationDate)
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("proposed_installation_date");
             entity.Property(e => e.EstimatedDurationDays)
                 .HasColumnName("estimated_duration_days");
@@ -100,17 +172,17 @@ public partial class EvCoOwnershipDbContext
                 .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Vehicle)
-                .WithMany()
+                .WithMany(p => p.VehicleUpgradeProposals)
                 .HasForeignKey(d => d.VehicleId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(d => d.ProposedByUser)
-                .WithMany()
+                .WithMany(p => p.VehicleUpgradeProposals)
                 .HasForeignKey(d => d.ProposedByUserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(d => d.FundUsage)
-                .WithMany()
+                .WithMany(p => p.VehicleUpgradeProposals)
                 .HasForeignKey(d => d.FundUsageId)
                 .OnDelete(DeleteBehavior.SetNull);
 
@@ -137,17 +209,23 @@ public partial class EvCoOwnershipDbContext
                 .HasColumnName("voted_at");
 
             entity.HasOne(d => d.Proposal)
-                .WithMany()
+                .WithMany(p => p.VehicleUpgradeVotes)
                 .HasForeignKey(d => d.ProposalId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(d => d.User)
-                .WithMany()
+                .WithMany(p => p.VehicleUpgradeVotes)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.ProposalId);
             entity.HasIndex(e => e.UserId);
+        });
+
+        // Configure FundUsageVote with composite primary key
+        modelBuilder.Entity<FundUsageVote>(entity =>
+        {
+            entity.HasKey(e => new { e.FundUsageId, e.UserId });
         });
     }
 }

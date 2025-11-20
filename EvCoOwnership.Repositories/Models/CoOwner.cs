@@ -22,4 +22,6 @@ public partial class CoOwner
     public virtual User User { get; set; }
 
     public virtual ICollection<VehicleCoOwner> VehicleCoOwners { get; set; } = new List<VehicleCoOwner>();
+
+    public virtual ICollection<VehicleUsageRecord> VehicleUsageRecords { get; set; } = new List<VehicleUsageRecord>();
 }

@@ -30,4 +30,6 @@ public partial class CheckIn
     public virtual VehicleCondition VehicleCondition { get; set; }
 
     public virtual VehicleStation VehicleStation { get; set; }
+
+    public virtual ICollection<VehicleUsageRecord> VehicleUsageRecords { get; set; } = new List<VehicleUsageRecord>();
 }

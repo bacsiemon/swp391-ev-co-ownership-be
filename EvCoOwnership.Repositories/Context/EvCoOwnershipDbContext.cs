@@ -735,7 +735,7 @@ public partial class EvCoOwnershipDbContext : DbContext
                 .HasPrecision(5, 2)
                 .HasColumnName("ownership_percentage");
             entity.Property(e => e.StatusEnum)
-                .HasDefaultValue(EEContractStatus.PendingSignatures)
+                .HasDefaultValue(EEContractStatus.Draft)
                 .HasColumnName("status_enum")
                 .HasConversion<int>();
             entity.Property(e => e.UpdatedAt)

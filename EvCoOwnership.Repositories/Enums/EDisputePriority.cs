@@ -8,21 +8,21 @@ namespace EvCoOwnership.Repositories.Enums
         /// <summary>
         /// Low priority - minor issues
         /// </summary>
-        Low = 1,
+        Low = 0,
 
         /// <summary>
         /// Medium priority - moderate impact
         /// </summary>
-        Medium = 2,
+        Medium = 1,
 
         /// <summary>
         /// High priority - significant impact
         /// </summary>
-        High = 3,
+        High = 2,
 
         /// <summary>
         /// Critical priority - requires immediate attention
         /// </summary>
-        Critical = 4
+        Critical = 3
     }
 }

@@ -1114,7 +1114,7 @@ namespace EvCoOwnership.Services.Services
                 TotalCost = usage.TotalCost + damageCharges,
                 Purpose = booking.Purpose,
                 Notes = null,
-                WasQRScanned = wasQRScanned,
+                WasQrScanned = wasQRScanned,
                 AssistingStaffId = staffId,
                 CreatedAt = DateTime.UtcNow
             };

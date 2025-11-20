@@ -41,4 +41,6 @@ public partial class Booking
     public virtual ICollection<MaintenanceCost> MaintenanceCosts { get; set; } = new List<MaintenanceCost>();
 
     public virtual Vehicle Vehicle { get; set; }
+
+    public virtual ICollection<VehicleUsageRecord> VehicleUsageRecords { get; set; } = new List<VehicleUsageRecord>();
 }
