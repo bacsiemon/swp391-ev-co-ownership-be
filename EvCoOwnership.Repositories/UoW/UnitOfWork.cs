@@ -58,6 +58,7 @@ namespace EvCoOwnership.Repositories.UoW
         private UserNotificationRepository _userNotificationRepository;
         private VehicleUpgradeProposalRepository? _vehicleUpgradeProposalRepository;
         private VehicleUpgradeVoteRepository? _vehicleUpgradeVoteRepository;
+        private ContractTemplateRepository? _contractTemplateRepository;
 
         // Repository properties with lazy initialization
         public IUserRepository UserRepository { get { return _userRepository ??= new UserRepository(_context); } }
@@ -83,5 +84,6 @@ namespace EvCoOwnership.Repositories.UoW
         public IUserNotificationRepository UserNotificationRepository { get { return _userNotificationRepository ??= new UserNotificationRepository(_context); } }
         public IVehicleUpgradeProposalRepository VehicleUpgradeProposalRepository { get { return _vehicleUpgradeProposalRepository ??= new VehicleUpgradeProposalRepository(_context); } }
         public IVehicleUpgradeVoteRepository VehicleUpgradeVoteRepository { get { return _vehicleUpgradeVoteRepository ??= new VehicleUpgradeVoteRepository(_context); } }
+        public IContractTemplateRepository ContractTemplateRepository { get { return _contractTemplateRepository ??= new ContractTemplateRepository(_context); } }
     }
 }

@@ -43,6 +43,7 @@ namespace EvCoOwnership.Services
             services.AddScoped<IMaintenanceVoteService, MaintenanceVoteService>();
             services.AddScoped<IDisputeService, DisputeService>();
             services.AddScoped<IContractService, ContractService>();
+            services.AddScoped<IContractTemplateService, ContractTemplateService>();
             services.AddScoped<IGroupService, GroupService>();
             services.AddScoped<IScheduleService, ScheduleService>();
             services.AddScoped<IProfileService, ProfileService>();

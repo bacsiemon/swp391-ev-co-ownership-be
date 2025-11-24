@@ -33,6 +33,7 @@ namespace EvCoOwnership.Repositories.UoW
         IUserNotificationRepository UserNotificationRepository { get; }
         IVehicleUpgradeProposalRepository VehicleUpgradeProposalRepository { get; }
         IVehicleUpgradeVoteRepository VehicleUpgradeVoteRepository { get; }
+        IContractTemplateRepository ContractTemplateRepository { get; }
 
         Task<int> SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();

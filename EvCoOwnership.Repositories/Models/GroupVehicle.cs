@@ -14,7 +14,7 @@ public partial class GroupVehicle
 
     public DateTime? AddedAt { get; set; }
 
-    public EGroupStatus? StatusEnum { get; set; }
+    public EVehicleStatus? StatusEnum { get; set; }
 
     public virtual Group Group { get; set; }
 
